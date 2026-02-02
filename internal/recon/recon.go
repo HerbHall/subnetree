@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/HerbHall/netvantage/pkg/plugin"
 	"go.uber.org/zap"
@@ -95,6 +96,11 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 
 func (m *Module) Start(_ context.Context) error {
 	m.scanCtx, m.scanCancel = context.WithCancel(context.Background())
+
+	// Start device-lost checker background goroutine.
+	m.wg.Add(1)
+	go m.runDeviceLostChecker()
+
 	m.logger.Info("recon module started")
 	return nil
 }
@@ -143,6 +149,85 @@ func (m *Module) Health(_ context.Context) plugin.HealthStatus {
 		Status:  "ok",
 		Details: details,
 	}
+}
+
+// runDeviceLostChecker periodically checks for devices that haven't been seen
+// within the configured DeviceLostAfter threshold and marks them offline.
+func (m *Module) runDeviceLostChecker() {
+	defer m.wg.Done()
+
+	interval := m.cfg.DeviceLostAfter / 4
+	if interval < time.Minute {
+		interval = time.Minute
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	m.logger.Info("device lost checker started",
+		zap.Duration("check_interval", interval),
+		zap.Duration("device_lost_after", m.cfg.DeviceLostAfter),
+	)
+
+	for {
+		select {
+		case <-m.scanCtx.Done():
+			m.logger.Info("device lost checker stopped")
+			return
+		case <-ticker.C:
+			m.checkForLostDevices()
+		}
+	}
+}
+
+func (m *Module) checkForLostDevices() {
+	ctx := m.scanCtx
+	threshold := time.Now().Add(-m.cfg.DeviceLostAfter)
+
+	stale, err := m.store.FindStaleDevices(ctx, threshold)
+	if err != nil {
+		m.logger.Error("failed to find stale devices", zap.Error(err))
+		return
+	}
+
+	for _, device := range stale {
+		if err := m.store.MarkDeviceOffline(ctx, device.ID); err != nil {
+			m.logger.Error("failed to mark device offline",
+				zap.String("device_id", device.ID),
+				zap.Error(err),
+			)
+			continue
+		}
+
+		ip := ""
+		if len(device.IPAddresses) > 0 {
+			ip = device.IPAddresses[0]
+		}
+
+		m.publishEvent(ctx, TopicDeviceLost, DeviceLostEvent{
+			DeviceID: device.ID,
+			IP:       ip,
+			LastSeen: device.LastSeen,
+		})
+
+		m.logger.Info("device marked as lost",
+			zap.String("device_id", device.ID),
+			zap.String("ip", ip),
+			zap.Time("last_seen", device.LastSeen),
+		)
+	}
+}
+
+// publishEvent publishes an event to the event bus.
+func (m *Module) publishEvent(ctx context.Context, topic string, payload any) {
+	if m.bus == nil {
+		return
+	}
+	m.bus.PublishAsync(ctx, plugin.Event{
+		Topic:     topic,
+		Source:    "recon",
+		Timestamp: time.Now(),
+		Payload:   payload,
+	})
 }
 
 // newScanContext creates a child context from the module's scan context.

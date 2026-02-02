@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/HerbHall/netvantage/internal/store"
 	"github.com/HerbHall/netvantage/pkg/models"
@@ -318,6 +319,97 @@ func TestLinkScanDevice(t *testing.T) {
 	}
 	if len(devices) != 1 {
 		t.Errorf("count = %d, want 1", len(devices))
+	}
+}
+
+func TestFindStaleDevices(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create two online devices.
+	fresh := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:00:00:01",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	stale := &models.Device{
+		IPAddresses:     []string{"10.0.0.2"},
+		MACAddress:      "AA:BB:CC:00:00:02",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, fresh)
+	_, _ = s.UpsertDevice(ctx, stale)
+
+	// Backdate the stale device's last_seen to 48 hours ago.
+	oldTime := time.Now().Add(-48 * time.Hour)
+	_, _ = s.db.ExecContext(ctx, "UPDATE recon_devices SET last_seen = ? WHERE id = ?", oldTime, stale.ID)
+
+	// Threshold = 24 hours ago. Only the stale device should be returned.
+	threshold := time.Now().Add(-24 * time.Hour)
+	devices, err := s.FindStaleDevices(ctx, threshold)
+	if err != nil {
+		t.Fatalf("FindStaleDevices: %v", err)
+	}
+	if len(devices) != 1 {
+		t.Fatalf("got %d stale devices, want 1", len(devices))
+	}
+	if devices[0].ID != stale.ID {
+		t.Errorf("stale device ID = %q, want %q", devices[0].ID, stale.ID)
+	}
+}
+
+func TestFindStaleDevices_IgnoresOffline(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create an online device and backdate it.
+	d := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:00:00:01",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	oldTime := time.Now().Add(-48 * time.Hour)
+	_, _ = s.db.ExecContext(ctx, "UPDATE recon_devices SET last_seen = ?, status = ? WHERE id = ?",
+		oldTime, string(models.DeviceStatusOffline), d.ID)
+
+	// Already-offline devices should not be returned.
+	threshold := time.Now().Add(-24 * time.Hour)
+	devices, err := s.FindStaleDevices(ctx, threshold)
+	if err != nil {
+		t.Fatalf("FindStaleDevices: %v", err)
+	}
+	if len(devices) != 0 {
+		t.Errorf("got %d stale devices, want 0 (already offline)", len(devices))
+	}
+}
+
+func TestMarkDeviceOffline(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:00:00:01",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	if err := s.MarkDeviceOffline(ctx, d.ID); err != nil {
+		t.Fatalf("MarkDeviceOffline: %v", err)
+	}
+
+	got, err := s.GetDevice(ctx, d.ID)
+	if err != nil {
+		t.Fatalf("GetDevice: %v", err)
+	}
+	if got.Status != models.DeviceStatusOffline {
+		t.Errorf("status = %q, want %q", got.Status, models.DeviceStatusOffline)
 	}
 }
 

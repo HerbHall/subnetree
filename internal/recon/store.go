@@ -366,6 +366,44 @@ func (s *ReconStore) GetTopologyLinks(ctx context.Context) ([]TopologyLink, erro
 	return links, rows.Err()
 }
 
+// FindStaleDevices returns devices that are currently online but haven't been
+// seen since before the given threshold time.
+func (s *ReconStore) FindStaleDevices(ctx context.Context, threshold time.Time) ([]models.Device, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT
+		id, hostname, ip_addresses, mac_address, manufacturer,
+		device_type, os, status, discovery_method, agent_id,
+		first_seen, last_seen, notes, tags, custom_fields
+		FROM recon_devices WHERE status = ? AND last_seen < ?`,
+		string(models.DeviceStatusOnline), threshold,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find stale devices: %w", err)
+	}
+	defer rows.Close()
+
+	var devices []models.Device
+	for rows.Next() {
+		d, err := s.scanDeviceRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		devices = append(devices, *d)
+	}
+	return devices, rows.Err()
+}
+
+// MarkDeviceOffline sets a device's status to offline.
+func (s *ReconStore) MarkDeviceOffline(ctx context.Context, deviceID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET status = ? WHERE id = ?`,
+		string(models.DeviceStatusOffline), deviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("mark device offline: %w", err)
+	}
+	return nil
+}
+
 // scanDevice scans a single row into a Device.
 func (s *ReconStore) scanDevice(row *sql.Row) (*models.Device, error) {
 	var d models.Device
