@@ -186,6 +186,17 @@ func (r *Registry) InitAll(ctx context.Context, depsFn func(name string) plugin.
 				r.disabled[name] = true
 			}
 		}
+
+		// Wire event subscriptions for EventSubscriber plugins.
+		if es, ok := p.(plugin.EventSubscriber); ok {
+			for _, sub := range es.Subscriptions() {
+				deps.Bus.Subscribe(sub.Topic, sub.Handler)
+				r.logger.Info("subscribed plugin to event",
+					zap.String("plugin", name),
+					zap.String("topic", sub.Topic),
+				)
+			}
+		}
 	}
 	return nil
 }

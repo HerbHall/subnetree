@@ -40,6 +40,29 @@ type testHTTPPlugin struct {
 
 func (p *testHTTPPlugin) Routes() []plugin.Route { return p.routes }
 
+// testEventSubPlugin implements both Plugin and EventSubscriber.
+type testEventSubPlugin struct {
+	testPlugin
+	subscriptions []plugin.Subscription
+}
+
+func (p *testEventSubPlugin) Subscriptions() []plugin.Subscription { return p.subscriptions }
+
+// testBus records Subscribe calls for verification.
+type testBus struct {
+	subscriptions []struct{ topic string }
+}
+
+func (b *testBus) Publish(_ context.Context, _ plugin.Event) error { return nil }
+func (b *testBus) Subscribe(topic string, _ plugin.EventHandler) (unsubscribe func()) {
+	b.subscriptions = append(b.subscriptions, struct{ topic string }{topic})
+	return func() {}
+}
+func (b *testBus) PublishAsync(_ context.Context, _ plugin.Event) {}
+func (b *testBus) SubscribeAll(_ plugin.EventHandler) (unsubscribe func()) {
+	return func() {}
+}
+
 func testLogger() *zap.Logger {
 	logger, _ := zap.NewDevelopment()
 	return logger
@@ -288,5 +311,52 @@ func TestCascadeDisable(t *testing.T) {
 	}
 	if !reg.IsDisabled("b") {
 		t.Error("expected 'b' to be cascade disabled")
+	}
+}
+
+func TestInitAll_WiresEventSubscriber(t *testing.T) {
+	reg := New(testLogger())
+
+	var callCount int
+	p := &testEventSubPlugin{
+		testPlugin: *newTestPlugin("webhook"),
+		subscriptions: []plugin.Subscription{
+			{
+				Topic: "recon.device.discovered",
+				Handler: func(_ context.Context, _ plugin.Event) {
+					callCount++
+				},
+			},
+			{
+				Topic: "recon.device.lost",
+				Handler: func(_ context.Context, _ plugin.Event) {
+					callCount++
+				},
+			},
+		},
+	}
+	reg.Register(p)
+	reg.Validate()
+
+	bus := &testBus{}
+	ctx := context.Background()
+	err := reg.InitAll(ctx, func(name string) plugin.Dependencies {
+		return plugin.Dependencies{
+			Logger: testLogger().Named(name),
+			Bus:    bus,
+		}
+	})
+	if err != nil {
+		t.Fatalf("InitAll() error = %v", err)
+	}
+
+	if len(bus.subscriptions) != 2 {
+		t.Errorf("expected 2 subscriptions, got %d", len(bus.subscriptions))
+	}
+	if bus.subscriptions[0].topic != "recon.device.discovered" {
+		t.Errorf("subscription[0].topic = %q, want recon.device.discovered", bus.subscriptions[0].topic)
+	}
+	if bus.subscriptions[1].topic != "recon.device.lost" {
+		t.Errorf("subscription[1].topic = %q, want recon.device.lost", bus.subscriptions[1].topic)
 	}
 }

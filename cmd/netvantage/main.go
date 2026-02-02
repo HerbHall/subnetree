@@ -22,6 +22,7 @@ import (
 	"github.com/HerbHall/netvantage/internal/server"
 	"github.com/HerbHall/netvantage/internal/store"
 	"github.com/HerbHall/netvantage/internal/vault"
+	"github.com/HerbHall/netvantage/internal/webhook"
 	"github.com/HerbHall/netvantage/internal/version"
 	"github.com/HerbHall/netvantage/pkg/plugin"
 	"go.uber.org/zap"
@@ -95,6 +96,7 @@ func main() {
 		dispatch.New(),
 		vault.New(),
 		gateway.New(),
+		webhook.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {

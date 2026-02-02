@@ -43,6 +43,9 @@ func LoadConfig(configPath string) (*viper.Viper, error) {
 	v.SetDefault("plugins.dispatch.enabled", true)
 	v.SetDefault("plugins.vault.enabled", true)
 	v.SetDefault("plugins.gateway.enabled", true)
+	v.SetDefault("plugins.webhook.enabled", true)
+	v.SetDefault("plugins.webhook.url", "")
+	v.SetDefault("plugins.webhook.timeout", "10s")
 
 	if configPath != "" {
 		v.SetConfigFile(configPath)
