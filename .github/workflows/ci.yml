@@ -5,54 +5,65 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.os }}/${{ matrix.goarch }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.25']
+        include:
+          - os: ubuntu-latest
+            goarch: amd64
+          - os: ubuntu-latest
+            goarch: arm64
+          - os: windows-latest
+            goarch: amd64
+          - os: macos-latest
+            goarch: amd64
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: go.mod
+          cache: true
 
       - name: Build server
-        run: go build -v ./cmd/netvantage/...
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION_PKG=github.com/HerbHall/netvantage/internal/version
+          go build -v -ldflags "-s -w \
+            -X ${VERSION_PKG}.Version=${{ github.ref_name }} \
+            -X ${VERSION_PKG}.GitCommit=${GITHUB_SHA::7} \
+            -X ${VERSION_PKG}.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            ./cmd/netvantage/...
 
       - name: Build scout
-        run: go build -v ./cmd/scout/...
-
-  build-arm64:
-    name: Build (linux/arm64)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25'
-
-      - name: Build server (linux/arm64)
+        shell: bash
         env:
-          GOOS: linux
-          GOARCH: arm64
-        run: go build -v ./cmd/netvantage/...
-
-      - name: Build scout (linux/arm64)
-        env:
-          GOOS: linux
-          GOARCH: arm64
-        run: go build -v ./cmd/scout/...
+          CGO_ENABLED: '0'
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION_PKG=github.com/HerbHall/netvantage/internal/version
+          go build -v -ldflags "-s -w \
+            -X ${VERSION_PKG}.Version=${{ github.ref_name }} \
+            -X ${VERSION_PKG}.GitCommit=${GITHUB_SHA::7} \
+            -X ${VERSION_PKG}.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            ./cmd/scout/...
 
   test:
     name: Test
@@ -63,10 +74,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
+          cache: true
 
       - name: Run tests
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: >-
+          go test -race -timeout=10m
+          -coverprofile=coverage.out
+          -covermode=atomic ./...
 
       - name: Upload coverage
         uses: codecov/codecov-action@v5
@@ -84,7 +99,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
+          cache: true
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
@@ -92,8 +108,8 @@ jobs:
           version: v1.64.8
           install-mode: goinstall
 
-  vet:
-    name: Vet
+  vulncheck:
+    name: Vulnerability Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -101,10 +117,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
+          cache: true
 
-      - name: Run go vet
-        run: go vet ./...
+      - name: Install govulncheck
+        run: >-
+          go install
+          golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
 
   license-check:
     name: License Check
@@ -115,10 +137,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
+          cache: true
 
       - name: Install go-licenses
-        run: go install github.com/google/go-licenses@latest
+        run: >-
+          go install
+          github.com/google/go-licenses@latest
 
       - name: Check licenses
         run: |

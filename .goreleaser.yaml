@@ -1,0 +1,108 @@
+version: 2
+
+project_name: netvantage
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: netvantage
+    main: ./cmd/netvantage/
+    binary: netvantage
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/HerbHall/netvantage/internal/version.Version={{.Version}}
+      - -X github.com/HerbHall/netvantage/internal/version.GitCommit={{.ShortCommit}}
+      - -X github.com/HerbHall/netvantage/internal/version.BuildDate={{.Date}}
+
+  - id: scout
+    main: ./cmd/scout/
+    binary: scout
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/HerbHall/netvantage/internal/version.Version={{.Version}}
+      - -X github.com/HerbHall/netvantage/internal/version.GitCommit={{.ShortCommit}}
+      - -X github.com/HerbHall/netvantage/internal/version.BuildDate={{.Date}}
+
+archives:
+  - id: netvantage
+    ids:
+      - netvantage
+    name_template: >-
+      netvantage_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+  - id: scout
+    ids:
+      - scout
+    name_template: >-
+      scout_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore\(deps\):'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Performance
+      regexp: '^perf'
+      order: 2
+    - title: Refactoring
+      regexp: '^refactor'
+      order: 3
+    - title: Other
+      order: 999
+
+release:
+  github:
+    owner: HerbHall
+    name: netvantage
+  prerelease: auto
+  name_template: "{{.Tag}}"
+  header: |
+    ## NetVantage {{.Version}}
+
+    See the [full changelog](https://github.com/HerbHall/netvantage/compare/{{.PreviousTag}}...{{.Tag}}) for all changes.
+  footer: |
+    **Full Changelog**: https://github.com/HerbHall/netvantage/compare/{{.PreviousTag}}...{{.Tag}}
+
+    ---
+    Licensed under BSL 1.1 (core) and Apache 2.0 (plugin SDK).
