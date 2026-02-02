@@ -48,3 +48,8 @@ api/proto/v1/*.pb.go
 
 # Build output
 /dist/
+
+# Hugo (website)
+website/public/
+website/resources/
+website/.hugo_build.lock

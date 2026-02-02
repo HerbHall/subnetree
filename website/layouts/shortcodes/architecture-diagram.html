@@ -1,0 +1,23 @@
+<div class="architecture-diagram">
+<pre>
+                    +------------------+
+                    |    Dashboard     |
+                    | (React + TS)     |
+                    +--------+---------+
+                             |
+                    REST / WebSocket
+                             |
++----------+       +---------+---------+       +----------+
+|  Scout   | gRPC  |   NetVantage      |       | Network  |
+|  Agent   +------&gt;+   Server (Go)     +------&gt;+ Devices  |
+|          |       |                   | ICMP/  | (SNMP,   |
++----------+       | +------+ +------+ | SNMP/  |  mDNS,   |
+                   | |Recon | |Pulse | | ARP/   |  UPnP)   |
+                   | +------+ +------+ | mDNS   +----------+
+                   | |Dsptch | Vault | |
+                   | +------+ +------+ |
+                   | |Gatway |        |
+                   | +------+         |
+                   +-------------------+
+</pre>
+</div>

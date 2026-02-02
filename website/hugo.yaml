@@ -1,0 +1,89 @@
+baseURL: https://netvantage.net/
+languageCode: en-us
+title: NetVantage
+
+# Theme via Hugo Modules
+module:
+  imports:
+    - path: github.com/imfing/hextra
+
+enableRobotsTXT: true
+enableGitInfo: true
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+
+# Main navigation
+menu:
+  main:
+    - name: Docs
+      pageRef: /docs
+      weight: 1
+    - name: Blog
+      pageRef: /blog
+      weight: 2
+    - name: GitHub
+      url: https://github.com/HerbHall/netvantage
+      weight: 3
+      params:
+        icon: github
+    - name: Search
+      weight: 4
+      params:
+        type: search
+
+  sidebar:
+    - name: More
+      params:
+        type: separator
+      weight: 1
+    - name: GitHub Repository
+      url: https://github.com/HerbHall/netvantage
+      weight: 2
+    - name: Report an Issue
+      url: https://github.com/HerbHall/netvantage/issues/new/choose
+      weight: 3
+
+params:
+  description: Modular, self-hosted network monitoring and management platform.
+
+  theme:
+    default: dark
+    displayToggle: true
+
+  navbar:
+    displayTitle: true
+    displayLogo: true
+    logo:
+      path: images/logo.svg
+      dark: images/logo.svg
+      link: /
+      width: 40
+      height: 20
+
+  page:
+    width: wide
+
+  editURL:
+    enable: true
+    base: https://github.com/HerbHall/netvantage/edit/main/website/content
+
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+
+  footer:
+    displayCopyright: true
+    displayPoweredBy: false
+
+  blog:
+    list:
+      displayTags: true
+
+copyright: "Copyright &copy; {year} Herb Hall. NetVantage is licensed under BSL 1.1."
