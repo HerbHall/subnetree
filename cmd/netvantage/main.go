@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	logger.Info("NetVantage server starting", zap.String("version", version.Short()))
 

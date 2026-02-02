@@ -63,12 +63,12 @@ func (m *Module) Routes() []plugin.Route {
 
 func (m *Module) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode([]any{})
+	_ = json.NewEncoder(w).Encode([]any{})
 }
 
 func (m *Module) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "not_implemented",
 		"message": "agent management will be implemented in Phase 1b",
 	})

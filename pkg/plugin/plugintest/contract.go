@@ -45,18 +45,24 @@ func TestPluginContract(t *testing.T, factory func() plugin.Plugin) {
 	t.Run("Start_after_Init", func(t *testing.T) {
 		p := factory()
 		deps := testDeps(p.Info().Name)
-		p.Init(context.Background(), deps)
+		if err := p.Init(context.Background(), deps); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
 		if err := p.Start(context.Background()); err != nil {
 			t.Fatalf("Start() error = %v", err)
 		}
 		// Clean up.
-		p.Stop(context.Background())
+		if err := p.Stop(context.Background()); err != nil {
+			t.Fatalf("Stop() error = %v", err)
+		}
 	})
 
 	t.Run("Stop_without_Start_does_not_panic", func(t *testing.T) {
 		p := factory()
 		deps := testDeps(p.Info().Name)
-		p.Init(context.Background(), deps)
+		if err := p.Init(context.Background(), deps); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
 		if err := p.Stop(context.Background()); err != nil {
 			t.Fatalf("Stop() without Start error = %v", err)
 		}

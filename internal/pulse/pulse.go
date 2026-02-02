@@ -62,7 +62,7 @@ func (m *Module) Routes() []plugin.Route {
 
 func (m *Module) handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "not_implemented",
 		"message": "monitoring will be implemented in Phase 2",
 	})

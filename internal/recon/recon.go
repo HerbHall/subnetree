@@ -63,7 +63,7 @@ func (m *Module) Routes() []plugin.Route {
 
 func (m *Module) handleScan(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "not_implemented",
 		"message": "network scanning will be implemented in Phase 1",
 	})
@@ -71,5 +71,5 @@ func (m *Module) handleScan(w http.ResponseWriter, r *http.Request) {
 
 func (m *Module) handleListScans(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode([]any{})
+	_ = json.NewEncoder(w).Encode([]any{})
 }

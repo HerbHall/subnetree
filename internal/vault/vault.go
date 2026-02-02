@@ -63,13 +63,13 @@ func (m *Module) Routes() []plugin.Route {
 
 func (m *Module) handleListCredentials(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode([]any{})
+	_ = json.NewEncoder(w).Encode([]any{})
 }
 
 func (m *Module) handleCreateCredential(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "not_implemented",
 		"message": "credential storage will be implemented in Phase 3",
 	})

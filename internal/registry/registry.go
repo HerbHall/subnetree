@@ -116,18 +116,19 @@ func (r *Registry) Validate() error {
 				continue
 			}
 			for _, dep := range info.Dependencies {
-				if r.disabled[dep] {
-					if info.Required {
-						return fmt.Errorf("required plugin %q cannot start: dependency %q is disabled", name, dep)
-					}
-					r.logger.Warn("cascade disabling plugin",
-						zap.String("name", name),
-						zap.String("disabled_dep", dep),
-					)
-					r.disabled[name] = true
-					changed = true
-					break
+				if !r.disabled[dep] {
+					continue
 				}
+				if info.Required {
+					return fmt.Errorf("required plugin %q cannot start: dependency %q is disabled", name, dep)
+				}
+				r.logger.Warn("cascade disabling plugin",
+					zap.String("name", name),
+					zap.String("disabled_dep", dep),
+				)
+				r.disabled[name] = true
+				changed = true
+				break
 			}
 		}
 	}

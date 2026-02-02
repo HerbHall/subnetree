@@ -22,7 +22,7 @@ func TestRequestIDMiddleware_GeneratesID(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -40,7 +40,7 @@ func TestRequestIDMiddleware_PropagatesExistingID(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	req.Header.Set("X-Request-ID", "my-trace-id")
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -58,7 +58,7 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	handler := LoggingMiddleware(logger)(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -74,7 +74,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 
 	handler := SecurityHeadersMiddleware(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -102,7 +102,7 @@ func TestVersionHeaderMiddleware(t *testing.T) {
 
 	handler := VersionHeaderMiddleware(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -119,7 +119,7 @@ func TestRecoveryMiddleware_CatchesPanic(t *testing.T) {
 
 	handler := RecoveryMiddleware(logger)(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -139,7 +139,7 @@ func TestRecoveryMiddleware_NoPanic(t *testing.T) {
 
 	handler := RecoveryMiddleware(logger)(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -156,7 +156,7 @@ func TestRateLimitMiddleware_AllowsTraffic(t *testing.T) {
 	// High rate to ensure requests pass.
 	handler := RateLimitMiddleware(1000, 1000, nil)(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	req.RemoteAddr = "192.168.1.1:12345"
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -174,7 +174,7 @@ func TestRateLimitMiddleware_BlocksExcessTraffic(t *testing.T) {
 	// 1 request per second, burst of 1. Second request should be blocked.
 	handler := RateLimitMiddleware(1, 1, nil)(inner)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	req.RemoteAddr = "10.0.0.1:9999"
 
 	// First request: allowed.
@@ -200,7 +200,7 @@ func TestRateLimitMiddleware_SkipsPaths(t *testing.T) {
 	// Very low rate, but /healthz should be skipped.
 	handler := RateLimitMiddleware(0.001, 1, []string{"/healthz"})(inner)
 
-	req := httptest.NewRequest("GET", "/healthz", nil)
+	req := httptest.NewRequest("GET", "/healthz", http.NoBody)
 	req.RemoteAddr = "10.0.0.2:9999"
 
 	// Even many requests should succeed for a skipped path.
@@ -238,7 +238,7 @@ func TestChain(t *testing.T) {
 
 	handler := Chain(inner, mw1, mw2)
 
-	req := httptest.NewRequest("GET", "/test", nil)
+	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -254,7 +254,7 @@ func TestChain(t *testing.T) {
 }
 
 func TestClientIP_RemoteAddr(t *testing.T) {
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/", http.NoBody)
 	req.RemoteAddr = "192.168.1.100:12345"
 
 	if ip := clientIP(req); ip != "192.168.1.100" {
@@ -263,7 +263,7 @@ func TestClientIP_RemoteAddr(t *testing.T) {
 }
 
 func TestClientIP_XForwardedFor(t *testing.T) {
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/", http.NoBody)
 	req.RemoteAddr = "127.0.0.1:12345"
 	req.Header.Set("X-Forwarded-For", "203.0.113.50, 70.41.3.18")
 

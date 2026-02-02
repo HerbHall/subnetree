@@ -57,7 +57,7 @@ func newTestServer(ready ReadinessChecker) *Server {
 func TestHandleHealthz(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/healthz", nil)
+	req := httptest.NewRequest("GET", "/healthz", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -78,7 +78,7 @@ func TestHandleReadyz_Healthy(t *testing.T) {
 	})
 	srv := newTestServer(ready)
 
-	req := httptest.NewRequest("GET", "/readyz", nil)
+	req := httptest.NewRequest("GET", "/readyz", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -99,7 +99,7 @@ func TestHandleReadyz_Unhealthy(t *testing.T) {
 	})
 	srv := newTestServer(ready)
 
-	req := httptest.NewRequest("GET", "/readyz", nil)
+	req := httptest.NewRequest("GET", "/readyz", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -120,7 +120,7 @@ func TestHandleReadyz_Unhealthy(t *testing.T) {
 func TestHandleReadyz_NilChecker(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/readyz", nil)
+	req := httptest.NewRequest("GET", "/readyz", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -132,7 +132,7 @@ func TestHandleReadyz_NilChecker(t *testing.T) {
 func TestHandleHealth(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/health", nil)
+	req := httptest.NewRequest("GET", "/api/v1/health", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -156,7 +156,7 @@ func TestHandleHealth(t *testing.T) {
 func TestHandlePlugins(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/api/v1/plugins", nil)
+	req := httptest.NewRequest("GET", "/api/v1/plugins", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -180,7 +180,7 @@ func TestHandlePlugins(t *testing.T) {
 func TestHandleMetrics(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/metrics", nil)
+	req := httptest.NewRequest("GET", "/metrics", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
@@ -197,7 +197,7 @@ func TestHandleMetrics(t *testing.T) {
 func TestMiddlewareChain_Integration(t *testing.T) {
 	srv := newTestServer(nil)
 
-	req := httptest.NewRequest("GET", "/healthz", nil)
+	req := httptest.NewRequest("GET", "/healthz", http.NoBody)
 	w := httptest.NewRecorder()
 
 	// Use the full handler (with middleware chain) instead of just the mux.
@@ -236,7 +236,7 @@ func TestPluginRoutes_Mounted(t *testing.T) {
 	}
 	srv := New("127.0.0.1:0", plugins, logger, nil)
 
-	req := httptest.NewRequest("POST", "/api/v1/recon/scan", nil)
+	req := httptest.NewRequest("POST", "/api/v1/recon/scan", http.NoBody)
 	w := httptest.NewRecorder()
 	srv.mux.ServeHTTP(w, req)
 
