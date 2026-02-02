@@ -8,55 +8,49 @@ NetVantage is a modular, source-available network monitoring and management plat
 
 ## Context Conservation Strategy
 
-**CRITICAL: The requirements document (`requirements.md`) is 3,000+ lines.** Never read it in full. Use targeted reads of specific sections.
+Requirements are split into `docs/requirements/` with per-section files. Read ONLY the file relevant to your current task.
 
-### Documentation Map (requirements.md sections by line range)
+### Documentation Map (docs/requirements/)
 
-Use this map to read ONLY the sections relevant to your current task. Line numbers are approximate and shift as edits are made -- use `grep -n "^## Section Name"` to find current positions.
-
-| Section | Content | When to Read |
-|---------|---------|-------------|
-| Product Vision | Goals, target users, design philosophy | Starting new features, checking alignment |
-| Architecture Overview | Components, modules, communication | Understanding system structure |
-| Technology Stack | Libraries, licenses, versions | Adding dependencies |
-| Plugin Architecture | PluginInfo, lifecycle, registry, API version checks | Plugin development |
-| Event System | Topics, subscribers, async patterns | Adding event-driven features |
-| Database Layer | Schema, migrations, repository pattern | Database work |
-| Authentication | JWT, OIDC, password policy, sessions | Auth features |
-| Scout Agent Spec | Agent protocol, version negotiation, enrollment | Agent development |
-| Tailscale Integration | Tailscale plugin design | Tailscale features |
-| Data Model | Core entities (Device, Agent, Credential, etc.) | Data structure changes |
-| API Design | REST endpoints, standards, versioning policy | API development |
-| Brand Identity | Colors, typography, design tokens | UI/styling work |
-| Dashboard Architecture | React patterns, state, routing | Frontend development |
-| Topology Visualization | Graph rendering, React Flow | Topology features |
-| Credential Vault Security | Encryption, key management | Vault module |
-| Observability | Logging, metrics, tracing | Operational features |
-| AI & Analytics Strategy | Three-tier AI, Insight plugin, analytics | AI/analytics features |
-| Testing Strategy | Test categories, infrastructure, coverage | Writing tests |
-| Deployment | Docker, profiles, performance scaling, config | Deployment/config work |
-| Project Infrastructure | Doc split strategy, project tracking, ADRs, tooling research, AI-assisted dev | Infrastructure decisions, tooling setup, Phase 0 work |
-| Phased Roadmap | Phase 0/1/1b/2/3/4 checklists, pre-phase tooling research | Planning, checking what's next |
-| Competitive Positioning | Market gap, competitor analysis | README, marketing |
-| Commercialization | Licensing, pricing, community, metrics | Business decisions |
-| System & Network Requirements | Hardware, platforms, ports | Deployment requirements |
-| Operations & Maintenance | Backup, retention, upgrades | Ops features |
-| Release & Distribution | CI/CD, versioning, version management | Release process |
-| Non-Functional Requirements | Stability, performance, security targets | Quality validation |
-| Documentation Requirements | Doc structure, README target, community files | Documentation tasks |
+| File | Content | When to Read |
+|------|---------|-------------|
+| [01-product-vision.md](docs/requirements/01-product-vision.md) | Goals, target users, design philosophy | Starting new features, checking alignment |
+| [02-architecture-overview.md](docs/requirements/02-architecture-overview.md) | Components, modules, communication | Understanding system structure |
+| [03-technology-stack.md](docs/requirements/03-technology-stack.md) | Libraries, licenses, versions | Adding dependencies |
+| [04-plugin-architecture.md](docs/requirements/04-plugin-architecture.md) | PluginInfo, lifecycle, registry, API version checks | Plugin development |
+| [05-event-system.md](docs/requirements/05-event-system.md) | Topics, subscribers, async patterns | Adding event-driven features |
+| [06-database-layer.md](docs/requirements/06-database-layer.md) | Schema, migrations, repository pattern | Database work |
+| [07-authentication.md](docs/requirements/07-authentication.md) | JWT, OIDC, password policy, sessions | Auth features |
+| [08-scout-agent.md](docs/requirements/08-scout-agent.md) | Agent protocol, version negotiation, enrollment | Agent development |
+| [09-tailscale-integration.md](docs/requirements/09-tailscale-integration.md) | Tailscale plugin design | Tailscale features |
+| [10-data-model.md](docs/requirements/10-data-model.md) | Core entities (Device, Agent, Credential, etc.) | Data structure changes |
+| [11-api-design.md](docs/requirements/11-api-design.md) | REST endpoints, standards, versioning policy | API development |
+| [12-brand-identity.md](docs/requirements/12-brand-identity.md) | Colors, typography, design tokens | UI/styling work |
+| [13-dashboard-architecture.md](docs/requirements/13-dashboard-architecture.md) | React patterns, state, routing | Frontend development |
+| [14-topology-visualization.md](docs/requirements/14-topology-visualization.md) | Graph rendering, React Flow | Topology features |
+| [15-credential-vault.md](docs/requirements/15-credential-vault.md) | Encryption, key management | Vault module |
+| [16-observability.md](docs/requirements/16-observability.md) | Logging, metrics, tracing | Operational features |
+| [17-ai-analytics.md](docs/requirements/17-ai-analytics.md) | Three-tier AI, Insight plugin, analytics | AI/analytics features |
+| [18-testing-strategy.md](docs/requirements/18-testing-strategy.md) | Test categories, infrastructure, coverage | Writing tests |
+| [19-deployment.md](docs/requirements/19-deployment.md) | Docker, profiles, performance scaling, config | Deployment/config work |
+| [20-project-infrastructure.md](docs/requirements/20-project-infrastructure.md) | Doc split, project tracking, ADRs, tooling research | Infrastructure decisions, Phase 0 |
+| [21-phased-roadmap.md](docs/requirements/21-phased-roadmap.md) | Phase 0/1/1b/2/3/4 checklists, tooling research | Planning, checking what's next |
+| [22-competitive-positioning.md](docs/requirements/22-competitive-positioning.md) | Market gap, competitor analysis | README, marketing |
+| [23-commercialization.md](docs/requirements/23-commercialization.md) | Licensing, pricing, community, metrics | Business decisions |
+| [24-system-requirements.md](docs/requirements/24-system-requirements.md) | Hardware, platforms, ports | Deployment requirements |
+| [25-operations-maintenance.md](docs/requirements/25-operations-maintenance.md) | Backup, retention, upgrades | Ops features |
+| [26-release-distribution.md](docs/requirements/26-release-distribution.md) | CI/CD, versioning, version management | Release process |
+| [27-non-functional-requirements.md](docs/requirements/27-non-functional-requirements.md) | Stability, performance, security targets | Quality validation |
+| [28-documentation-requirements.md](docs/requirements/28-documentation-requirements.md) | Doc structure, README target, community files | Documentation tasks |
 
 ### Context Conservation Rules
 
 1. **Use Explore agents for codebase questions.** Never Glob/Grep the full repo directly from the main context.
-2. **Read requirements.md by section, not in full.** Use `grep -n "^## "` to find section boundaries, then `Read` with offset+limit.
+2. **Read one requirement file at a time.** Each file in `docs/requirements/` is self-contained. Never read multiple requirement files in a single task.
 3. **Delegate research to subagents.** Use Task(subagent_type=Explore) for "where is X?" and Task(subagent_type=Plan) for "how should we build X?".
 4. **Use MCP Memory for cross-session knowledge.** Store architectural decisions, user preferences, and recurring patterns in the Memory knowledge graph.
 5. **Use the /create-plan skill for multi-step implementations.** It handles context handoffs between phases.
-6. **When modifying requirements.md**, read only the target section (offset+limit), make the edit, and verify. Don't re-read the entire file.
-
-### Future: Split Documentation (Phase 0)
-
-Requirements will be split into `docs/requirements/` with per-section files. Until then, use the Documentation Map above. When the split happens, this map will be updated to reference individual files instead of line ranges.
+6. **When modifying requirements**, edit the specific section file directly. Don't read the full index.
 
 ## Guiding Principles
 
@@ -131,7 +125,7 @@ Optional interfaces detected via type assertions:
 - `Reloadable` -- hot config reload
 - `AnalyticsProvider` -- AI/analytics capabilities (Phase 2+)
 
-Plugins are registered at compile time in `cmd/netvantage/main.go`. Plugin API version is validated at registration (see Plugin Architecture section of requirements.md).
+Plugins are registered at compile time in `cmd/netvantage/main.go`. Plugin API version is validated at registration (see [04-plugin-architecture.md](docs/requirements/04-plugin-architecture.md)).
 
 ## Version Management
 
@@ -141,7 +135,7 @@ Plugins are registered at compile time in `cmd/netvantage/main.go`. Plugin API v
 - Agent-server uses integer `proto_version` for compatibility negotiation
 - REST API: path-based (`/api/v1/`), max 2 concurrent versions
 - Config: `config_version` integer at YAML root
-- See Version Management section of requirements.md for full compatibility matrix
+- See [26-release-distribution.md](docs/requirements/26-release-distribution.md) for full version compatibility matrix
 
 ## Licensing
 
