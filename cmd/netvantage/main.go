@@ -53,6 +53,17 @@ func main() {
 	}
 	cfg := config.New(viperCfg)
 
+	if f := viperCfg.ConfigFileUsed(); f != "" {
+		logger.Info("configuration loaded",
+			zap.String("component", "config"),
+			zap.String("source", f),
+		)
+	} else {
+		logger.Warn("no configuration file found, using defaults",
+			zap.String("component", "config"),
+		)
+	}
+
 	// Open database
 	dbPath := viperCfg.GetString("database.path")
 	if dbPath == "" {
@@ -64,11 +75,18 @@ func main() {
 	}
 	defer db.Close()
 
+	logger.Info("database initialized",
+		zap.String("component", "database"),
+		zap.String("path", dbPath),
+	)
+
 	// Create shared services
 	bus := event.NewBus(logger.Named("event"))
+	logger.Info("event bus created", zap.String("component", "event"))
 
 	// Create plugin registry
 	reg := registry.New(logger.Named("registry"))
+	logger.Info("plugin registry created", zap.String("component", "registry"))
 
 	// Register all plugins (compile-time composition)
 	modules := []plugin.Plugin{
@@ -116,6 +134,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to initialize auth store", zap.Error(err))
 	}
+	logger.Info("auth store initialized", zap.String("component", "auth"))
 
 	jwtSecret := viperCfg.GetString("auth.jwt_secret")
 	if jwtSecret == "" {
@@ -125,7 +144,11 @@ func main() {
 			logger.Fatal("failed to generate JWT secret", zap.Error(err))
 		}
 		jwtSecret = hex.EncodeToString(b)
-		logger.Warn("no auth.jwt_secret configured; using ephemeral secret (tokens will not survive restarts)")
+		logger.Warn("no auth.jwt_secret configured; using ephemeral secret (tokens will not survive restarts)",
+			zap.String("component", "auth"),
+		)
+	} else {
+		logger.Info("JWT secret loaded from configuration", zap.String("component", "auth"))
 	}
 
 	accessTTL := viperCfg.GetDuration("auth.access_token_ttl")
@@ -140,12 +163,21 @@ func main() {
 	tokens := auth.NewTokenService([]byte(jwtSecret), accessTTL, refreshTTL)
 	authService := auth.NewService(authStore, tokens, logger.Named("auth"))
 	authHandler := auth.NewHandler(authService, logger.Named("auth"))
+	logger.Info("auth service initialized",
+		zap.String("component", "auth"),
+		zap.Duration("access_token_ttl", accessTTL),
+		zap.Duration("refresh_token_ttl", refreshTTL),
+	)
 
 	// Create and start HTTP server
 	addr := viperCfg.GetString("server.host") + ":" + viperCfg.GetString("server.port")
 	if addr == ":" {
 		addr = "0.0.0.0:8080"
 	}
+	logger.Info("HTTP server configured",
+		zap.String("component", "server"),
+		zap.String("addr", addr),
+	)
 	readyCheck := server.ReadinessChecker(func(ctx context.Context) error {
 		return db.DB().PingContext(ctx)
 	})
