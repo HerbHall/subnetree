@@ -92,18 +92,18 @@
 - [ ] Configurable Zap logger factory
 
 #### Authentication
-- [ ] Local auth with bcrypt password hashing
-- [ ] JWT access/refresh token flow
-- [ ] First-run setup endpoint (create admin when no users exist)
-- [ ] OIDC/OAuth2 optional configuration
+- [x] Local auth with bcrypt password hashing
+- [x] JWT access/refresh token flow
+- [x] First-run setup endpoint (create admin when no users exist)
+- [ ] OIDC/OAuth2 optional configuration (schema ready -- defer provider to Phase 2)
 
 #### Recon Module
-- [ ] ICMP ping sweep
-- [ ] ARP scanning
-- [ ] OUI manufacturer lookup (embedded database)
-- [ ] LLDP/CDP neighbor discovery for topology
-- [ ] Device persistence in SQLite
-- [ ] Publishes `recon.device.discovered` events
+- [x] ICMP ping sweep
+- [x] ARP scanning
+- [x] OUI manufacturer lookup (embedded database)
+- [ ] LLDP/CDP neighbor discovery for topology (defer to Phase 2)
+- [x] Device persistence in SQLite
+- [x] Publishes `recon.device.discovered` events
 
 #### Dashboard
 - [ ] React + Vite + TypeScript + shadcn/ui + TanStack Query + Zustand
@@ -126,7 +126,7 @@
 - [ ] Data retention configuration with automated purge job
 - [x] Security headers middleware (CSP, X-Frame-Options, HSTS, etc.)
 - [ ] Account lockout after failed login attempts
-- [ ] SECURITY.md with vulnerability disclosure process
+- [x] SECURITY.md with vulnerability disclosure process
 
 #### Testing & Quality
 - [ ] Test infrastructure: `internal/testutil/` with mocks, fixtures, helpers, mock clock
@@ -165,8 +165,8 @@
 - [ ] README badges: CI build, coverage, Go Report Card, Go version, license, latest release, Docker pulls (see Success Metrics)
 
 #### Community & Launch Readiness
-- [ ] CONTRIBUTING.md: development setup, code style, PR process, testing expectations, CLA explanation
-- [ ] Pull request template (`.github/pull_request_template.md`) with checklist (tests, lint, description)
+- [x] CONTRIBUTING.md: development setup, code style, PR process, testing expectations, CLA explanation
+- [x] Pull request template (`.github/pull_request_template.md`) with checklist (tests, lint, description)
 - [ ] First tagged release: `v0.1.0-alpha` with pre-built binaries (GoReleaser) and GitHub Release notes
 - [ ] Dockerfile: multi-stage build (builder + distroless/alpine runtime), multi-arch (`linux/amd64`, `linux/arm64`)
 - [ ] docker-compose.yml: one-command deployment matching the spec in Deployment section
@@ -180,7 +180,7 @@
 - [ ] Seed GitHub Discussions: introductory post, roadmap discussion thread, "plugin ideas" thread, "show your setup" thread
 - [ ] Community channel: create Discord server (or Matrix space) for real-time contributor discussion, linked from README and CONTRIBUTING.md
 - [ ] Blog post / announcement: publish initial announcement on personal blog, r/homelab, r/selfhosted, Hacker News (after v0.1.0-alpha has working dashboard + discovery)
-- [ ] CODE_OF_CONDUCT.md: Contributor Covenant (standard, expected by contributors and evaluators)
+- [x] CODE_OF_CONDUCT.md: Contributor Covenant (standard, expected by contributors and evaluators)
 
 ### Phase 1b: Windows Scout Agent
 
