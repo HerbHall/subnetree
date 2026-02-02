@@ -4,8 +4,8 @@ NetVantage is free for personal and home use forever. These individuals and orga
 
 **Want to support NetVantage?**
 - [GitHub Sponsors](https://github.com/sponsors/HerbHall)
-- [Ko-fi](https://ko-fi.com/netvantage)
-- [Buy Me a Coffee](https://buymeacoffee.com/netvantage)
+- [Ko-fi](https://ko-fi.com/herbhall)
+- [Buy Me a Coffee](https://buymeacoffee.com/herbhall)
 
 ---
 

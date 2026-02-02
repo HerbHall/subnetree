@@ -45,12 +45,14 @@ Each module fills one or more **roles** (abstract capabilities). Alternative imp
 | Agent Management | **Dispatch** | `agent_management` | Scout agent enrollment, check-in, command dispatch, status tracking |
 | Credentials | **Vault** | `credential_store` | Encrypted credential storage, per-device credential assignment |
 | Remote Access | **Gateway** | `remote_access` | Browser-based SSH, RDP (via Guacamole), HTTP/HTTPS reverse proxy, VNC |
+| Overlay Network | **Tailscale** | `overlay_network` | Tailscale tailnet device discovery, overlay IP enrichment, subnet route awareness |
 
 ### Communication
 
 - **Server <-> Dashboard:** REST API + WebSocket (real-time updates)
 - **Server <-> Scout:** gRPC with mTLS (bidirectional streaming)
 - **Server <-> Network Devices:** ICMP, ARP, SNMP v2c/v3, mDNS, UPnP/SSDP, MQTT
+- **Server <-> Tailscale API:** HTTPS REST (device enumeration, subnet routes, DNS)
 
 ### Module Dependency Graph
 
@@ -66,10 +68,15 @@ Dispatch (no deps, provides agent_management)
   |
   +---> Pulse (optional: agent_management for agent metrics)
   +---> Recon (optional: agent_management for agent-assisted scans)
+
+Tailscale (requires: credential_store for API key/OAuth storage)
+  |
+  +---> Recon (optional: overlay_network for Tailscale-discovered devices)
+  +---> Gateway (optional: overlay_network for Tailscale IP connectivity)
 ```
 
-**Topological Startup Order:** Vault -> Dispatch -> Recon -> Pulse -> Gateway
-**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Dispatch -> Vault
+**Topological Startup Order:** Vault -> Dispatch -> Tailscale -> Recon -> Pulse -> Gateway
+**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Tailscale -> Dispatch -> Vault
 
 ---
 
@@ -97,6 +104,8 @@ Dispatch (no deps, provides agent_management)
 | SNMP | gosnmp | Pure Go SNMP library |
 | MQTT | Eclipse Paho Go | MQTT client for IoT device communication |
 | Metrics Exposition | Prometheus client_golang | Industry standard metrics format |
+| Tailscale API | tailscale-client-go-v2 | MIT licensed Tailscale API client for tailnet device discovery |
+| Graph Operations | dominikbraun/graph | Apache 2.0 licensed generic graph library for dependency resolution, topology computation, cycle detection |
 | Proto Management | buf | Modern protobuf toolchain, linting, breaking change detection |
 
 ---
@@ -219,6 +228,7 @@ Roles define abstract capabilities that alternative implementations can fill. Ro
 | `monitoring` | Single | Pulse | Yes |
 | `agent_management` | Single | Dispatch | Yes |
 | `remote_access` | Single | Gateway | Yes |
+| `overlay_network` | Multiple (supplementary) | Tailscale | Yes, can add other overlay providers (ZeroTier, Nebula, etc.) |
 | `notifier` | Multiple | None (add-on) | N/A (extensible slot) |
 | `data_export` | Multiple | None (add-on) | N/A (extensible slot) |
 | `device_store` | Single (core) | Server | No (always provided by server) |
@@ -500,6 +510,62 @@ Agent auto-update is a security-critical feature. The SolarWinds supply chain at
 
 ---
 
+## Tailscale Integration (Plugin)
+
+### Overview
+
+The Tailscale plugin provides automatic device discovery and overlay network connectivity for users running Tailscale. It queries the Tailscale API to enumerate devices on the user's tailnet, enriching NetVantage's device inventory with Tailscale metadata (IP addresses, hostnames, tags, OS, online status). For distributed home labs and multi-site networks, Tailscale eliminates NAT traversal complexity -- devices are reachable by their stable 100.x.y.z addresses regardless of physical location.
+
+**Licensing:** The Tailscale API client library (`tailscale-client-go-v2`) is MIT licensed. No copyleft or licensing conflicts with BSL 1.1.
+
+**Base distribution candidate:** This plugin adds minimal binary size and zero runtime cost when disabled. Flagged for inclusion in the default build if testing confirms no impact on startup time or first-run experience for users without Tailscale.
+
+### Capabilities
+
+| Capability | Description | Phase |
+|-----------|-------------|-------|
+| Device discovery | Enumerate tailnet devices via Tailscale API (hostname, IPs, OS, tags, last seen, online status) | 2 |
+| Tailscale IP enrichment | Add Tailscale IPs (100.x.y.z) to existing device records, enabling monitoring across NAT | 2 |
+| Subnet route awareness | Detect Tailscale subnet routers and offer to scan advertised subnets | 2 |
+| MagicDNS hostname resolution | Use Tailscale DNS names (e.g., `device.tailnet.ts.net`) for device identification | 2 |
+| Scout over Tailscale | Support Scout agent communication via Tailscale IPs (no port forwarding required) | 2 |
+| Connectivity preference | Prefer Tailscale IPs for monitoring/remote access when devices are on the tailnet | 3 |
+| Tailscale Funnel/Serve guidance | Documentation for exposing NetVantage dashboard via Tailscale Funnel | 1 (docs only) |
+
+### Authentication
+
+| Method | Use Case | Storage |
+|--------|----------|---------|
+| API key | Personal tailnets, simple setup | Vault-encrypted |
+| OAuth client | Organizational tailnets, token refresh | Vault-encrypted (client ID + secret) |
+
+API credentials are stored in the Vault module (encrypted at rest). The plugin never stores credentials outside Vault.
+
+### Device Merging
+
+Tailscale-discovered devices are merged with existing NetVantage device records using a match priority:
+
+1. **MAC address** -- exact match (most reliable)
+2. **Hostname** -- case-insensitive match
+3. **IP overlap** -- any shared IP between Tailscale device and existing record
+
+If no match is found, a new device record is created with `discovery_method: tailscale`. Merged devices retain their original discovery method and gain Tailscale metadata as supplemental data.
+
+### Dependencies
+
+- **Required:** Vault (for API key / OAuth credential storage)
+- **Optional:** Recon (merges Tailscale-discovered devices with scan results)
+- **Optional:** Gateway (uses Tailscale IPs for remote access)
+
+### Implementation Notes
+
+- Uses `tailscale-client-go-v2` (MIT) -- lightweight client, no heavy dependency tree
+- Respects Tailscale API rate limits (`Retry-After` headers); default sync interval of 5 minutes
+- Graceful degradation: if Tailscale API is unreachable, the plugin logs a warning and retries on next sync interval; does not block other discovery methods
+- Dashboard shows a "Tailscale" badge on devices discovered or enriched via the tailnet
+
+---
+
 ## Data Model (Core Entities)
 
 ### Device
@@ -515,7 +581,7 @@ Agent auto-update is a security-critical feature. The SolarWinds supply chain at
 | DeviceType | enum | server, desktop, laptop, mobile, router, switch, printer, ap, firewall, iot, camera, nas, unknown |
 | OS | string | Operating system (if known) |
 | Status | enum | online, offline, degraded, unknown |
-| DiscoveryMethod | enum | agent, icmp, arp, snmp, mdns, upnp, mqtt, manual |
+| DiscoveryMethod | enum | agent, icmp, arp, snmp, mdns, upnp, mqtt, tailscale, manual |
 | AgentID | UUID? | Linked Scout agent (if any) |
 | ParentDeviceID | UUID? | Upstream device for topology (switch port, router) |
 | LastSeen | timestamp | Last successful contact |
@@ -792,6 +858,7 @@ The dashboard is the primary interface for most users. It must be approachable e
 - **Server State:** TanStack Query (React Query) for API data, caching, and real-time invalidation
 - **Client State:** Zustand for UI state (sidebar collapsed, selected filters, theme)
 - **Charts:** Recharts for time-series graphs and monitoring visualizations
+- **Topology:** React Flow for interactive network topology map (zoom, pan, custom nodes, auto-layout)
 - **Real-time:** WebSocket connection managed by a custom hook, invalidates TanStack Query caches
 - **Routing:** React Router v6+
 - **Dark Mode:** First-class support from day one (Tailwind dark: variant)
@@ -1150,6 +1217,16 @@ modules:
   gateway:
     enabled: true
     guacamole_address: "guacamole:4822"
+  tailscale:
+    enabled: false                          # Disabled by default (not all users have Tailscale)
+    tailnet: ""                             # Tailnet name (e.g., "example.com" or "user@gmail.com")
+    auth_method: "api_key"                  # "api_key" or "oauth"
+    api_key_credential_id: ""              # Vault credential ID for API key
+    oauth_credential_id: ""                # Vault credential ID for OAuth client
+    sync_interval: "5m"                     # How often to poll Tailscale API for device changes
+    import_tags: true                       # Import Tailscale ACL tags as NetVantage device tags
+    prefer_tailscale_ip: true              # Use Tailscale IPs when device is on tailnet
+    discover_subnet_routes: true            # Detect and offer to scan advertised subnet routes
 ```
 
 Environment variable override prefix: `NV_` (e.g., `NV_SERVER_PORT=9090`, `NV_MODULES_GATEWAY_ENABLED=false`)
@@ -1209,6 +1286,10 @@ Environment variable override prefix: `NV_` (e.g., `NV_SERVER_PORT=9090`, `NV_MO
 - [ ] Settings page (server config, user profile)
 - [ ] About page with version info, license, and Community Supporters section
 
+#### Documentation
+- [ ] Tailscale deployment guide: running NetVantage + Scout over Tailscale
+- [ ] Tailscale Funnel/Serve guide: exposing dashboard without port forwarding
+
 #### Operations
 - [ ] Backup/restore CLI commands (`netvantage backup`, `netvantage restore`)
 - [ ] Data retention configuration with automated purge job
@@ -1247,6 +1328,13 @@ Environment variable override prefix: `NV_` (e.g., `NV_SERVER_PORT=9090`, `NV_MO
 - [ ] SNMP v2c/v3 discovery
 - [ ] mDNS/Bonjour discovery
 - [ ] UPnP/SSDP discovery
+- [ ] Tailscale plugin: tailnet device discovery via Tailscale API
+- [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
+- [ ] Tailscale plugin: Tailscale IP enrichment on existing device records
+- [ ] Tailscale plugin: subnet route detection and scan integration
+- [ ] Tailscale plugin: MagicDNS hostname resolution
+- [ ] Tailscale plugin: dashboard "Tailscale" badge on tailnet devices
+- [ ] Scout over Tailscale: document and support agent communication via Tailscale IPs
 - [ ] Topology: real-time link utilization overlay
 - [ ] Topology: custom backgrounds, saved layouts
 
@@ -1296,6 +1384,7 @@ Environment variable override prefix: `NV_` (e.g., `NV_SERVER_PORT=9090`, `NV_MO
 - [ ] Vault: Credential access audit logging
 - [ ] Vault: Master key rotation
 - [ ] Dashboard: remote access launcher, session management, credential manager
+- [ ] Tailscale plugin: prefer Tailscale IPs for Gateway remote access when device is on tailnet
 - [ ] Scout: macOS agent
 
 ### Phase 4: Extended Platform
@@ -1478,8 +1567,8 @@ Three platforms, zero obligation. All support is voluntary and does not unlock a
 | Platform | Type | Link |
 |----------|------|------|
 | **GitHub Sponsors** | Recurring or one-time | github.com/sponsors/HerbHall |
-| **Ko-fi** | Recurring or one-time | ko-fi.com/netvantage |
-| **Buy Me a Coffee** | One-time or membership | buymeacoffee.com/netvantage |
+| **Ko-fi** | Recurring or one-time | ko-fi.com/herbhall |
+| **Buy Me a Coffee** | One-time or membership | buymeacoffee.com/herbhall |
 
 Configured via `.github/FUNDING.yml` for GitHub's native "Sponsor" button integration.
 
@@ -1560,6 +1649,7 @@ NetVantage supports operation behind a reverse proxy (nginx, Traefik, Caddy). Re
 - **IPv6:** Phase 1 is IPv4-only. IPv6 scanning and agent communication targeted for Phase 2.
 - **Time synchronization:** NTP is strongly recommended. mTLS certificate validation and metric accuracy depend on synchronized clocks. Server logs a warning at startup if clock skew > 5 seconds from an NTP check.
 - **DNS:** Server needs DNS resolution for hostname lookups during discovery. Configurable DNS server override for environments with split DNS.
+- **Tailscale:** When the Tailscale plugin is enabled, the server uses the Tailscale REST API (outbound HTTPS to `api.tailscale.com`) for device discovery. No additional ports required. Scout agents on Tailscale-connected devices can reach the server via Tailscale IPs (100.x.y.z), eliminating the need for port forwarding or public IP exposure.
 
 ---
 
