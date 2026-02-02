@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/HerbHall/netvantage/internal/auth"
 	"github.com/HerbHall/netvantage/internal/config"
 	"github.com/HerbHall/netvantage/internal/dispatch"
 	"github.com/HerbHall/netvantage/internal/event"
@@ -108,6 +111,36 @@ func main() {
 		logger.Fatal("failed to start plugins", zap.Error(err))
 	}
 
+	// Create auth service
+	authStore, err := auth.NewUserStore(ctx, db)
+	if err != nil {
+		logger.Fatal("failed to initialize auth store", zap.Error(err))
+	}
+
+	jwtSecret := viperCfg.GetString("auth.jwt_secret")
+	if jwtSecret == "" {
+		// Generate an ephemeral secret -- tokens won't survive restarts.
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			logger.Fatal("failed to generate JWT secret", zap.Error(err))
+		}
+		jwtSecret = hex.EncodeToString(b)
+		logger.Warn("no auth.jwt_secret configured; using ephemeral secret (tokens will not survive restarts)")
+	}
+
+	accessTTL := viperCfg.GetDuration("auth.access_token_ttl")
+	if accessTTL == 0 {
+		accessTTL = 15 * time.Minute
+	}
+	refreshTTL := viperCfg.GetDuration("auth.refresh_token_ttl")
+	if refreshTTL == 0 {
+		refreshTTL = 7 * 24 * time.Hour
+	}
+
+	tokens := auth.NewTokenService([]byte(jwtSecret), accessTTL, refreshTTL)
+	authService := auth.NewService(authStore, tokens, logger.Named("auth"))
+	authHandler := auth.NewHandler(authService, logger.Named("auth"))
+
 	// Create and start HTTP server
 	addr := viperCfg.GetString("server.host") + ":" + viperCfg.GetString("server.port")
 	if addr == ":" {
@@ -116,7 +149,7 @@ func main() {
 	readyCheck := server.ReadinessChecker(func(ctx context.Context) error {
 		return db.DB().PingContext(ctx)
 	})
-	srv := server.New(addr, reg, logger, readyCheck)
+	srv := server.New(addr, reg, logger, readyCheck, authHandler)
 
 	// Start server in background
 	go func() {

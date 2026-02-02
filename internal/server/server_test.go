@@ -51,7 +51,7 @@ func newTestServer(ready ReadinessChecker) *Server {
 			}},
 		},
 	}
-	return New("127.0.0.1:0", plugins, logger, ready)
+	return New("127.0.0.1:0", plugins, logger, ready, nil)
 }
 
 func TestHandleHealthz(t *testing.T) {
@@ -234,7 +234,7 @@ func TestPluginRoutes_Mounted(t *testing.T) {
 			},
 		},
 	}
-	srv := New("127.0.0.1:0", plugins, logger, nil)
+	srv := New("127.0.0.1:0", plugins, logger, nil, nil)
 
 	req := httptest.NewRequest("POST", "/api/v1/recon/scan", http.NoBody)
 	w := httptest.NewRecorder()

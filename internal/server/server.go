@@ -24,6 +24,13 @@ type PluginSource interface {
 // Returns nil if ready, an error describing why not otherwise.
 type ReadinessChecker func(ctx context.Context) error
 
+// RouteRegistrar allows external packages to register routes and middleware
+// on the server without creating import cycles (consumer-side interface).
+type RouteRegistrar interface {
+	RegisterRoutes(mux *http.ServeMux)
+	Middleware() func(http.Handler) http.Handler
+}
+
 // Server is the main NetVantage HTTP server.
 type Server struct {
 	httpServer *http.Server
@@ -34,7 +41,8 @@ type Server struct {
 }
 
 // New creates a new Server with middleware and routes.
-func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker) *Server {
+// The auth parameter is optional; pass nil to disable authentication.
+func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{
@@ -45,17 +53,25 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 	}
 
 	s.registerRoutes()
+	if auth != nil {
+		auth.RegisterRoutes(mux)
+	}
 	s.mountPluginRoutes()
 
 	// Middleware chain: outermost listed first.
-	handler := Chain(mux,
+	middlewares := []Middleware{
 		RecoveryMiddleware(logger),
 		RequestIDMiddleware,
 		LoggingMiddleware(logger),
 		SecurityHeadersMiddleware,
 		VersionHeaderMiddleware,
 		RateLimitMiddleware(100, 200, []string{"/healthz", "/readyz", "/metrics"}),
-	)
+	}
+	if auth != nil {
+		middlewares = append(middlewares, auth.Middleware())
+	}
+
+	handler := Chain(mux, middlewares...)
 
 	s.httpServer = &http.Server{
 		Addr:         addr,
