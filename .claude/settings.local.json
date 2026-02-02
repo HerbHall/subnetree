@@ -25,6 +25,8 @@
       "Bash(test:*)",
       "Skill(requirements_generator)",
       "Skill(requirements_generator:*)",
+      "Skill(manage-github-issues)",
+      "Skill(manage-github-issues:*)",
       "Bash(echo:*)",
       "Bash(unzip:*)",
       "Bash(powershell:*)",
@@ -58,7 +60,27 @@
       "mcp__MCP_DOCKER__browser_run_code",
       "Bash(start \"\" \"C:\\\\Users\\\\Herb\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--NetVantage\\\\1be3635d-d3a8-4a1a-bd86-21458d4b4c71\\\\scratchpad\\\\social-preview.html\")",
       "WebFetch(domain:tailscale.com)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(grep -n \"bus.Publish\\\\|bus.PublishAsync\\\\|Publish\" internal/recon/*.go)",
+      "Bash([ -f /d/NetVantage/.goreleaser.yml ])",
+      "Bash([ -f /d/NetVantage/Dockerfile ])",
+      "Bash([ -f /d/NetVantage/docker-compose.yml ])",
+      "Bash(grep:*)",
+      "Bash(git -C \"d:/NetVantage\" log --oneline --all)",
+      "Bash(where:*)",
+      "Bash(go install:*)",
+      "Bash(goreleaser check:*)",
+      "Bash(go env:*)",
+      "Bash(/c/Users/Herb/go/bin/goreleaser.exe check:*)",
+      "WebFetch(domain:goreleaser.com)",
+      "Bash(python:*)",
+      "WebFetch(domain:gitprotect.io)",
+      "WebFetch(domain:docs.github.com)",
+      "Bash(ls -la \"d:\\\\NetVantage\\\\.claude\\\\skills\"\" 2>&1 || ls -la \"/d/NetVantage/.claude/skills/ \")",
+      "WebFetch(domain:fdefreitas.medium.com)",
+      "Bash(find \"C:\\\\Users\\\\Herb\\\\.claude\\\\skills\"\" -type f -name \"*.md\" -o -name \"*.yaml\" -o -name \"*.yml \")",
+      "Bash(find:*)",
+      "Bash(file:*)"
     ]
   }
 }
