@@ -180,21 +180,25 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 	}
 
 	// Count total.
+	// The where clause is built above using only ? placeholders; no user input is concatenated.
 	var total int
 	err := s.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM recon_devices WHERE "+where, args...,
+		"SELECT COUNT(*) FROM recon_devices WHERE "+where, args..., //nolint:gosec // where uses parameterized placeholders only
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("count devices: %w", err)
 	}
 
 	// Query with pagination.
-	queryArgs := append(args, opts.Limit, opts.Offset)
-	rows, err := s.db.QueryContext(ctx, `SELECT
-		id, hostname, ip_addresses, mac_address, manufacturer,
-		device_type, os, status, discovery_method, agent_id,
-		first_seen, last_seen, notes, tags, custom_fields
-		FROM recon_devices WHERE `+where+` ORDER BY last_seen DESC LIMIT ? OFFSET ?`,
+	queryArgs := make([]any, 0, len(args)+2)
+	queryArgs = append(queryArgs, args...)
+	queryArgs = append(queryArgs, opts.Limit, opts.Offset)
+	//nolint:gosec // where uses parameterized placeholders only
+	rows, err := s.db.QueryContext(ctx, "SELECT "+
+		"id, hostname, ip_addresses, mac_address, manufacturer, "+
+		"device_type, os, status, discovery_method, agent_id, "+
+		"first_seen, last_seen, notes, tags, custom_fields "+
+		"FROM recon_devices WHERE "+where+" ORDER BY last_seen DESC LIMIT ? OFFSET ?",
 		queryArgs...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list devices: %w", err)

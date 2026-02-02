@@ -179,7 +179,8 @@ func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 		Edges: make([]TopologyEdge, 0, len(links)),
 	}
 
-	for _, d := range devices {
+	for i := range devices {
+		d := &devices[i]
 		label := d.Hostname
 		if label == "" && len(d.IPAddresses) > 0 {
 			label = d.IPAddresses[0]
@@ -195,7 +196,8 @@ func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	for _, l := range links {
+	for i := range links {
+		l := &links[i]
 		graph.Edges = append(graph.Edges, TopologyEdge{
 			ID:       l.ID,
 			Source:   l.SourceDeviceID,

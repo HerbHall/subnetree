@@ -88,7 +88,7 @@ func (r *ARPReader) readWindowsARP(ctx context.Context) map[string]string {
 		// Windows arp -a lines look like: 192.168.1.1 aa-bb-cc-dd-ee-ff dynamic
 		ip := fields[0]
 		// Validate IP-like format (starts with digit).
-		if len(ip) == 0 || ip[0] < '0' || ip[0] > '9' {
+		if ip == "" || ip[0] < '0' || ip[0] > '9' {
 			continue
 		}
 		mac := strings.ToUpper(strings.ReplaceAll(fields[1], "-", ":"))
@@ -183,7 +183,7 @@ func parseWindowsARPOutput(output string) map[string]string {
 			continue
 		}
 		ip := fields[0]
-		if len(ip) == 0 || ip[0] < '0' || ip[0] > '9' {
+		if ip == "" || ip[0] < '0' || ip[0] > '9' {
 			continue
 		}
 		mac := strings.ToUpper(strings.ReplaceAll(fields[1], "-", ":"))
