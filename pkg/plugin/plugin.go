@@ -79,11 +79,24 @@ type Config interface {
 	Sub(key string) Config
 }
 
-// EventBus provides typed publish/subscribe for inter-plugin communication.
-type EventBus interface {
+// Publisher sends events to the bus. Use this thin interface in code
+// that only needs to emit events (follows io.Writer pattern).
+type Publisher interface {
 	Publish(ctx context.Context, event Event) error
-	PublishAsync(ctx context.Context, event Event)
+}
+
+// Subscriber receives events from the bus. Use this thin interface in
+// code that only needs to listen for events (follows io.Reader pattern).
+type Subscriber interface {
 	Subscribe(topic string, handler EventHandler) (unsubscribe func())
+}
+
+// EventBus provides typed publish/subscribe for inter-plugin communication.
+// Composes Publisher and Subscriber with async and wildcard extensions.
+type EventBus interface {
+	Publisher
+	Subscriber
+	PublishAsync(ctx context.Context, event Event)
 	SubscribeAll(handler EventHandler) (unsubscribe func())
 }
 

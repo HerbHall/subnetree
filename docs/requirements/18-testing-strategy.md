@@ -14,7 +14,7 @@ Testing is not a phase -- it is a continuous requirement. The test suite is the 
 
 #### Unit Tests
 
-- **Plugin contract tests:** Table-driven tests verifying every plugin against the `Plugin` interface and optional interfaces (`HTTPProvider`, `GRPCProvider`, `HealthChecker`, `EventSubscriber`, `Validator`, `Reloadable`, `AnalyticsProvider`). Each plugin is tested in isolation with mocked dependencies.
+- **Plugin contract tests:** Shared contract test suite in `pkg/plugin/plugintest/` verifying every plugin against the `Plugin` interface. Each module's `_test.go` calls `plugintest.TestPluginContract(t, factory)` to verify: valid metadata, successful init, start-after-init, stop-without-start safety, and info idempotency. Optional interfaces (`HTTPProvider`, `GRPCProvider`, `HealthChecker`, `EventSubscriber`, `Validator`, `Reloadable`, `AnalyticsProvider`) are tested per-module with mocked dependencies.
 - **Handler tests:** `httptest.NewRecorder()` for all API endpoints. Every route returns the correct status code, content type, response body structure, and error format (RFC 7807). Every authenticated endpoint rejects unauthenticated requests.
 - **Repository tests:** In-memory SQLite (`:memory:`) for database logic. Every repository method tested for CRUD operations, edge cases (empty results, duplicate keys, constraint violations), and transaction behavior.
 - **Mock strategy:** Interface-based mocking for external dependencies (PingScanner, ARPScanner, SNMPClient, DNSResolver, CredentialStore, EventBus). Mocks live in `internal/testutil/mocks.go` and are generated from interfaces.

@@ -51,3 +51,110 @@ Tailscale (requires: credential_store for API key/OAuth storage)
 
 **Topological Startup Order:** Vault -> Dispatch -> Tailscale -> Recon -> Pulse -> Gateway
 **Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Tailscale -> Dispatch -> Vault
+
+### Go Architecture Conventions
+
+The codebase follows idiomatic Go patterns that govern how packages interact. These are not optional style preferences -- they are structural rules that maintain decoupling and testability.
+
+#### Accept Interfaces, Return Structs
+
+Functions and constructors accept interface parameters and return concrete types. This lets callers decide the abstraction level while keeping return types explicit and inspectable.
+
+```go
+// Good: returns concrete *ViperConfig, caller assigns to plugin.Config where needed
+func New(v *viper.Viper) *ViperConfig { ... }
+
+// Good: accepts interface, caller passes any implementation
+func New(addr string, plugins PluginSource, logger *zap.Logger) *Server { ... }
+```
+
+#### Consumer-Side Interfaces
+
+Interfaces are defined where they are consumed, not where they are implemented. Go's implicit interface satisfaction means the implementing type never imports the consumer. This prevents import cycles and keeps coupling directional.
+
+```go
+// internal/server/server.go defines only what *it* needs from the registry:
+type PluginSource interface {
+    AllRoutes() map[string][]plugin.Route
+    All() []plugin.Plugin
+}
+
+// internal/registry.Registry satisfies PluginSource implicitly -- no import of server package.
+```
+
+**Exception:** The `pkg/plugin/` SDK defines interfaces (`Plugin`, `HTTPProvider`, `Config`, `EventBus`) because they form a public contract shared across many packages. These are the "ports" in hexagonal architecture terms.
+
+#### Compile-Time Interface Guards
+
+Every concrete type that implements an interface includes a compile-time guard at the top of the file. This catches missing methods at build time rather than at runtime via type assertions.
+
+```go
+var (
+    _ plugin.Plugin       = (*Module)(nil)
+    _ plugin.HTTPProvider = (*Module)(nil)
+)
+```
+
+Every module in `internal/` and every adapter (`internal/config/`, `internal/event/`) must have these guards.
+
+#### Thin Interfaces and Composition
+
+Interfaces are kept small -- ideally one or two methods. Larger interfaces are composed from smaller ones, following the `io.Reader` / `io.Writer` pattern.
+
+```go
+type Publisher interface {
+    Publish(ctx context.Context, event Event) error
+}
+
+type Subscriber interface {
+    Subscribe(topic string, handler EventHandler) (unsubscribe func())
+}
+
+// Composed from the above:
+type EventBus interface {
+    Publisher
+    Subscriber
+    PublishAsync(ctx context.Context, event Event)
+    SubscribeAll(handler EventHandler) (unsubscribe func())
+}
+```
+
+Consumers that only need to publish accept `Publisher`, not `EventBus`. This minimizes coupling.
+
+#### Contract-Driven Development
+
+Shared contract test suites verify that any implementation of an interface behaves correctly. These live alongside the interface definition (e.g., `pkg/plugin/plugintest/`) and are called from each implementation's test file.
+
+```go
+// In internal/recon/recon_test.go:
+func TestContract(t *testing.T) {
+    plugintest.TestPluginContract(t, func() plugin.Plugin { return recon.New() })
+}
+```
+
+Every new `plugin.Plugin` implementation must call `plugintest.TestPluginContract` in its tests.
+
+#### Manual Dependency Injection
+
+Dependencies are wired explicitly in `cmd/netvantage/main.go` using constructor injection. No DI frameworks, no service locators outside the plugin registry's `PluginResolver`.
+
+```go
+// main.go: explicit construction, all dependencies visible
+cfg := config.New(v)
+bus := event.NewBus(logger)
+reg := registry.New(logger)
+srv := server.New(addr, reg, logger)
+```
+
+#### Hexagonal Architecture Mapping
+
+The codebase maps to hexagonal (ports and adapters) architecture:
+
+| Hexagonal Concept | NetVantage Location | Examples |
+|-------------------|---------------------|----------|
+| **Ports** (interfaces) | `pkg/plugin/` | `Plugin`, `Config`, `EventBus`, `HTTPProvider` |
+| **Adapters** (implementations) | `internal/` | `config.ViperConfig`, `event.Bus`, `registry.Registry` |
+| **Domain** (business logic) | `internal/{module}/` | `recon.Module`, `pulse.Module`, `vault.Module` |
+| **Wiring** (composition root) | `cmd/netvantage/main.go` | Constructor calls, dependency injection |
+
+`pkg/` is public and stable (Apache 2.0 licensed). `internal/` is private and free to change. This boundary is enforced by Go's visibility rules.

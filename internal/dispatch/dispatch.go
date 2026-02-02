@@ -9,6 +9,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// Compile-time interface guards.
+var (
+	_ plugin.Plugin       = (*Module)(nil)
+	_ plugin.HTTPProvider = (*Module)(nil)
+)
+
 // Module implements the Dispatch agent management plugin.
 type Module struct {
 	logger *zap.Logger

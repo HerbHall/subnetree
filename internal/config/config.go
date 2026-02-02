@@ -8,13 +8,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Compile-time interface guard.
+var _ plugin.Config = (*ViperConfig)(nil)
+
 // ViperConfig wraps a Viper instance to implement plugin.Config.
 type ViperConfig struct {
 	v *viper.Viper
 }
 
 // New creates a Config backed by the given Viper instance.
-func New(v *viper.Viper) plugin.Config {
+// Returns the concrete type; callers assign to plugin.Config where needed.
+func New(v *viper.Viper) *ViperConfig {
 	if v == nil {
 		v = viper.New()
 	}

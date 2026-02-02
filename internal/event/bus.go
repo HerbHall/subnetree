@@ -9,6 +9,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// Compile-time interface guard.
+var _ plugin.EventBus = (*Bus)(nil)
+
 // Bus is an in-memory event bus implementing plugin.EventBus.
 // Publish is synchronous (handlers run in the caller's goroutine).
 // PublishAsync dispatches handlers in separate goroutines.

@@ -229,6 +229,35 @@ const (
 
 **Third-party plugin targeting:** Third-party plugins declare a single `APIVersion` integer in their `PluginInfo`. They should target the lowest API version that provides the features they need, to maximize compatibility across server versions.
 
+### Go Interface Conventions for Plugins
+
+The plugin system follows idiomatic Go patterns documented in [02-architecture-overview.md](02-architecture-overview.md#go-architecture-conventions). Key rules specific to plugins:
+
+**Compile-time interface guards:** Every module file must include guards at the top:
+
+```go
+var (
+    _ plugin.Plugin       = (*Module)(nil)
+    _ plugin.HTTPProvider = (*Module)(nil)  // only if Routes() is implemented
+)
+```
+
+**Contract test suite:** Every `plugin.Plugin` implementation must call the shared contract test in its `_test.go`:
+
+```go
+func TestContract(t *testing.T) {
+    plugintest.TestPluginContract(t, func() plugin.Plugin { return mymodule.New() })
+}
+```
+
+The contract test suite lives in `pkg/plugin/plugintest/` and verifies: valid metadata, successful init, start-after-init, stop-without-start safety, and info idempotency.
+
+**Return concrete types:** Module constructors return `*Module`, not `plugin.Plugin`. Callers assign to the interface where needed:
+
+```go
+func New() *Module { return &Module{} }  // returns concrete
+```
+
 ### Registry Features
 
 - Topological sort of startup order from dependency declarations

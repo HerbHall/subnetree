@@ -104,9 +104,20 @@ make clean          # Clean build artifacts
 - Follow standard Go conventions (gofmt, go vet)
 - Error handling: return errors, don't panic
 - Use context.Context for cancellation/timeouts
-- Interfaces in the consumer package
 - Table-driven tests
 - No ORM -- raw SQL with thin repository layer
+
+## Go Architecture Conventions
+
+These patterns are enforced across the codebase. See [02-architecture-overview.md](docs/requirements/02-architecture-overview.md#go-architecture-conventions) for full rationale.
+
+- **Accept interfaces, return structs:** Functions accept interface params, return concrete types. Never return an interface from a constructor.
+- **Consumer-side interfaces:** Define interfaces where consumed, not where implemented. Exception: `pkg/plugin/` defines shared contracts (ports).
+- **Compile-time interface guards:** Every type implementing an interface must have `var _ Interface = (*Type)(nil)` at the top of the file.
+- **Thin interfaces, composed:** Keep interfaces to 1-2 methods. Compose larger interfaces from small ones (e.g., `EventBus = Publisher + Subscriber`).
+- **Contract test suites:** Every `plugin.Plugin` implementation must call `plugintest.TestPluginContract` in its tests.
+- **Manual DI in main():** No DI frameworks. All wiring is explicit in `cmd/netvantage/main.go`.
+- **Hexagonal mapping:** `pkg/plugin/` = ports, `internal/` = adapters, `cmd/` = composition root.
 
 ## Plugin Architecture
 

@@ -7,21 +7,28 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/HerbHall/netvantage/internal/registry"
 	"github.com/HerbHall/netvantage/internal/version"
+	"github.com/HerbHall/netvantage/pkg/plugin"
 	"go.uber.org/zap"
 )
+
+// PluginSource provides the server with plugin metadata and routes.
+// Defined here (consumer-side) rather than importing the concrete registry.
+type PluginSource interface {
+	AllRoutes() map[string][]plugin.Route
+	All() []plugin.Plugin
+}
 
 // Server is the main NetVantage server.
 type Server struct {
 	httpServer *http.Server
-	registry   *registry.Registry
+	plugins    PluginSource
 	logger     *zap.Logger
 	mux        *http.ServeMux
 }
 
 // New creates a new Server instance.
-func New(addr string, reg *registry.Registry, logger *zap.Logger) *Server {
+func New(addr string, plugins PluginSource, logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{
@@ -32,9 +39,9 @@ func New(addr string, reg *registry.Registry, logger *zap.Logger) *Server {
 			WriteTimeout: 15 * time.Second,
 			IdleTimeout:  60 * time.Second,
 		},
-		registry: reg,
-		logger:   logger,
-		mux:      mux,
+		plugins: plugins,
+		logger:  logger,
+		mux:     mux,
 	}
 
 	s.registerCoreRoutes()
@@ -51,7 +58,7 @@ func (s *Server) registerCoreRoutes() {
 
 // mountPluginRoutes registers all plugin routes under /api/v1/{plugin}/.
 func (s *Server) mountPluginRoutes() {
-	allRoutes := s.registry.AllRoutes()
+	allRoutes := s.plugins.AllRoutes()
 	for pluginName, routes := range allRoutes {
 		for _, route := range routes {
 			pattern := fmt.Sprintf("%s /api/v1/%s%s", route.Method, pluginName, route.Path)
@@ -83,7 +90,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-NetVantage-Version", version.Short())
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "ok",
 		"service": "netvantage",
 		"version": version.Map(),
@@ -92,7 +99,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // handlePlugins returns the list of registered plugins.
 func (s *Server) handlePlugins(w http.ResponseWriter, r *http.Request) {
-	plugins := s.registry.All()
+	plugins := s.plugins.All()
 	type pluginResponse struct {
 		Name        string `json:"name"`
 		Version     string `json:"version"`
@@ -109,5 +116,5 @@ func (s *Server) handlePlugins(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-NetVantage-Version", version.Short())
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
