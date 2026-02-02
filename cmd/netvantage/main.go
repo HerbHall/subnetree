@@ -38,21 +38,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewProduction()
+	// Load configuration (before logger, so log level/format can be configured).
+	viperCfg, err := server.LoadConfig(*configPath)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+	cfg := config.New(viperCfg)
+
+	// Initialize logger from configuration.
+	logger, err := config.NewLogger(viperCfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() { _ = logger.Sync() }()
 
 	logger.Info("NetVantage server starting", zap.String("version", version.Short()))
-
-	// Load configuration
-	viperCfg, err := server.LoadConfig(*configPath)
-	if err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
-	}
-	cfg := config.New(viperCfg)
 
 	if f := viperCfg.ConfigFileUsed(); f != "" {
 		logger.Info("configuration loaded",
