@@ -47,13 +47,19 @@ configs/        Example configuration files
 
 ## Development Workflow
 
+**Every issue is developed on its own branch. No commits directly to `main`.**
+
 1. **Fork** the repository and create a branch from `main`
-2. **Branch naming:** `feature/short-description`, `fix/short-description`, `refactor/short-description`
+2. **Branch naming** -- include the issue number when applicable:
+   - `feature/issue-42-device-icons`
+   - `fix/issue-17-scan-timeout`
+   - `refactor/issue-30-plugin-lifecycle`
 3. **Make your changes** -- follow the code style guidelines below
 4. **Write tests** for new functionality
-5. **Run checks:** `make test && make lint`
+5. **Run checks:** `make test && make lint` -- all tests must pass before opening a PR
 6. **Commit** using conventional commits (see below)
-7. **Push** and open a Pull Request against `main`
+7. **Push** your branch and open a Pull Request against `main`
+8. **Merge** only after CI passes and a maintainer approves
 
 ## Code Style
 

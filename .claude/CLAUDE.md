@@ -157,8 +157,17 @@ Plugins are registered at compile time in `cmd/netvantage/main.go`. Plugin API v
 
 ## Git Conventions
 
+**MANDATORY: Branch-per-issue workflow. Never commit directly to `main`.**
+
+Every GitHub issue must be developed on its own branch:
+1. Create branch from `main`: `git checkout -b feature/issue-NNN-short-description`
+2. All commits for the issue stay on that branch
+3. Verify all tests pass before considering work complete
+4. Push branch and create a PR against `main` using `gh pr create`
+5. Merge only after CI passes and work is verified
+
+- Branch naming: `feature/issue-NNN-desc`, `fix/issue-NNN-desc`, `refactor/issue-NNN-desc`
 - Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`
-- Branch naming: `feature/`, `fix/`, `refactor/`
 - Co-author tag: `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
 - Branch protection on `main`: PRs required, CLA check must pass
 
