@@ -16,7 +16,7 @@ import (
 const (
 	RoleDiscovery       = "discovery"
 	RoleMonitoring      = "monitoring"
-	RoleCredentialStore = "credential_store"
+	RoleCredentialStore = "credential_store" //nolint:gosec // G101: role name, not a credential
 	RoleAgentManagement = "agent_management"
 	RoleNotification    = "notification"
 	RoleRemoteAccess    = "remote_access"

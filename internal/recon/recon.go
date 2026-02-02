@@ -189,30 +189,30 @@ func (m *Module) checkForLostDevices() {
 		return
 	}
 
-	for _, device := range stale {
-		if err := m.store.MarkDeviceOffline(ctx, device.ID); err != nil {
+	for i := range stale {
+		if err := m.store.MarkDeviceOffline(ctx, stale[i].ID); err != nil {
 			m.logger.Error("failed to mark device offline",
-				zap.String("device_id", device.ID),
+				zap.String("device_id", stale[i].ID),
 				zap.Error(err),
 			)
 			continue
 		}
 
 		ip := ""
-		if len(device.IPAddresses) > 0 {
-			ip = device.IPAddresses[0]
+		if len(stale[i].IPAddresses) > 0 {
+			ip = stale[i].IPAddresses[0]
 		}
 
 		m.publishEvent(ctx, TopicDeviceLost, DeviceLostEvent{
-			DeviceID: device.ID,
+			DeviceID: stale[i].ID,
 			IP:       ip,
-			LastSeen: device.LastSeen,
+			LastSeen: stale[i].LastSeen,
 		})
 
 		m.logger.Info("device marked as lost",
-			zap.String("device_id", device.ID),
+			zap.String("device_id", stale[i].ID),
 			zap.String("ip", ip),
-			zap.Time("last_seen", device.LastSeen),
+			zap.Time("last_seen", stale[i].LastSeen),
 		)
 	}
 }
