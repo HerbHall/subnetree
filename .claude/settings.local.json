@@ -80,7 +80,10 @@
       "WebFetch(domain:fdefreitas.medium.com)",
       "Bash(find \"C:\\\\Users\\\\Herb\\\\.claude\\\\skills\"\" -type f -name \"*.md\" -o -name \"*.yaml\" -o -name \"*.yml \")",
       "Bash(find:*)",
-      "Bash(file:*)"
+      "Bash(file:*)",
+      "mcp__memory__create_relations",
+      "mcp__MCP_DOCKER__start_process",
+      "Read(//c/Users/Herb/.claude/**)"
     ]
   }
 }
