@@ -57,7 +57,8 @@
       "mcp__MCP_DOCKER__browser_evaluate",
       "mcp__MCP_DOCKER__browser_run_code",
       "Bash(start \"\" \"C:\\\\Users\\\\Herb\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--NetVantage\\\\1be3635d-d3a8-4a1a-bd86-21458d4b4c71\\\\scratchpad\\\\social-preview.html\")",
-      "WebFetch(domain:tailscale.com)"
+      "WebFetch(domain:tailscale.com)",
+      "Bash(dir:*)"
     ]
   }
 }
