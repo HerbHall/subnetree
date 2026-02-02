@@ -125,7 +125,7 @@ configs/          Example configuration files
 
 ## Support the Project
 
-NetVantage is **free for personal and home use forever**. If you find it useful and want to support continued development:
+NetVantage is **free for personal, home-lab, and non-competing production use**. If you find it useful and want to support continued development:
 
 - [GitHub Sponsors](https://github.com/sponsors/HerbHall)
 - [Ko-fi](https://ko-fi.com/herbhall)
@@ -137,7 +137,7 @@ Financial supporters are recognized in [SUPPORTERS.md](SUPPORTERS.md) and the in
 
 NetVantage uses a split licensing model:
 
-- **Core** (server, agent, built-in modules): [Business Source License 1.1](LICENSE) -- free for personal, home-lab, and non-competing production use. Converts to Apache 2.0 after 4 years.
+- **Core** (server, agent, built-in modules): [Business Source License 1.1](LICENSE) -- free for personal, home-lab, educational, and non-competing production use. Converts to Apache 2.0 after 4 years.
 - **Plugin SDK** (`pkg/plugin/`, `pkg/roles/`, `pkg/models/`, `api/proto/`): [Apache License 2.0](pkg/plugin/LICENSE) -- build plugins and integrations with no restrictions.
 
 See [LICENSING.md](LICENSING.md) for full details.

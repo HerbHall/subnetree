@@ -1,6 +1,6 @@
 # Community Supporters
 
-NetVantage is free for personal and home use forever. These individuals and organizations have chosen to voluntarily support the project's development. Their generosity helps fund continued development, infrastructure, and community growth.
+NetVantage is free for personal, home-lab, and non-competing production use forever. These individuals and organizations have chosen to voluntarily support the project's development. Their generosity helps fund continued development, infrastructure, and community growth.
 
 **Want to support NetVantage?**
 - [GitHub Sponsors](https://github.com/sponsors/HerbHall)
