@@ -20,11 +20,11 @@
 - [x] Write ADR-0004: Integer-based protocol versioning
 
 #### GitHub Project Setup
-- [ ] Create GitHub Projects v2 board with Kanban, Roadmap, and Table views
-- [ ] Define custom fields: Phase, Module, Priority, Effort
-- [ ] Create milestone for each phase (Phase 0 through Phase 4)
-- [ ] Apply label taxonomy: type, priority, module, phase, contributor labels
-- [ ] Seed initial issues from Phase 1 checklist items
+- [x] Create GitHub Projects v2 board with Kanban, Roadmap, and Table views
+- [x] Define custom fields: Phase, Module, Priority, Effort
+- [x] Create milestone for each phase (Phase 0 through Phase 4)
+- [x] Apply label taxonomy: type, priority, module, phase, contributor labels
+- [x] Seed initial issues from Phase 1 checklist items
 - [x] Configure issue templates: bug report, feature request, plugin idea
 
 #### CI/CD Pipeline Scaffolding
