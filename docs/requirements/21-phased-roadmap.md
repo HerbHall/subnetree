@@ -73,7 +73,7 @@
 - [x] Redesigned plugin system: `PluginInfo`, `Dependencies`, optional interfaces
 - [x] Config abstraction wrapping Viper
 - [x] Event bus (synchronous default with PublishAsync for slow consumers like analytics)
-- [ ] Role interfaces in `pkg/roles/` (including `AnalyticsProvider` interface -- definition only, no implementation)
+- [x] Role interfaces in `pkg/roles/` (including `AnalyticsProvider` interface -- definition only, no implementation)
 - [x] Plugin registry with topological sort, graceful degradation
 - [x] Store interface + SQLite implementation (modernc.org/sqlite, pure Go)
 - [x] Per-plugin database migrations (reserve `analytics_` table prefix for Phase 2 Insight plugin)
@@ -89,7 +89,7 @@
 - [x] Liveness (`/healthz`) and readiness (`/readyz`) endpoints
 - [x] Per-IP rate limiting
 - [x] Configuration via YAML + environment variables
-- [ ] Configurable Zap logger factory
+- [x] Configurable Zap logger factory
 
 #### Authentication
 - [x] Local auth with bcrypt password hashing
@@ -125,11 +125,11 @@
 - [ ] Backup/restore CLI commands (`netvantage backup`, `netvantage restore`)
 - [ ] Data retention configuration with automated purge job
 - [x] Security headers middleware (CSP, X-Frame-Options, HSTS, etc.)
-- [ ] Account lockout after failed login attempts
+- [x] Account lockout after failed login attempts
 - [x] SECURITY.md with vulnerability disclosure process
 
 #### Testing & Quality
-- [ ] Test infrastructure: `internal/testutil/` with mocks, fixtures, helpers, mock clock
+- [x] Test infrastructure: `internal/testutil/` with mocks, fixtures, helpers, mock clock
 - [ ] Test infrastructure: `testdata/` directory with SNMP fixtures, test configs, migration snapshots
 - [x] Plugin contract tests: table-driven tests for `Plugin` interface and all optional interfaces
 - [ ] Plugin isolation tests: panic recovery in Init, Start, Stop, and HTTP handlers
