@@ -107,7 +107,14 @@
       "Bash(npm run build:*)",
       "Bash(npm run lint)",
       "Bash(make lint:*)",
-      "Bash(golangci-lint run:*)"
+      "Bash(golangci-lint run:*)",
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker exec:*)"
     ]
   }
 }
