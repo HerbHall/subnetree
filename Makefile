@@ -52,7 +52,8 @@ test-coverage:
 	go tool cover -func=coverage.out
 
 lint:
-	go vet ./...
+	@which golangci-lint > /dev/null 2>&1 || (echo "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
+	golangci-lint run ./...
 
 run-server: build-server
 	./bin/$(SERVER_BIN)

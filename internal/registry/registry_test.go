@@ -3,7 +3,10 @@ package registry
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/HerbHall/netvantage/pkg/plugin"
 	"go.uber.org/zap"
@@ -27,10 +30,59 @@ func newTestPlugin(name string, deps ...string) *testPlugin {
 	}
 }
 
-func (p *testPlugin) Info() plugin.PluginInfo                              { return p.info }
-func (p *testPlugin) Init(_ context.Context, _ plugin.Dependencies) error  { return p.initErr }
-func (p *testPlugin) Start(_ context.Context) error                        { return nil }
-func (p *testPlugin) Stop(_ context.Context) error                         { return nil }
+func (p *testPlugin) Info() plugin.PluginInfo                             { return p.info }
+func (p *testPlugin) Init(_ context.Context, _ plugin.Dependencies) error { return p.initErr }
+func (p *testPlugin) Start(_ context.Context) error                       { return nil }
+func (p *testPlugin) Stop(_ context.Context) error                        { return nil }
+
+// shutdownPlugin tracks stop order and simulates configurable stop behavior.
+type shutdownPlugin struct {
+	info         plugin.PluginInfo
+	stopDuration time.Duration // how long Stop() takes
+	stopErr      error         // error to return from Stop()
+	stopOrder    *[]string     // shared slice to record stop order
+	stopCount    *int32        // atomic counter for stop calls
+}
+
+func newShutdownPlugin(name string, stopOrder *[]string, deps ...string) *shutdownPlugin {
+	return &shutdownPlugin{
+		info: plugin.PluginInfo{
+			Name:         name,
+			Version:      "1.0.0",
+			Description:  "shutdown test plugin " + name,
+			Dependencies: deps,
+			APIVersion:   plugin.APIVersionCurrent,
+		},
+		stopOrder: stopOrder,
+	}
+}
+
+func (p *shutdownPlugin) Info() plugin.PluginInfo                             { return p.info }
+func (p *shutdownPlugin) Init(_ context.Context, _ plugin.Dependencies) error { return nil }
+func (p *shutdownPlugin) Start(_ context.Context) error                       { return nil }
+
+func (p *shutdownPlugin) Stop(ctx context.Context) error {
+	// Record that we were called.
+	if p.stopCount != nil {
+		atomic.AddInt32(p.stopCount, 1)
+	}
+
+	// Simulate slow shutdown if configured.
+	if p.stopDuration > 0 {
+		select {
+		case <-time.After(p.stopDuration):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	// Record stop order.
+	if p.stopOrder != nil {
+		*p.stopOrder = append(*p.stopOrder, p.info.Name)
+	}
+
+	return p.stopErr
+}
 
 // testHTTPPlugin implements both Plugin and HTTPProvider.
 type testHTTPPlugin struct {
@@ -358,5 +410,315 @@ func TestInitAll_WiresEventSubscriber(t *testing.T) {
 	}
 	if bus.subscriptions[1].topic != "recon.device.lost" {
 		t.Errorf("subscription[1].topic = %q, want recon.device.lost", bus.subscriptions[1].topic)
+	}
+}
+
+// --- Graceful Shutdown Tests ---
+
+func TestStopAll_ReverseOrder(t *testing.T) {
+	// Test: SIGTERM triggers orderly shutdown (plugins stopped in reverse dependency order).
+	var stopOrder []string
+	reg := New(testLogger())
+
+	// a has no deps, b depends on a, c depends on b
+	// Start order: a, b, c
+	// Stop order should be: c, b, a (reverse)
+	a := newShutdownPlugin("a", &stopOrder)
+	b := newShutdownPlugin("b", &stopOrder, "a")
+	c := newShutdownPlugin("c", &stopOrder, "b")
+
+	reg.Register(a)
+	reg.Register(b)
+	reg.Register(c)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+
+	reg.StopAll(ctx)
+
+	expected := []string{"c", "b", "a"}
+	if len(stopOrder) != len(expected) {
+		t.Fatalf("stop order length = %d, want %d", len(stopOrder), len(expected))
+	}
+	for i, name := range expected {
+		if stopOrder[i] != name {
+			t.Errorf("stop order[%d] = %q, want %q", i, stopOrder[i], name)
+		}
+	}
+}
+
+func TestStopAll_ReverseOrder_Table(t *testing.T) {
+	tests := []struct {
+		name       string
+		plugins    []struct{ name string; deps []string }
+		wantOrder  []string
+	}{
+		{
+			name: "linear chain a->b->c",
+			plugins: []struct{ name string; deps []string }{
+				{"a", nil},
+				{"b", []string{"a"}},
+				{"c", []string{"b"}},
+			},
+			wantOrder: []string{"c", "b", "a"},
+		},
+		{
+			name: "diamond a->b,c->d",
+			plugins: []struct{ name string; deps []string }{
+				{"a", nil},
+				{"b", []string{"a"}},
+				{"c", []string{"a"}},
+				{"d", []string{"b", "c"}},
+			},
+			wantOrder: []string{"d", "c", "b", "a"}, // d first, then b/c (order may vary), then a last
+		},
+		{
+			name: "independent plugins",
+			plugins: []struct{ name string; deps []string }{
+				{"x", nil},
+				{"y", nil},
+				{"z", nil},
+			},
+			wantOrder: nil, // any order is valid, just check all stopped
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var stopOrder []string
+			reg := New(testLogger())
+
+			for _, p := range tc.plugins {
+				reg.Register(newShutdownPlugin(p.name, &stopOrder, p.deps...))
+			}
+			reg.Validate()
+
+			ctx := context.Background()
+			reg.InitAll(ctx, testDeps())
+			reg.StartAll(ctx)
+			reg.StopAll(ctx)
+
+			// All plugins should have stopped.
+			if len(stopOrder) != len(tc.plugins) {
+				t.Fatalf("stopped %d plugins, want %d", len(stopOrder), len(tc.plugins))
+			}
+
+			// For cases with specific expected order, verify it.
+			if tc.wantOrder != nil {
+				// For diamond case, just verify d is first and a is last.
+				if tc.name == "diamond a->b,c->d" {
+					if stopOrder[0] != "d" {
+						t.Errorf("expected d to stop first, got %q", stopOrder[0])
+					}
+					if stopOrder[len(stopOrder)-1] != "a" {
+						t.Errorf("expected a to stop last, got %q", stopOrder[len(stopOrder)-1])
+					}
+				} else {
+					for i, name := range tc.wantOrder {
+						if stopOrder[i] != name {
+							t.Errorf("stop order[%d] = %q, want %q", i, stopOrder[i], name)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestStopAll_ErrorDoesNotBlockOthers(t *testing.T) {
+	// Test: Plugin Stop() errors are logged but don't prevent other plugins from stopping.
+	var stopOrder []string
+	reg := New(testLogger())
+
+	a := newShutdownPlugin("a", &stopOrder)
+	b := newShutdownPlugin("b", &stopOrder, "a")
+	b.stopErr = errors.New("b failed to stop")
+	c := newShutdownPlugin("c", &stopOrder, "b")
+
+	reg.Register(a)
+	reg.Register(b)
+	reg.Register(c)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+	reg.StopAll(ctx)
+
+	// All plugins should have had Stop() called despite b's error.
+	if len(stopOrder) != 3 {
+		t.Fatalf("stopped %d plugins, want 3 (all should stop despite errors)", len(stopOrder))
+	}
+
+	// Verify order is still correct (reverse dependency).
+	expected := []string{"c", "b", "a"}
+	for i, name := range expected {
+		if stopOrder[i] != name {
+			t.Errorf("stop order[%d] = %q, want %q", i, stopOrder[i], name)
+		}
+	}
+}
+
+func TestStopAll_MultipleErrorsAllStopped(t *testing.T) {
+	// Multiple plugins fail but all are still called.
+	var stopCount int32
+	reg := New(testLogger())
+
+	for i := 0; i < 5; i++ {
+		p := newShutdownPlugin("p"+string(rune('a'+i)), nil)
+		p.stopCount = &stopCount
+		p.stopErr = errors.New("stop failed")
+		reg.Register(p)
+	}
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+	reg.StopAll(ctx)
+
+	if stopCount != 5 {
+		t.Errorf("stop count = %d, want 5 (all plugins should have Stop() called)", stopCount)
+	}
+}
+
+func TestStopAll_ContextTimeout(t *testing.T) {
+	// Test: Per-plugin Stop() timeout enforced (slow plugin respects context deadline).
+	var stopOrder []string
+	reg := New(testLogger())
+
+	fast := newShutdownPlugin("fast", &stopOrder)
+	slow := newShutdownPlugin("slow", &stopOrder)
+	slow.stopDuration = 5 * time.Second // Would take 5s without timeout
+
+	reg.Register(fast)
+	reg.Register(slow)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+
+	// Use a short timeout - the slow plugin should respect ctx.Done().
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	reg.StopAll(shutdownCtx)
+	elapsed := time.Since(start)
+
+	// Should complete quickly due to context timeout, not wait for 5s.
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("StopAll took %v, expected < 500ms with context timeout", elapsed)
+	}
+
+	// Fast plugin should have stopped successfully.
+	// Slow plugin may or may not be in stopOrder depending on timing.
+	foundFast := false
+	for _, name := range stopOrder {
+		if name == "fast" {
+			foundFast = true
+		}
+	}
+	if !foundFast {
+		t.Error("expected 'fast' plugin to complete stop")
+	}
+}
+
+func TestStopAll_CompletesWithinTimeout(t *testing.T) {
+	// Test: Shutdown completes within configured maximum timeout.
+	var stopOrder []string
+	reg := New(testLogger())
+
+	// Create several plugins with small delays.
+	for i := 0; i < 3; i++ {
+		p := newShutdownPlugin("p"+string(rune('a'+i)), &stopOrder)
+		p.stopDuration = 10 * time.Millisecond
+		reg.Register(p)
+	}
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+
+	// Use a generous timeout.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	reg.StopAll(shutdownCtx)
+	elapsed := time.Since(start)
+
+	// Should complete well within timeout.
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("StopAll took %v, expected < 500ms", elapsed)
+	}
+
+	// All plugins should have stopped.
+	if len(stopOrder) != 3 {
+		t.Errorf("stopped %d plugins, want 3", len(stopOrder))
+	}
+}
+
+func TestStopAll_DisabledPluginsSkipped(t *testing.T) {
+	// Disabled plugins should not have Stop() called.
+	var stopCount int32
+	reg := New(testLogger())
+
+	active := newShutdownPlugin("active", nil)
+	active.stopCount = &stopCount
+
+	disabled := newShutdownPlugin("disabled", nil)
+	disabled.stopCount = &stopCount
+	disabled.info.APIVersion = 0 // Will be disabled due to old API version
+
+	reg.Register(active)
+	reg.Register(disabled)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+	reg.StopAll(ctx)
+
+	// Only active plugin should have Stop() called.
+	if stopCount != 1 {
+		t.Errorf("stop count = %d, want 1 (disabled plugin should be skipped)", stopCount)
+	}
+}
+
+func TestStopAll_ConcurrentSafety(t *testing.T) {
+	// Verify StopAll is safe to call concurrently (uses RLock).
+	var stopCount int32
+	reg := New(testLogger())
+
+	p := newShutdownPlugin("concurrent", nil)
+	p.stopCount = &stopCount
+	p.stopDuration = 50 * time.Millisecond
+
+	reg.Register(p)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+
+	// Call StopAll from multiple goroutines.
+	var wg sync.WaitGroup
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			reg.StopAll(ctx)
+		}()
+	}
+	wg.Wait()
+
+	// Stop should have been called 3 times (once per StopAll call).
+	if stopCount != 3 {
+		t.Errorf("stop count = %d, want 3", stopCount)
 	}
 }
