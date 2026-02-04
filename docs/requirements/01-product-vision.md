@@ -4,9 +4,42 @@ NetVantage is a modular, source-available network monitoring and management plat
 
 **Strategic Intent:** Free for personal and home use forever. Built to become a commercial product for business, MSP, and enterprise use. The codebase, documentation, community, and clean IP chain are the product -- designed from day one for acquisition readiness.
 
-**Target Users:** Home lab enthusiasts, prosumers, small business IT administrators, managed service providers (MSPs).
+**Target Users:** Home lab enthusiasts, prosumers, and small business IT administrators.
+
+**Market Scope:** NetVantage targets single-subnet home and small-office networks (typically 15–200 devices). The current focus is building a product that delights homelabbers and small business users, not competing with enterprise monitoring platforms. However, the backend architecture is designed for scalability and flexibility -- modular, well-documented, and acquisition-ready. The goal is to build a passionate community around an excellent small-scale tool while maintaining the technical foundation that would allow a future owner to expand into larger markets.
 
 **Core Value Proposition:** No existing source-available tool combines device discovery, monitoring, remote access, credential management, and IoT awareness in a single product. Free for personal, home-lab, and non-competing production use. BSL 1.1 licensed core with Apache 2.0 plugin SDK for ecosystem growth.
+
+### What It Does
+
+**Discovery & Mapping:**
+
+- LAN scanning and device detection
+- Device identification (OS, manufacturer, type)
+- Network topology mapping and visualization
+
+**Monitoring:**
+
+- Health and status monitoring via active scanning or lightweight agents (Scout)
+- Plugins can monitor anything - the platform provides the framework, plugins provide the data
+
+**Quick Access:**
+
+- One-click access to systems and services
+- Credential vault so you don't type passwords hundreds of times a day
+- Launch RDP, SSH, web UIs directly from the dashboard
+
+**Rich, Customizable UI:**
+
+- List views, tree views, charts, graphs, gauges
+- Various status indicators (up/down, health, alerts)
+- Highly customizable - users display what matters to them
+
+**Plugin Extensibility:**
+
+- Open plugin architecture for anything users want to add
+- Data can come from active scanning/detection or from helper agents on hosts
+- Community and third-party plugins welcome
 
 ### Design Philosophy
 

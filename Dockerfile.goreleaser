@@ -1,0 +1,39 @@
+# Dockerfile for GoReleaser - uses pre-built binary
+# This Dockerfile is used by GoReleaser during releases.
+# For local development, use the main Dockerfile instead.
+
+FROM alpine:3.21
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    iputils
+
+# Create non-root user
+RUN addgroup -g 1000 netvantage && \
+    adduser -u 1000 -G netvantage -s /bin/sh -D netvantage
+
+# Create data directory
+RUN mkdir -p /data && chown netvantage:netvantage /data
+
+# Copy pre-built binary from GoReleaser
+COPY netvantage /usr/local/bin/netvantage
+
+WORKDIR /data
+USER netvantage
+
+EXPOSE 8080 9090
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1
+
+ENV NV_DATABASE_DSN=/data/netvantage.db \
+    NV_LOG_LEVEL=info \
+    NV_HTTP_ADDRESS=:8080 \
+    NV_GRPC_ADDRESS=:9090
+
+VOLUME ["/data"]
+
+ENTRYPOINT ["netvantage"]
+CMD ["serve"]

@@ -42,7 +42,8 @@ type Server struct {
 
 // New creates a new Server with middleware and routes.
 // The auth parameter is optional; pass nil to disable authentication.
-func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar) *Server {
+// The dashboard parameter is optional; pass nil to disable dashboard serving.
+func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar, dashboard http.Handler) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{
@@ -57,6 +58,11 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 		auth.RegisterRoutes(mux)
 	}
 	s.mountPluginRoutes()
+
+	// Mount dashboard last as a catch-all for SPA routing
+	if dashboard != nil {
+		mux.Handle("/", dashboard)
+	}
 
 	// Middleware chain: outermost listed first.
 	middlewares := []Middleware{

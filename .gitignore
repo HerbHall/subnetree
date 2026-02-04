@@ -43,6 +43,10 @@ web/node_modules/
 web/dist/
 web/.env
 
+# Embedded dashboard build (copied from web/dist/)
+internal/dashboard/dist/
+!internal/dashboard/dist/.gitkeep
+
 # Generated protobuf
 api/proto/v1/*.pb.go
 

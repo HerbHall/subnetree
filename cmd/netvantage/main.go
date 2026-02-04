@@ -13,6 +13,7 @@ import (
 
 	"github.com/HerbHall/netvantage/internal/auth"
 	"github.com/HerbHall/netvantage/internal/config"
+	"github.com/HerbHall/netvantage/internal/dashboard"
 	"github.com/HerbHall/netvantage/internal/dispatch"
 	"github.com/HerbHall/netvantage/internal/event"
 	"github.com/HerbHall/netvantage/internal/gateway"
@@ -185,7 +186,8 @@ func main() {
 	readyCheck := server.ReadinessChecker(func(ctx context.Context) error {
 		return db.DB().PingContext(ctx)
 	})
-	srv := server.New(addr, reg, logger, readyCheck, authHandler)
+	dashboardHandler := dashboard.Handler()
+	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler)
 
 	// Start server in background
 	go func() {

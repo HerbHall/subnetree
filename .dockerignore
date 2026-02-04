@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Build outputs
+bin/
+dist/
+
+# Node modules (we'll install fresh in the container)
+web/node_modules/
+
+# Test files and coverage
+coverage/
+*.test.go
+*_test.go
+testdata/
+
+# Documentation (not needed in image)
+docs/
+*.md
+!README.md
+
+# CI/CD configs
+.github/
+.gitlab-ci.yml
+Makefile
+
+# Local development files
+.env
+.env.local
+*.local.yaml
+config.local.yaml
+
+# Secrets (never include in image)
+secrets/
+*.pem
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (avoid recursive copy issues)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

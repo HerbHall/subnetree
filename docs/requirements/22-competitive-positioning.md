@@ -1,8 +1,14 @@
 ## Competitive Positioning
 
+### Target Market
+
+NetVantage targets **homelabbers and small business IT administrators** managing single-subnet networks (15–200 devices). The goal is not to compete with enterprise monitoring platforms, but to be the best "single pane of glass" for users who currently cobble together multiple tools or go without visibility entirely.
+
+The backend architecture is designed for scalability and acquisition-readiness, but the current product focus is delighting smaller-scale users with an exceptional experience.
+
 ### Market Gap
 
-No existing source-available tool combines all five capabilities in a single self-hosted application:
+No existing source-available tool combines all five capabilities in a single self-hosted application for the homelab/small business market:
 
 1. Device discovery (network scanning, SNMP, mDNS, auto-topology)
 2. Monitoring (uptime, metrics, dependency-aware alerting)
@@ -22,6 +28,35 @@ No existing source-available tool combines all five capabilities in a single sel
 | **Uptime Kuma** | Best UX in monitoring, beautiful, 50K+ GitHub stars | Monitoring only, no SNMP, no agents, no discovery, SQLite scale limits | None |
 | **Domotz** | Best MSP remote access, TCP tunneling | Proprietary, cloud-dependent, $21/site/month, shallow monitoring | Basic device fingerprinting; no anomaly detection |
 | **Netbox** | Gold standard IPAM/DCIM, excellent API | Documentation only, no monitoring, no remote access | None |
+| **Home Assistant** | Best smart home integration, huge community | IoT/automation focus, not network infrastructure monitoring | Automations, not analytics |
+
+### Positioning: Dashboard & Aggregator
+
+NetVantage is not trying to replace homelab staples like Home Assistant, UnRAID, or Proxmox. Instead, it serves as a **homelab command center** that:
+
+- Aggregates status from multiple platforms into a single dashboard
+- Provides quick-launch access to other tools' UIs
+- Adds network discovery and monitoring that those platforms lack
+- Stores credentials for secure, one-click access to any device
+
+**Complementary tools (integrate with, don't replace):**
+
+- **Home Assistant** — Pull entity states, display tiles, link to HA dashboard
+- **UnRAID** — Pull array/Docker/VM status, link to UnRAID UI
+- **Proxmox VE** — Pull VM/LXC health, link to Proxmox UI
+
+**Alternatives (similar problem space):**
+
+- **Uptime Kuma** — Beautiful monitoring UX, but no discovery, no remote access, no credentials
+- **MeshCentral** — Free RMM/remote access, but weak discovery and dated UI
+- **Heimdall / Homarr / Homepage** — Dashboard launchers, but no monitoring or discovery
+
+### When NOT to Use NetVantage
+
+- **Large enterprises (100+ sites, 5,000+ devices)** — Use Zabbix, LibreNMS, or commercial tools like Datadog
+- **SNMP-only deep network monitoring** — LibreNMS or Observium are more mature for pure SNMP workflows
+- **Cloud-native / no on-prem** — Use Datadog, New Relic, or similar SaaS
+- **Pure IoT/home automation** — Home Assistant is better for smart home control; NetVantage is for network visibility
 
 ### Adoption Formula (From Research)
 
@@ -41,7 +76,7 @@ Time to First Value < 10 minutes     (Uptime Kuma, PRTG model)
 
 **Analytics Differentiation:** No self-hosted / source-available monitoring tool offers built-in adaptive baselines, anomaly detection, or LLM integration. Enterprise SaaS tools (Datadog, Dynatrace) charge $15-30+/host/month for these capabilities. NetVantage delivers the same core algorithms (EWMA, Holt-Winters, topology-aware correlation) at zero additional cost in the free tier.
 
-### User Segment Priorities
+### User Segment Priorities (Current Focus)
 
 | Segment | Top Need | NetVantage Differentiator | Typical Hardware | Typical Devices |
 |---------|----------|--------------------------|-----------------|----------------|
@@ -49,5 +84,13 @@ Time to First Value < 10 minutes     (Uptime Kuma, PRTG model)
 | **Home Lab (enthusiast)** | Single pane of glass replacing 3–5 separate tools | Discovery + monitoring + topology + remote access + credential vault | N100 mini PC, Proxmox VM, refurb enterprise micro | 50–200 (managed switches, VLANs, 20–50 containers, NAS, cameras, IoT) |
 | **Prosumer / Remote Worker** | Network reliability for income-dependent connectivity | Latency monitoring, ISP vs VPN diagnostics, Tailscale integration | N100 mini PC, cloud VPS | 20–75 (work + personal + IoT, Tailscale mesh) |
 | **Small Biz IT (5–25 employees)** | Minimal maintenance + zero-config monitoring | Setup wizard + sensible defaults + auto-discovery | Existing server VM, NAS Docker, or $200 mini PC | 20–90 (router, switches, APs, endpoints, printers, VoIP phones) |
-| **Small Biz IT (25–50 employees)** | Proactive monitoring to prevent outages | SNMP monitoring + dependency-aware alerting + reports | VM on existing Hyper-V/Proxmox host | 50–170 (firewall, managed switches, APs, servers, endpoints, UPS) |
-| **MSP** | Multi-tenant + remote access without VPN | Tenant isolation + Gateway module + low per-site cost | Cloud VPS or on-prem appliance per client site | 50–500 per client, 500–5,000 across portfolio |
+
+### Future Expansion (Architecture Supports, Not Current Focus)
+
+The backend architecture supports larger deployments, but these segments are not the current product focus:
+
+| Segment | Notes |
+|---------|-------|
+| **Small Biz IT (25–50 employees)** | Supported by architecture; not actively optimized for |
+| **MSP / Multi-tenant** | Multi-tenant isolation is architecturally possible; would require additional work |
+| **Enterprise** | Out of scope; use Zabbix, LibreNMS, or commercial tools |

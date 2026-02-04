@@ -1,0 +1,80 @@
+# NetVantage Docker Compose Configuration
+# Quick start: docker-compose up -d
+#
+# Access the web UI at http://localhost:8080
+# First-time setup will prompt you to create an admin account.
+
+services:
+  netvantage:
+    image: ghcr.io/herbhall/netvantage:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    container_name: netvantage
+    restart: unless-stopped
+    ports:
+      # Web UI and REST API
+      - "8080:8080"
+      # gRPC for Scout agents (optional - only needed if using agents)
+      - "9090:9090"
+    volumes:
+      # Persistent data (database, config, logs)
+      - netvantage-data:/data
+      # Optional: mount custom config file
+      # - ./config.yaml:/data/config.yaml:ro
+    environment:
+      # Database location (SQLite file path)
+      - NV_DATABASE_DSN=/data/netvantage.db
+      # Log level: debug, info, warn, error
+      - NV_LOG_LEVEL=info
+      # Performance profile: auto, micro, small, medium, large
+      # - NV_PERFORMANCE_PROFILE=auto
+      # Optional: Vault passphrase (for credential encryption)
+      # - NV_VAULT_PASSPHRASE_FILE=/run/secrets/vault_passphrase
+    # For network scanning (ARP, ICMP) to work properly:
+    # Option 1: Host network mode (recommended for home use)
+    # network_mode: host
+    # Option 2: Add capabilities (works but may have limitations)
+    cap_add:
+      - NET_RAW       # Required for ICMP ping
+      - NET_ADMIN     # Required for ARP scanning
+    # Optional: secrets for vault passphrase
+    # secrets:
+    #   - vault_passphrase
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# Persistent volume for database and configuration
+volumes:
+  netvantage-data:
+    driver: local
+
+# Optional: Define secrets for sensitive configuration
+# secrets:
+#   vault_passphrase:
+#     file: ./secrets/vault_passphrase.txt
+
+# ============================================================================
+# Alternative: Host network mode for full network scanning capability
+# ============================================================================
+# If you need unrestricted network scanning (recommended for homelabs):
+#
+# services:
+#   netvantage:
+#     image: ghcr.io/herbhall/netvantage:latest
+#     network_mode: host
+#     volumes:
+#       - netvantage-data:/data
+#     environment:
+#       - NV_DATABASE_DSN=/data/netvantage.db
+#
+# Note: With host mode, the container uses the host's network stack directly.
+# Ports are accessed directly (no port mapping needed).

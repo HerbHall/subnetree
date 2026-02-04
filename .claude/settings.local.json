@@ -83,7 +83,31 @@
       "Bash(file:*)",
       "mcp__memory__create_relations",
       "mcp__MCP_DOCKER__start_process",
-      "Read(//c/Users/Herb/.claude/**)"
+      "Read(//c/Users/Herb/.claude/**)",
+      "Bash(git branch:*)",
+      "Bash(ls:*)",
+      "mcp__memory__read_graph",
+      "Bash(chmod:*)",
+      "Bash(bash ~/.claude/hooks/autolearn-inject.sh)",
+      "Bash(bash:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(npm install:*)",
+      "Bash(pnpm create:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(nvm install:*)",
+      "Bash(nvm use:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(pnpm run type-check:*)",
+      "Bash(pnpm run lint)",
+      "Bash(pnpm run build:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(make lint:*)",
+      "Bash(golangci-lint run:*)"
     ]
   }
 }

@@ -1,8 +1,12 @@
-.PHONY: build build-server build-scout test test-race test-coverage lint run-server run-scout proto clean license-check
+.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto clean license-check
 
 # Binary names
 SERVER_BIN=netvantage
 SCOUT_BIN=scout
+
+# Frontend
+PNPM=pnpm
+WEB_DIR=web
 
 # Version injection
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -16,13 +20,26 @@ LDFLAGS=-ldflags "-s -w \
 	-X $(VERSION_PKG).GitCommit=$(COMMIT) \
 	-X $(VERSION_PKG).BuildDate=$(DATE)"
 
-build: build-server build-scout
+# Full build: frontend first, then Go binaries
+build: build-dashboard build-server build-scout
 
 build-server:
 	go build $(LDFLAGS) -o bin/$(SERVER_BIN) ./cmd/netvantage/
 
 build-scout:
 	go build $(LDFLAGS) -o bin/$(SCOUT_BIN) ./cmd/scout/
+
+# Frontend targets
+build-dashboard:
+	cd $(WEB_DIR) && $(PNPM) install --frozen-lockfile && $(PNPM) run build
+	rm -rf internal/dashboard/dist
+	cp -r $(WEB_DIR)/dist internal/dashboard/dist
+
+dev-dashboard:
+	cd $(WEB_DIR) && $(PNPM) install && $(PNPM) run dev
+
+lint-dashboard:
+	cd $(WEB_DIR) && $(PNPM) run lint && $(PNPM) run type-check
 
 test:
 	go test ./...
@@ -61,5 +78,5 @@ license-report:
 	@go-licenses report ./... --template=csv 2>/dev/null || go-licenses csv ./... 2>/dev/null
 
 clean:
-	rm -rf bin/
+	rm -rf bin/ $(WEB_DIR)/dist $(WEB_DIR)/node_modules/.cache internal/dashboard/dist
 	go clean

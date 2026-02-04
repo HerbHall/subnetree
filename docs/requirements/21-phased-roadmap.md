@@ -1,5 +1,9 @@
 ## Phased Roadmap
 
+**Target Audience:** Homelabbers and small business IT administrators. The roadmap prioritizes features that serve single-subnet home networks (15–200 devices) while maintaining a scalable, acquisition-ready architecture.
+
+**Key Integration Targets:** Home Assistant, UnRAID, Proxmox VE -- the homelab community staples that differentiate this project from enterprise-focused tools.
+
 ### Phase 0: Pre-Development Infrastructure
 
 **Goal:** Establish project infrastructure, tooling, and processes before writing product code. Everything here is a prerequisite for efficient Phase 1 development.
@@ -333,9 +337,16 @@
 - [ ] Evaluate Home Assistant API integration patterns and authentication
 - [ ] Research RBAC frameworks for Go (Casbin vs custom implementation)
 
-- [ ] MQTT broker integration (Eclipse Paho)
-- [ ] Home Assistant API integration
-- [ ] Scout: Lightweight IoT agent
+#### Homelab Platform Integrations
+
+NetVantage is a dashboard and aggregator, not a replacement for homelab tools. These integrations provide status-at-a-glance and quick-launch access to other platforms:
+
+- [ ] MQTT integration (Eclipse Paho) -- subscribe to status updates from IoT devices
+- [ ] Home Assistant integration -- pull entity states, display status tiles, quick-launch to HA dashboard
+- [ ] UnRAID integration -- pull Docker/VM status, disk health, array status; quick-launch to UnRAID UI
+- [ ] Proxmox VE integration -- pull VM/LXC status, node health; quick-launch to Proxmox UI
+- [ ] Generic service tiles -- configurable quick-launch links with optional health check (HTTP 200)
+- [ ] Scout: Lightweight agent for devices without native integrations
 - [ ] API: Public REST API with API key authentication
 - [ ] RBAC: Custom roles with granular permissions
 - [ ] Audit logging (all state-changing operations)

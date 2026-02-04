@@ -91,6 +91,68 @@ changelog:
     - title: Other
       order: 999
 
+dockers:
+  - id: netvantage-amd64
+    ids:
+      - netvantage
+    goos: linux
+    goarch: amd64
+    use: buildx
+    image_templates:
+      - "ghcr.io/herbhall/netvantage:{{ .Tag }}-amd64"
+      - "ghcr.io/herbhall/netvantage:latest-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title=NetVantage"
+      - "--label=org.opencontainers.image.description=Network monitoring"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/HerbHall/netvantage"
+      - "--label=org.opencontainers.image.licenses=BSL-1.1"
+    dockerfile: Dockerfile.goreleaser
+
+  - id: netvantage-arm64
+    ids:
+      - netvantage
+    goos: linux
+    goarch: arm64
+    use: buildx
+    image_templates:
+      - "ghcr.io/herbhall/netvantage:{{ .Tag }}-arm64"
+      - "ghcr.io/herbhall/netvantage:latest-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title=NetVantage"
+      - "--label=org.opencontainers.image.description=Network monitoring"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/HerbHall/netvantage"
+      - "--label=org.opencontainers.image.licenses=BSL-1.1"
+    dockerfile: Dockerfile.goreleaser
+
+docker_manifests:
+  - name_template: "ghcr.io/herbhall/netvantage:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/herbhall/netvantage:{{ .Tag }}-amd64"
+      - "ghcr.io/herbhall/netvantage:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/herbhall/netvantage:latest"
+    image_templates:
+      - "ghcr.io/herbhall/netvantage:latest-amd64"
+      - "ghcr.io/herbhall/netvantage:latest-arm64"
+
+sboms:
+  - artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    output: true
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+
 release:
   github:
     owner: HerbHall
@@ -99,6 +161,17 @@ release:
   name_template: "{{.Tag}}"
   header: |
     ## NetVantage {{.Version}}
+
+    ### Installation
+
+    **Docker (recommended):**
+    ```bash
+    docker run -d -p 8080:8080 \
+      -v netvantage-data:/data \
+      ghcr.io/herbhall/netvantage:{{ .Tag }}
+    ```
+
+    **Binary:** Download the appropriate archive for your platform below.
 
     See the [full changelog](https://github.com/HerbHall/netvantage/compare/{{.PreviousTag}}...{{.Tag}}) for all changes.
   footer: |

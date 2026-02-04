@@ -4,9 +4,15 @@
 
 **Free for personal and home use forever.** This is a firm commitment, not a marketing tactic. Home lab enthusiasts, students, and hobbyists will always have full access to every feature at no cost. This community is the foundation of adoption, feedback, and evangelism.
 
-**Commercial for business use.** Organizations using NetVantage in a professional capacity (MSPs, enterprises, commercial IT operations) are the revenue target. Commercial tiers add multi-user, multi-tenant, SSO, RBAC, audit logging, and priority support -- features businesses need that home users typically don't.
+**Built for acquisition, not subscription revenue.** The primary goal is to build an excellent product with a passionate community, then position it for acquisition by a larger platform company. The codebase, documentation, community, and clean IP chain are the product -- not just the software.
 
-**Built for acquisition.** The codebase, documentation, community, and clean IP chain are the product -- not just the software. Every architectural decision, license choice, and documentation effort is made with the awareness that this project is designed to be attractive for acquisition by a larger platform company.
+The founder is not planning to build or operate a subscription business. However, the commercial licensing structure and pricing tiers are maintained and ready for a future owner who may want to monetize that way. This keeps options open for acquirers without burdening the founder with sales/support infrastructure.
+
+**Commercial licensing is an option, not the goal.** The BSL 1.1 license and tiered pricing structure exist to:
+
+1. Protect the project from competitors offering it as a hosted service
+2. Make the project attractive to acquirers who want a revenue path
+3. Provide a clear commercial option if the founder's plans change
 
 ### Licensing & Intellectual Property
 
@@ -78,18 +84,19 @@ d:\NetVantage\
       LICENSE               # Apache 2.0 (template)
 ```
 
-### Pricing Model: Hybrid (No Device Limits)
+### Pricing Model: Ready for Future Owner
 
-All tiers have **unlimited devices and unlimited customization**. Pricing based on team/business features, not scale or functionality. A home user with 500 devices gets the same core capabilities as an enterprise with 5,000.
+The pricing structure below is maintained as a ready-to-use commercial model for an acquirer or future pivot -- not as an active revenue stream the founder plans to operate. All tiers have **unlimited devices and unlimited customization**. Pricing is based on team/business features, not scale or functionality.
 
 | Tier | Price | Target | Features |
 |------|-------|--------|----------|
-| **Community** | Free forever | Home, personal, educational | All modules, all plugins, unlimited devices, single user, full customization, community support |
-| **Team** | $9/month | Small business, teams | + Multi-user (up to 5), OIDC/SSO, scheduled reports, email support |
-| **Professional** | $29/month | MSPs, mid-size orgs | + Multi-tenant (up to 10 sites), RBAC, audit logging, API access, priority support |
-| **Enterprise** | $99/month | Large organizations | + Unlimited tenants, custom branding, dedicated support, SLA |
+| **Community** | Free forever | Homelabbers, personal, educational | All modules, all plugins, unlimited devices, single user, full customization, community support |
+| **Team** | $9/month | Small business, household teams | + Multi-user (up to 5), OIDC/SSO, scheduled reports, email support |
+| **Professional** | $29/month | Small business IT, consultants | + RBAC, audit logging, API access, priority support |
 
-**Principle:** The free tier is never crippled. It includes every module, every plugin, and every customization option. Paid tiers add collaboration and business operations features (multi-user, multi-tenant, SSO, audit trails) that are genuinely unnecessary for a solo home user.
+**Principle:** The free tier is never crippled. It includes every module, every plugin, and every customization option. Paid tiers add collaboration and business operations features (multi-user, SSO, audit trails) that are genuinely unnecessary for a solo home user.
+
+**Why maintain pricing if not selling?** Acquirers want to see a clear path to revenue. Having a defined, reasonable pricing structure signals that commercialization has been thought through. It also keeps the door open if circumstances change.
 
 ### Community Contributions
 
@@ -203,7 +210,7 @@ Sequence matters. Announce only after the pre-launch checklist is complete.
 | **Community** | Active GitHub discussions, contributor guidelines, plugin ecosystem | 10+ contributors, < 7 day median issue response, Discord active |
 | **Legal** | BSL 1.1 core, Apache 2.0 SDK, CLA, trademark, dependency audit | go-licenses clean in CI, CLA on 100% of contributions, trademark filed |
 | **Adoption metrics** | Tracked and growing user base | 1,000+ stars, 1,000+ Docker pulls, 100+ verified installs (telemetry) |
-| **Revenue** | Demonstrable paid tier adoption | First paid user, documented conversion path, pricing page live |
+| **Revenue readiness** | Clear path to monetization (not required to execute) | Pricing structure defined, license terms clear, commercial features identified |
 | **Operational maturity** | Bus factor > 1, reproducible builds, release process | 10+ contributors, GoReleaser automated, SBOM on every release |
 
 ### Success Metrics & Measurement
@@ -365,7 +372,6 @@ Concrete milestones that signal project health at each stage:
 | **100 Docker pulls** | Early adoption | 1–2 months post-launch | People are trying it |
 | **1,000 Docker pulls** | Real traction | 6–12 months | Consistent adoption |
 | **100 active installs** | Verified via opt-in telemetry | Phase 2 | Real-world usage proof |
-| **First paid user** | Team or Professional tier | Phase 2+ | Revenue validation |
 | **5 case studies** | User testimonials or "show your setup" posts | 12 months | Social proof for acquirers |
 | **Clean security audit** | Zero critical vulnerabilities, documented scan history | Ongoing | Due diligence readiness |
 
