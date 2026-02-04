@@ -309,7 +309,8 @@ func TestShutdown_DrainsInFlightRequests(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/test/slow", addr))
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/api/v1/test/slow", addr), http.NoBody)
+		resp, err := client.Do(req)
 		if err != nil {
 			errCh <- err
 			return
@@ -382,7 +383,8 @@ func TestShutdown_RejectsNewConnections(t *testing.T) {
 
 	// Verify server is accepting connections.
 	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get(fmt.Sprintf("http://%s/healthz", addr))
+	req, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/healthz", addr), http.NoBody)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("pre-shutdown request failed: %v", err)
 	}
@@ -400,8 +402,10 @@ func TestShutdown_RejectsNewConnections(t *testing.T) {
 	}
 
 	// New requests should fail after shutdown.
-	_, err = client.Get(fmt.Sprintf("http://%s/healthz", addr))
+	req2, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/healthz", addr), http.NoBody)
+	resp2, err := client.Do(req2)
 	if err == nil {
+		resp2.Body.Close()
 		t.Error("expected request after shutdown to fail")
 	}
 }
@@ -452,7 +456,11 @@ func TestShutdown_TimeoutEnforced(t *testing.T) {
 	// Start a request that will block forever.
 	go func() {
 		client := &http.Client{Timeout: 0}
-		client.Get(fmt.Sprintf("http://%s/api/v1/test/slow", addr))
+		req, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/api/v1/test/slow", addr), http.NoBody)
+		resp, err := client.Do(req)
+		if err == nil && resp != nil {
+			resp.Body.Close()
+		}
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -511,7 +519,8 @@ func TestShutdown_MultipleInFlightRequests(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/test/slow", addr))
+			req, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/api/v1/test/slow", addr), http.NoBody)
+			resp, err := client.Do(req)
 			if err == nil {
 				resp.Body.Close()
 			}
