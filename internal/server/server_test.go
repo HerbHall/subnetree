@@ -310,7 +310,7 @@ func TestShutdown_DrainsInFlightRequests(t *testing.T) {
 
 	go func() {
 		req, _ := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/api/v1/test/slow", addr), http.NoBody)
-		resp, err := client.Do(req)
+		resp, err := client.Do(req) //nolint:bodyclose // Body closed in select below after channel receive
 		if err != nil {
 			errCh <- err
 			return
