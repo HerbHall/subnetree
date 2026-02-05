@@ -275,6 +275,7 @@
 - [ ] `nvbuild` tool for custom binaries with third-party modules
 - [ ] OpenTelemetry tracing
 - [ ] Plugin developer SDK and documentation
+- [ ] Interface Catalog: document all plugin interface types (API, Event, Config, Data) with versioning policy
 - [ ] Dashboard: monitoring views, alert management, metric graphs
 - [ ] MFA/TOTP authentication support
 - [ ] SBOM generation (Syft) and SLSA provenance for releases
@@ -290,6 +291,7 @@
 - [ ] Plausible Analytics (self-hosted or cloud): privacy-friendly website analytics for project site
 - [ ] Architecture Decision Records (ADRs): establish `docs/adr/` directory with template, document key decisions retroactively
 - [ ] SonarQube Community (optional): technical debt tracking if Go Report Card + golangci-lint prove insufficient
+- [ ] Modularity Metrics: establish baseline measures for plugin efficiency (shared components), flexibility (valid configurations), and agility (changes required for new features)
 
 ### Phase 3: Remote Access + Credential Vault
 
@@ -353,6 +355,7 @@ NetVantage is a dashboard and aggregator, not a replacement for homelab tools. T
 - [ ] Configuration backup for network devices (Oxidized-style)
 - [ ] Plugin marketplace: curated index, `nvbuild` integration
 - [ ] Plugin marketplace: AI/analytics plugin category
+- [ ] Plugin Compatibility Matrix: define and publish tested/supported plugin combinations with configuration rules
 - [ ] HashiCorp go-plugin support for process-isolated third-party plugins
 - [ ] On-device inference: ONNX Runtime integration via onnxruntime_go
 - [ ] On-device inference: device fingerprinting model (Python training pipeline + ONNX export)

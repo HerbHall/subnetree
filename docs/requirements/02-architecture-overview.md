@@ -158,3 +158,45 @@ The codebase maps to hexagonal (ports and adapters) architecture:
 | **Wiring** (composition root) | `cmd/netvantage/main.go` | Constructor calls, dependency injection |
 
 `pkg/` is public and stable (Apache 2.0 licensed). `internal/` is private and free to change. This boundary is enforced by Go's visibility rules.
+
+### Industry Pattern Alignment
+
+NetVantage's architecture deliberately aligns with established industry patterns. See [ADR-0006](../adr/0006-architecture-pattern-adoption.md) for the full decision record.
+
+#### SOLID Principles (Code Level)
+
+Every Go convention above maps to a SOLID principle:
+
+| Principle | Convention | Rationale |
+|-----------|------------|-----------|
+| **Single Responsibility** | One module = one role | Recon scans, Vault stores credentials, Pulse monitors -- no overlap |
+| **Open/Closed** | Plugin interface | Add capabilities by implementing `plugin.Plugin`, not modifying core |
+| **Liskov Substitution** | Contract test suites | Any `plugin.Plugin` implementation is drop-in replaceable |
+| **Interface Segregation** | Optional capability interfaces | Plugins implement only what they need (`HTTPProvider`, `EventSubscriber`) |
+| **Dependency Inversion** | Manual DI + consumer-side interfaces | High-level modules depend on abstractions in `pkg/plugin/`, not concrete implementations |
+
+#### MACH Alignment (System Level)
+
+NetVantage exhibits all four MACH characteristics:
+
+| MACH Pillar | Implementation | Notes |
+|-------------|----------------|-------|
+| **Microservices** | Plugin architecture | Each plugin is independently lifecycle-managed with its own Init/Start/Stop |
+| **API-first** | `HTTPProvider` / `GRPCProvider` | All functionality exposed via versioned APIs; UI is a client |
+| **Cloud-native** | Go binary + Docker | Stateless server design, horizontal scaling ready, containerized deployment |
+| **Headless** | React SPA in `web/` | Dashboard is completely decoupled; consumes REST API like any other client |
+
+**Deviation from strict MACH:** We deploy as a single binary, not distributed microservices. This is intentional -- NetVantage targets home-lab and single-tenant deployments where operational simplicity outweighs distributed scaling benefits. The plugin boundaries maintain logical separation without physical distribution overhead.
+
+#### MOSA Principles (Strategic)
+
+MOSA (Modular Open Systems Approach) informs our SDK and ecosystem strategy:
+
+| MOSA Concept | NetVantage Application |
+|--------------|------------------------|
+| **Modular design** | Plugins are severable -- can be replaced without core changes |
+| **Open standards** | REST (OpenAPI), gRPC (protobuf), JSON, YAML -- no proprietary formats |
+| **Key interfaces** | `plugin.Plugin` is the contract boundary; versioned with `PluginAPIVersion` |
+| **Certification** | Contract tests (`plugintest.TestPluginContract`) validate implementations |
+
+See [STANDARDS.md](../STANDARDS.md) for our commitment to standards and documentation of any deviations.

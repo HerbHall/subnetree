@@ -114,7 +114,9 @@
       "Bash(curl:*)",
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "WebFetch(domain:www.modularmanagement.com)",
+      "Bash(code:*)"
     ]
   }
 }

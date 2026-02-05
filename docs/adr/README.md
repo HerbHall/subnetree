@@ -22,6 +22,8 @@ We use [MADR](https://adr.github.io/madr/) (Markdown Any Decision Records) -- a 
 | 0002 | [SQLite-First Database Strategy](0002-sqlite-first-database.md) | Accepted | 2025-01 |
 | 0003 | [Plugin Architecture (Caddy Model)](0003-plugin-architecture-caddy-model.md) | Accepted | 2025-01 |
 | 0004 | [Integer-Based Protocol Versioning](0004-integer-protocol-versioning.md) | Accepted | 2025-01 |
+| 0005 | [Hugo Website with GitHub Pages](0005-hugo-website-github-pages.md) | Accepted | 2025-01 |
+| 0006 | [Architecture Pattern Adoption (MACH + SOLID)](0006-architecture-pattern-adoption.md) | Accepted | 2026-02 |
 
 ## Lifecycle
 
