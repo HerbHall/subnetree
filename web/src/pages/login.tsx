@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
+import { checkSetupRequired } from '@/api/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,11 +12,22 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSetup, setCheckingSetup] = useState(true)
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
   const location = useLocation()
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
+
+  useEffect(() => {
+    checkSetupRequired()
+      .then((required) => {
+        if (required) {
+          navigate('/setup', { replace: true })
+        }
+      })
+      .finally(() => setCheckingSetup(false))
+  }, [navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -29,6 +41,16 @@ export function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingSetup) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Checking setup status...
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
