@@ -1,6 +1,6 @@
-## API Design
+# API Design
 
-### Standards
+## Standards
 
 - **Error responses:** RFC 7807 Problem Details (`application/problem+json`)
 - **Pagination:** Cursor-based with `PaginatedResponse<T>` wrapper
@@ -22,7 +22,7 @@
 - **Idempotency:** `Idempotency-Key` header supported on POST endpoints (device creation, credential storage) for safe retries. Server stores key-to-response mapping for 24 hours.
 - **Conditional requests:** `ETag` + `If-None-Match` on GET endpoints for client-side cache validation. Reduces bandwidth for polling clients.
 
-### Error Response Format
+## Error Response Format
 
 ```json
 {
@@ -34,7 +34,7 @@
 }
 ```
 
-### Pagination Format
+## Pagination Format
 
 ```json
 {
@@ -48,14 +48,14 @@
 }
 ```
 
-### REST API
+## REST API
 
 Base path: `/api/v1/`
 
-#### Core Endpoints
+### Core Endpoints
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+| -------- | ------ | ----------- |
 | `/healthz` | GET | Liveness probe (always 200 if process is alive) |
 | `/readyz` | GET | Readiness probe (checks DB, plugin health) |
 | `/metrics` | GET | Prometheus metrics |
@@ -64,10 +64,10 @@ Base path: `/api/v1/`
 | `/api/v1/plugins/{name}/enable` | POST | Enable a plugin at runtime |
 | `/api/v1/plugins/{name}/disable` | POST | Disable a plugin at runtime |
 
-#### Auth Endpoints
+### Auth Endpoints
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+| -------- | ------ | ----------- |
 | `/api/v1/auth/login` | POST | Authenticate, returns JWT pair |
 | `/api/v1/auth/refresh` | POST | Refresh access token |
 | `/api/v1/auth/logout` | POST | Revoke refresh token |
@@ -76,10 +76,10 @@ Base path: `/api/v1/`
 | `/api/v1/users` | GET | List users (admin only) |
 | `/api/v1/users/{id}` | GET/PUT/DELETE | User management (admin only) |
 
-#### Device Endpoints
+### Device Endpoints
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+| -------- | ------ | ----------- |
 | `/api/v1/devices` | GET | List devices (paginated, filterable) |
 | `/api/v1/devices/{id}` | GET | Device details with related data |
 | `/api/v1/devices` | POST | Create device manually |
@@ -87,10 +87,10 @@ Base path: `/api/v1/`
 | `/api/v1/devices/{id}` | DELETE | Remove device |
 | `/api/v1/devices/{id}/topology` | GET | Device's topology connections |
 
-#### Plugin Endpoints (mounted under `/api/v1/{plugin-name}/`)
+### Plugin Endpoints (mounted under `/api/v1/{plugin-name}/`)
 
 | Endpoint | Method | Plugin | Description |
-|----------|--------|--------|-------------|
+| -------- | ------ | ------ | ----------- |
 | `/recon/scan` | POST | Recon | Trigger network scan |
 | `/recon/scans` | GET | Recon | List scan history |
 | `/recon/topology` | GET | Recon | Full topology graph |
@@ -110,7 +110,7 @@ Base path: `/api/v1/`
 | `/gateway/rdp/{device_id}` | WebSocket | Gateway | RDP session (via Guacamole) |
 | `/gateway/proxy/{device_id}` | ANY | Gateway | HTTP reverse proxy to device |
 
-### WebSocket Connection
+## WebSocket Connection
 
 - **Endpoint:** `GET /ws/` (upgrades to WebSocket)
 - **Authentication:** JWT token sent in the first message after connection (not in URL query params, which leak in server logs and browser history)
@@ -118,10 +118,10 @@ Base path: `/api/v1/`
 - **Reconnection:** Client implements exponential backoff (1s, 2s, 4s... max 30s) with jitter
 - **Heartbeat:** Server sends `ping` every 30s; client responds with `pong`. Connection closed after 3 missed pongs.
 
-### WebSocket Events (Dashboard Real-Time)
+## WebSocket Events (Dashboard Real-Time)
 
 | Event | Direction | Description |
-|-------|-----------|-------------|
+| ----- | --------- | ----------- |
 | `device.discovered` | Server -> Client | New device found during scan |
 | `device.status_changed` | Server -> Client | Device status update |
 | `scan.progress` | Server -> Client | Scan completion percentage |
@@ -131,7 +131,7 @@ Base path: `/api/v1/`
 | `agent.connected` | Server -> Client | Agent came online |
 | `agent.disconnected` | Server -> Client | Agent went offline |
 
-### gRPC Services (Agent Communication)
+## gRPC Services (Agent Communication)
 
 ```protobuf
 service ScoutService {
@@ -153,10 +153,10 @@ service ScoutService {
 - **Backward compatibility guarantee:** The server supports the current proto version and one version behind (N and N-1). This matches the agent-server compatibility rule.
 - **gRPC metadata:** The server sets `x-subnetree-version` in gRPC response metadata (trailing headers) for diagnostic purposes.
 
-### Rate Limits
+## Rate Limits
 
 | Endpoint Pattern | Rate | Burst | Reason |
-|-----------------|------|-------|--------|
+| ---------------- | ---- | ----- | ------ |
 | General API | 100/s | 200 | Dashboard makes parallel requests |
 | `POST /recon/scan` | 1/min | 2 | Scans are expensive network operations |
 | `POST /vault/credentials` | 10/s | 20 | Security-sensitive |
