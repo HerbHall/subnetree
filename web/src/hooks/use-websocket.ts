@@ -34,11 +34,11 @@ export function useWebSocket({
   const reconnectCountRef = useRef(0)
   const [reconnectCount, setReconnectCount] = useState(0)
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimerRef = useRef<number>()
+  const reconnectTimerRef = useRef<number | undefined>(undefined)
   const mountedRef = useRef(true)
   const onMessageRef = useRef(onMessage)
   const onErrorRef = useRef(onError)
-  const connectRef = useRef<() => void>()
+  const connectRef = useRef<(() => void) | undefined>(undefined)
 
   // Keep callback refs current without causing reconnects.
   useEffect(() => {

@@ -14,7 +14,7 @@ function testDevice(overrides: Partial<Device> & { id: string }): Device {
     device_type: 'unknown',
     os: '',
     status: 'online',
-    discovery_method: 'scan',
+    discovery_method: 'icmp',
     first_seen: new Date().toISOString(),
     last_seen: new Date().toISOString(),
     ...overrides,
