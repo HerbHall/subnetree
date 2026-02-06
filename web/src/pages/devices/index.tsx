@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DeviceCard, DeviceCardCompact } from '@/components/device-card'
 import { getTopology, triggerScan } from '@/api/devices'
+import { useScanStore } from '@/stores/scan'
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +48,7 @@ const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const activeScan = useScanStore((s) => s.activeScan)
 
   // State from URL params or defaults
   const statusFilter = (searchParams.get('status') as DeviceStatus | 'all') || 'all'
@@ -219,15 +221,15 @@ export function DevicesPage() {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending}
+            disabled={scanMutation.isPending || !!activeScan}
             className="gap-2"
           >
-            {scanMutation.isPending ? (
+            {scanMutation.isPending || activeScan ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <Radar className="h-4 w-4" />
             )}
-            {scanMutation.isPending ? 'Scanning...' : 'Scan Network'}
+            {activeScan ? 'Scanning...' : 'Scan Network'}
           </Button>
 
           <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>

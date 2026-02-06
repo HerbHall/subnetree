@@ -113,3 +113,47 @@ export interface Scan {
   devices_found: number
   error?: string
 }
+
+// ============================================================================
+// WebSocket Message Types
+// ============================================================================
+
+/** WebSocket message types for scan progress. */
+export type ScanWSMessageType =
+  | 'scan.started'
+  | 'scan.progress'
+  | 'scan.device_found'
+  | 'scan.completed'
+  | 'scan.error'
+
+/** WebSocket message envelope. */
+export interface ScanWSMessage {
+  type: ScanWSMessageType
+  scan_id: string
+  timestamp: string
+  data: ScanStartedData | ScanProgressData | ScanDeviceFoundData | ScanCompletedData | ScanErrorData
+}
+
+export interface ScanStartedData {
+  target_cidr: string
+  status: string
+}
+
+export interface ScanProgressData {
+  hosts_alive: number
+  subnet_size: number
+}
+
+export interface ScanDeviceFoundData {
+  device: Device
+}
+
+export interface ScanCompletedData {
+  total: number
+  online: number
+  ended_at: string
+}
+
+export interface ScanErrorData {
+  error: string
+}

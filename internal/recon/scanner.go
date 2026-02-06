@@ -86,6 +86,18 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		}
 	}
 
+	// Emit scan progress event (ping phase complete).
+	ones, bits := ipNet.Mask.Size()
+	subnetSize := 1<<(bits-ones) - 2 // subtract network + broadcast
+	if subnetSize < 1 {
+		subnetSize = 1
+	}
+	o.publishEvent(ctx, TopicScanProgress, &ScanProgressEvent{
+		ScanID:     scanID,
+		HostsAlive: len(alive),
+		SubnetSize: subnetSize,
+	})
+
 	// Check for scan error. Use background context for DB cleanup since
 	// the scan context may already be cancelled.
 	cleanupCtx := context.Background()
@@ -146,11 +158,12 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 			o.logger.Error("failed to link scan device", zap.Error(err))
 		}
 
-		// Emit device event.
+		// Emit device event with scan ID.
+		devEvent := &DeviceEvent{ScanID: scanID, Device: device}
 		if created {
-			o.publishEvent(ctx, TopicDeviceDiscovered, device)
+			o.publishEvent(ctx, TopicDeviceDiscovered, devEvent)
 		} else {
-			o.publishEvent(ctx, TopicDeviceUpdated, device)
+			o.publishEvent(ctx, TopicDeviceUpdated, devEvent)
 		}
 	}
 

@@ -37,6 +37,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/vault"
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/internal/webhook"
+	"github.com/HerbHall/subnetree/internal/ws"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
@@ -194,6 +195,10 @@ func main() {
 	settingsHandler := settings.NewHandler(settingsRepo, logger.Named("settings"))
 	logger.Info("settings service initialized", zap.String("component", "settings"))
 
+	// Create WebSocket handler for real-time scan updates
+	wsHandler := ws.NewHandler(tokens, bus, logger.Named("ws"))
+	logger.Info("websocket handler initialized", zap.String("component", "ws"))
+
 	// Create and start HTTP server
 	addr := viperCfg.GetString("server.host") + ":" + viperCfg.GetString("server.port")
 	if addr == ":" {
@@ -208,7 +213,7 @@ func main() {
 		return db.DB().PingContext(ctx)
 	})
 	dashboardHandler := dashboard.Handler()
-	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, settingsHandler)
+	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, settingsHandler, wsHandler)
 
 	// Start server in background
 	go func() {

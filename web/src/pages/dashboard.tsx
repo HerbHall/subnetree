@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   Monitor,
   Wifi,
@@ -22,7 +22,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeviceCardCompact } from '@/components/device-card'
+import { ScanProgressPanel } from '@/components/scan-progress-panel'
 import { getTopology, triggerScan, listScans } from '@/api/devices'
+import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
 
@@ -36,19 +38,23 @@ const REFRESH_OPTIONS = [
 export function DashboardPage() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [refreshInterval, setRefreshInterval] = useState(30 * 1000) // Default 30s
-  const [countdown, setCountdown] = useState(30)
-  const [activeScanId, setActiveScanId] = useState<string | null>(null)
-  const queryClient = useQueryClient()
+  const intervalSeconds = Math.floor(refreshInterval / 1000)
+  const [countdown, setCountdown] = useState(intervalSeconds)
+  const { activeScan: wsScan, progress: scanProgress } = useScanProgress()
 
-  // Countdown timer effect
-  useEffect(() => {
-    if (!autoRefresh) {
-      setCountdown(Math.floor(refreshInterval / 1000))
-      return
-    }
-
-    const intervalSeconds = Math.floor(refreshInterval / 1000)
+  // Reset countdown during render when dependencies change (React-recommended
+  // "adjust state during render" pattern avoids setState-in-effect).
+  const [prevAutoRefresh, setPrevAutoRefresh] = useState(autoRefresh)
+  const [prevInterval, setPrevInterval] = useState(refreshInterval)
+  if (autoRefresh !== prevAutoRefresh || refreshInterval !== prevInterval) {
+    setPrevAutoRefresh(autoRefresh)
+    setPrevInterval(refreshInterval)
     setCountdown(intervalSeconds)
+  }
+
+  // Countdown timer effect -- only the interval callback sets state.
+  useEffect(() => {
+    if (!autoRefresh) return
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -60,7 +66,7 @@ export function DashboardPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [autoRefresh, refreshInterval])
+  }, [autoRefresh, intervalSeconds])
 
   // Fetch topology data with auto-refresh
   const {
@@ -83,31 +89,9 @@ export function DashboardPage() {
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 
-  // Poll active scan status
-  const { data: activeScan } = useQuery({
-    queryKey: ['scan', activeScanId],
-    queryFn: () => (activeScanId ? import('@/api/devices').then((m) => m.getScan(activeScanId)) : null),
-    enabled: !!activeScanId,
-    refetchInterval: activeScanId ? 2000 : false,
-  })
-
-  // Clear active scan when completed
-  useEffect(() => {
-    if (activeScan && (activeScan.status === 'completed' || activeScan.status === 'failed')) {
-      setTimeout(() => {
-        setActiveScanId(null)
-        queryClient.invalidateQueries({ queryKey: ['topology'] })
-        queryClient.invalidateQueries({ queryKey: ['scans'] })
-      }, 1500)
-    }
-  }, [activeScan, queryClient])
-
   // Scan mutation
   const scanMutation = useMutation({
     mutationFn: () => triggerScan(),
-    onSuccess: (scan) => {
-      setActiveScanId(scan.id)
-    },
   })
 
   const devices = topology?.nodes || []
@@ -180,42 +164,21 @@ export function DashboardPage() {
           </div>
           <Button
             onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending || !!activeScanId}
+            disabled={scanMutation.isPending || !!wsScan}
             className="gap-2"
           >
-            {scanMutation.isPending || activeScanId ? (
+            {scanMutation.isPending || wsScan ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <Radar className="h-4 w-4" />
             )}
-            {activeScanId ? 'Scanning...' : 'Scan Network'}
+            {wsScan ? 'Scanning...' : 'Scan Network'}
           </Button>
         </div>
       </div>
 
       {/* Scan Progress Indicator */}
-      {activeScan && (activeScan.status === 'pending' || activeScan.status === 'running') && (
-        <Card className="border-blue-500/50 bg-blue-500/10">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-blue-400">
-                  Scanning {activeScan.target_cidr}...
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {activeScan.devices_found} devices found so far
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
-                  {activeScan.status}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <ScanProgressPanel activeScan={wsScan} progress={scanProgress} />
 
       {/* Error State */}
       {topologyError && (

@@ -37,6 +37,12 @@ func AuthMiddleware(tokens *TokenService) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Skip WebSocket paths (auth handled by WS handler via query param).
+			if strings.HasPrefix(r.URL.Path, "/api/v1/ws/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Skip public auth paths.
 			if publicPaths[r.URL.Path] {
 				next.ServeHTTP(w, r)
