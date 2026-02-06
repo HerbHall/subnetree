@@ -1,0 +1,972 @@
+basePath: /api/v1
+definitions:
+  github_com_HerbHall_subnetree_internal_services.NetworkInterface:
+    properties:
+      ip_address:
+        example: 192.168.1.100
+        type: string
+      mac:
+        example: 00:1a:2b:3c:4d:5e
+        type: string
+      name:
+        example: eth0
+        type: string
+      status:
+        description: '"up" or "down"'
+        example: up
+        type: string
+      subnet:
+        example: 192.168.1.0/24
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.APIProblem:
+    properties:
+      detail:
+        example: invalid request body
+        type: string
+      instance:
+        example: /api/v1/auth/login
+        type: string
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Bad Request
+        type: string
+      type:
+        example: https://subnetree.com/problems/bad-request
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.AgentInfo:
+    properties:
+      device_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      enrolled_at:
+        example: "2026-01-10T08:00:00Z"
+        type: string
+      id:
+        example: agent-550e8400
+        type: string
+      last_check_in:
+        example: "2026-01-15T10:30:00Z"
+        type: string
+      platform:
+        example: linux/amd64
+        type: string
+      status:
+        example: connected
+        type: string
+      version:
+        example: 0.1.0
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.Device:
+    properties:
+      agent_id:
+        example: agent-01
+        type: string
+      custom_fields:
+        additionalProperties:
+          type: string
+        type: object
+      device_type:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceType'
+        example: server
+      discovery_method:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DiscoveryMethod'
+        example: icmp
+      first_seen:
+        example: "2026-01-10T08:00:00Z"
+        type: string
+      hostname:
+        example: web-server-01
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      ip_addresses:
+        items:
+          type: string
+        type: array
+      last_seen:
+        example: "2026-01-15T10:30:00Z"
+        type: string
+      mac_address:
+        example: 00:1a:2b:3c:4d:5e
+        type: string
+      manufacturer:
+        example: Dell Inc.
+        type: string
+      notes:
+        example: Production web server
+        type: string
+      os:
+        example: Ubuntu 22.04
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStatus'
+        example: online
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.DeviceStatus:
+    enum:
+    - online
+    - offline
+    - degraded
+    - unknown
+    type: string
+    x-enum-varnames:
+    - DeviceStatusOnline
+    - DeviceStatusOffline
+    - DeviceStatusDegraded
+    - DeviceStatusUnknown
+  github_com_HerbHall_subnetree_pkg_models.DeviceType:
+    enum:
+    - server
+    - desktop
+    - laptop
+    - mobile
+    - router
+    - switch
+    - printer
+    - iot
+    - unknown
+    type: string
+    x-enum-varnames:
+    - DeviceTypeServer
+    - DeviceTypeDesktop
+    - DeviceTypeLaptop
+    - DeviceTypeMobile
+    - DeviceTypeRouter
+    - DeviceTypeSwitch
+    - DeviceTypePrinter
+    - DeviceTypeIoT
+    - DeviceTypeUnknown
+  github_com_HerbHall_subnetree_pkg_models.DiscoveryMethod:
+    enum:
+    - agent
+    - icmp
+    - arp
+    - snmp
+    - mdns
+    - upnp
+    - mqtt
+    - manual
+    type: string
+    x-enum-varnames:
+    - DiscoveryAgent
+    - DiscoveryICMP
+    - DiscoveryARP
+    - DiscoverySNMP
+    - DiscoverymDNS
+    - DiscoveryUPnP
+    - DiscoveryMQTT
+    - DiscoveryManual
+  github_com_HerbHall_subnetree_pkg_models.ScanResult:
+    properties:
+      devices:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        type: array
+      ended_at:
+        example: "2026-01-15T10:32:15Z"
+        type: string
+      id:
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        type: string
+      online:
+        example: 8
+        type: integer
+      started_at:
+        example: "2026-01-15T10:30:00Z"
+        type: string
+      status:
+        example: completed
+        type: string
+      subnet:
+        example: 192.168.1.0/24
+        type: string
+      total:
+        example: 12
+        type: integer
+    type: object
+  internal_auth.LoginRequest:
+    properties:
+      password:
+        example: securepassword123
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  internal_auth.LogoutRequest:
+    properties:
+      refresh_token:
+        example: dGhpcyBpcyBhIHJlZnJl...
+        type: string
+    type: object
+  internal_auth.RefreshRequest:
+    properties:
+      refresh_token:
+        example: dGhpcyBpcyBhIHJlZnJl...
+        type: string
+    type: object
+  internal_auth.Role:
+    enum:
+    - admin
+    - operator
+    - viewer
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleOperator
+    - RoleViewer
+  internal_auth.SetupRequest:
+    properties:
+      email:
+        example: admin@example.com
+        type: string
+      password:
+        example: securepassword123
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  internal_auth.TokenPair:
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      expires_in:
+        description: Access token TTL in seconds
+        example: 900
+        type: integer
+      refresh_token:
+        example: dGhpcyBpcyBhIHJlZnJl...
+        type: string
+    type: object
+  internal_auth.UpdateUserRequest:
+    properties:
+      disabled:
+        example: false
+        type: boolean
+      email:
+        example: user@example.com
+        type: string
+      role:
+        example: operator
+        type: string
+    type: object
+  internal_auth.User:
+    properties:
+      auth_provider:
+        example: local
+        type: string
+      created_at:
+        example: "2026-01-10T08:00:00Z"
+        type: string
+      disabled:
+        example: false
+        type: boolean
+      email:
+        example: admin@example.com
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      last_login:
+        example: "2026-01-15T10:30:00Z"
+        type: string
+      locked_until:
+        type: string
+      oidc_subject:
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/internal_auth.Role'
+        example: admin
+      username:
+        example: admin
+        type: string
+    type: object
+  internal_recon.ScanRequest:
+    properties:
+      subnet:
+        example: 192.168.1.0/24
+        type: string
+    type: object
+  internal_recon.TopologyEdge:
+    properties:
+      id:
+        example: link-001
+        type: string
+      link_type:
+        example: ethernet
+        type: string
+      source:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      speed:
+        example: 1000
+        type: integer
+      target:
+        example: 660f9500-f30c-52e5-b827-557766551111
+        type: string
+    type: object
+  internal_recon.TopologyGraph:
+    properties:
+      edges:
+        items:
+          $ref: '#/definitions/internal_recon.TopologyEdge'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/internal_recon.TopologyNode'
+        type: array
+    type: object
+  internal_recon.TopologyNode:
+    properties:
+      device_type:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceType'
+        example: server
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      ip_addresses:
+        items:
+          type: string
+        type: array
+      label:
+        example: web-server-01
+        type: string
+      mac_address:
+        example: 00:1a:2b:3c:4d:5e
+        type: string
+      manufacturer:
+        example: Dell Inc.
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStatus'
+        example: online
+    type: object
+  internal_server.HealthResponse:
+    properties:
+      service:
+        example: subnetree
+        type: string
+      status:
+        example: ok
+        type: string
+      version:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  internal_server.PluginResponse:
+    properties:
+      description:
+        example: Network discovery and scanning
+        type: string
+      name:
+        example: recon
+        type: string
+      version:
+        example: 0.1.0
+        type: string
+    type: object
+  internal_settings.ScanInterfaceRequest:
+    description: Request body for setting the network scan interface.
+    properties:
+      interface_name:
+        example: eth0
+        type: string
+    type: object
+  internal_settings.ScanInterfaceResponse:
+    description: Response containing the configured scan interface.
+    properties:
+      interface_name:
+        example: eth0
+        type: string
+    type: object
+  internal_settings.SettingsProblemDetail:
+    description: RFC 7807 Problem Details error response.
+    properties:
+      detail:
+        example: 'interface not found: eth99'
+        type: string
+      status:
+        example: 400
+        type: integer
+      title:
+        example: Bad Request
+        type: string
+      type:
+        example: https://subnetree.com/problems/settings-error
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Network monitoring and management platform API.
+  title: SubNetree API
+  version: 0.1.0
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with username and password to receive a JWT token
+        pair.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a refresh token to end a session.
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid refresh token for a new token pair (token rotation).
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /auth/setup:
+    post:
+      consumes:
+      - application/json
+      description: Create the first admin account. Only works when no users exist.
+      parameters:
+      - description: Admin account details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.SetupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_auth.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Initial setup
+      tags:
+      - auth
+  /dispatch/agents:
+    get:
+      description: Returns all registered Scout agents.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.AgentInfo'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List agents
+      tags:
+      - dispatch
+  /dispatch/agents/{id}:
+    get:
+      description: Returns a single Scout agent by ID.
+      parameters:
+      - description: Agent ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.AgentInfo'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get agent
+      tags:
+      - dispatch
+  /health:
+    get:
+      description: Returns service health status with version information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server.HealthResponse'
+      summary: Health check
+      tags:
+      - system
+  /plugins:
+    get:
+      description: Returns all registered plugins with their metadata.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_server.PluginResponse'
+            type: array
+      summary: List plugins
+      tags:
+      - system
+  /pulse/status:
+    get:
+      description: Returns the current status of the Pulse monitoring module.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Monitoring status
+      tags:
+      - pulse
+  /recon/scan:
+    post:
+      consumes:
+      - application/json
+      description: Trigger a new network scan on the given subnet. Returns immediately
+        with scan ID.
+      parameters:
+      - description: Subnet to scan
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.ScanRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Scan accepted
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.ScanResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Start scan
+      tags:
+      - recon
+  /recon/scans:
+    get:
+      description: Returns a paginated list of scan results.
+      parameters:
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.ScanResult'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List scans
+      tags:
+      - recon
+  /recon/scans/{id}:
+    get:
+      description: Returns a single scan result including discovered devices.
+      parameters:
+      - description: Scan ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.ScanResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get scan
+      tags:
+      - recon
+  /recon/topology:
+    get:
+      description: Returns the network topology as a graph of nodes and edges.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.TopologyGraph'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get topology
+      tags:
+      - recon
+  /settings/interfaces:
+    get:
+      description: Get a list of all network interfaces available on the server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of interfaces
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_internal_services.NetworkInterface'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: List network interfaces
+      tags:
+      - settings
+  /settings/scan-interface:
+    get:
+      description: Get the currently configured network interface for scanning.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Current scan interface
+          schema:
+            $ref: '#/definitions/internal_settings.ScanInterfaceResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Get scan interface
+      tags:
+      - settings
+    post:
+      consumes:
+      - application/json
+      description: Configure which network interface to use for scanning.
+      parameters:
+      - description: Interface to use
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_settings.ScanInterfaceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Interface configured
+          schema:
+            $ref: '#/definitions/internal_settings.ScanInterfaceResponse'
+        "400":
+          description: Invalid request or interface not found
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Set scan interface
+      tags:
+      - settings
+  /users:
+    get:
+      description: Returns all user accounts. Requires admin role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_auth.User'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: Delete a user account by ID. Requires admin role.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    get:
+      description: Returns a single user by ID. Requires admin role.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update a user's email, role, or disabled status. Requires admin
+        role.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated user fields
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT Bearer token. Format: "Bearer {token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

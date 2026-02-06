@@ -22,23 +22,23 @@ type Subnet struct {
 
 // ScanResult holds the result of a network scan.
 type ScanResult struct {
-	ID        string   `json:"id"`
-	Subnet    string   `json:"subnet"`
-	StartedAt string   `json:"started_at"`
-	EndedAt   string   `json:"ended_at,omitempty"`
-	Status    string   `json:"status"`
+	ID        string   `json:"id" example:"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`
+	Subnet    string   `json:"subnet" example:"192.168.1.0/24"`
+	StartedAt string   `json:"started_at" example:"2026-01-15T10:30:00Z"`
+	EndedAt   string   `json:"ended_at,omitempty" example:"2026-01-15T10:32:15Z"`
+	Status    string   `json:"status" example:"completed"`
 	Devices   []Device `json:"devices,omitempty"`
-	Total     int      `json:"total"`
-	Online    int      `json:"online"`
+	Total     int      `json:"total" example:"12"`
+	Online    int      `json:"online" example:"8"`
 }
 
 // AgentInfo represents the state of a connected Scout agent.
 type AgentInfo struct {
-	ID          string `json:"id"`
-	DeviceID    string `json:"device_id"`
-	Version     string `json:"version"`
-	Status      string `json:"status"`
-	LastCheckIn string `json:"last_check_in"`
-	EnrolledAt  string `json:"enrolled_at"`
-	Platform    string `json:"platform"`
+	ID          string `json:"id" example:"agent-550e8400"`
+	DeviceID    string `json:"device_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Version     string `json:"version" example:"0.1.0"`
+	Status      string `json:"status" example:"connected"`
+	LastCheckIn string `json:"last_check_in" example:"2026-01-15T10:30:00Z"`
+	EnrolledAt  string `json:"enrolled_at" example:"2026-01-10T08:00:00Z"`
+	Platform    string `json:"platform" example:"linux/amd64"`
 }

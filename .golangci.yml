@@ -42,3 +42,12 @@ issues:
     - path: cmd/
       linters:
         - noctx  # CLI entry points don't always need request context
+    - path: api/swagger/
+      linters:
+        - errcheck
+        - gosec
+        - gocritic
+        - govet
+        - staticcheck
+        - unused
+        - misspell

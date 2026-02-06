@@ -57,7 +57,7 @@ func newTestServer(ready ReadinessChecker) *Server {
 			}},
 		},
 	}
-	return New("127.0.0.1:0", plugins, logger, ready, nil, nil)
+	return New("127.0.0.1:0", plugins, logger, ready, nil, nil, false)
 }
 
 func TestHandleHealthz(t *testing.T) {
@@ -240,7 +240,7 @@ func TestPluginRoutes_Mounted(t *testing.T) {
 			},
 		},
 	}
-	srv := New("127.0.0.1:0", plugins, logger, nil, nil, nil)
+	srv := New("127.0.0.1:0", plugins, logger, nil, nil, nil, false)
 
 	req := httptest.NewRequest("POST", "/api/v1/recon/scan", http.NoBody)
 	w := httptest.NewRecorder()
@@ -273,7 +273,7 @@ func newTestServerWithListener(t *testing.T, slowHandler http.HandlerFunc) (*Ser
 	}
 
 	addr := listener.Addr().String()
-	srv := New(addr, plugins, logger, nil, nil, nil)
+	srv := New(addr, plugins, logger, nil, nil, nil, false)
 
 	return srv, listener, addr
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"go.uber.org/zap"
 )
 
@@ -49,8 +50,9 @@ type SimpleRouteRegistrar interface {
 // New creates a new Server with middleware and routes.
 // The auth parameter is optional; pass nil to disable authentication.
 // The dashboard parameter is optional; pass nil to disable dashboard serving.
+// When devMode is true, Swagger UI is served at /swagger/.
 // Additional route registrars can be passed to register extra API routes.
-func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar, dashboard http.Handler, extraRoutes ...SimpleRouteRegistrar) *Server {
+func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar, dashboard http.Handler, devMode bool, extraRoutes ...SimpleRouteRegistrar) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{
@@ -68,6 +70,13 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 		r.RegisterRoutes(mux)
 	}
 	s.mountPluginRoutes()
+
+	if devMode {
+		mux.Handle("GET /swagger/", httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		))
+		logger.Info("swagger UI enabled (dev_mode)", zap.String("path", "/swagger/"))
+	}
 
 	// Mount dashboard last as a catch-all for SPA routing
 	if dashboard != nil {
@@ -166,28 +175,51 @@ func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 }
 
+// HealthResponse is the response for GET /health.
+type HealthResponse struct {
+	Status  string            `json:"status" example:"ok"`
+	Service string            `json:"service" example:"subnetree"`
+	Version map[string]string `json:"version"`
+}
+
+// PluginResponse describes a registered plugin.
+type PluginResponse struct {
+	Name        string `json:"name" example:"recon"`
+	Version     string `json:"version" example:"0.1.0"`
+	Description string `json:"description" example:"Network discovery and scanning"`
+}
+
 // handleHealth returns detailed health information (versioned API endpoint).
+//
+//	@Summary		Health check
+//	@Description	Returns service health status with version information.
+//	@Tags			system
+//	@Produce		json
+//	@Success		200	{object}	HealthResponse
+//	@Router			/health [get]
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "ok",
-		"service": "subnetree",
-		"version": version.Map(),
+	_ = json.NewEncoder(w).Encode(HealthResponse{
+		Status:  "ok",
+		Service: "subnetree",
+		Version: version.Map(),
 	})
 }
 
 // handlePlugins returns the list of registered plugins.
+//
+//	@Summary		List plugins
+//	@Description	Returns all registered plugins with their metadata.
+//	@Tags			system
+//	@Produce		json
+//	@Success		200	{array}	PluginResponse
+//	@Router			/plugins [get]
 func (s *Server) handlePlugins(w http.ResponseWriter, _ *http.Request) {
 	plugins := s.plugins.All()
-	type pluginResponse struct {
-		Name        string `json:"name"`
-		Version     string `json:"version"`
-		Description string `json:"description"`
-	}
-	info := make([]pluginResponse, 0, len(plugins))
+	info := make([]PluginResponse, 0, len(plugins))
 	for _, p := range plugins {
 		pi := p.Info()
-		info = append(info, pluginResponse{
+		info = append(info, PluginResponse{
 			Name:        pi.Name,
 			Version:     pi.Version,
 			Description: pi.Description,

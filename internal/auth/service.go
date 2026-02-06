@@ -31,9 +31,9 @@ const (
 
 // TokenPair contains an access token and refresh token.
 type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"` // Access token TTL in seconds
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIs..."`
+	RefreshToken string `json:"refresh_token" example:"dGhpcyBpcyBhIHJlZnJl..."`
+	ExpiresIn    int    `json:"expires_in" example:"900"` // Access token TTL in seconds
 }
 
 // Service provides authentication business logic.

@@ -38,26 +38,42 @@ type TopologyGraph struct {
 
 // TopologyNode represents a device in the topology graph.
 type TopologyNode struct {
-	ID           string               `json:"id"`
-	Label        string               `json:"label"`
-	DeviceType   models.DeviceType    `json:"device_type"`
-	Status       models.DeviceStatus  `json:"status"`
-	IPAddresses  []string             `json:"ip_addresses"`
-	MACAddress   string               `json:"mac_address,omitempty"`
-	Manufacturer string               `json:"manufacturer,omitempty"`
+	ID           string              `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Label        string              `json:"label" example:"web-server-01"`
+	DeviceType   models.DeviceType   `json:"device_type" example:"server"`
+	Status       models.DeviceStatus `json:"status" example:"online"`
+	IPAddresses  []string            `json:"ip_addresses"`
+	MACAddress   string              `json:"mac_address,omitempty" example:"00:1a:2b:3c:4d:5e"`
+	Manufacturer string              `json:"manufacturer,omitempty" example:"Dell Inc."`
 }
 
 // TopologyEdge represents a link in the topology graph.
 type TopologyEdge struct {
-	ID       string `json:"id"`
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	LinkType string `json:"link_type"`
-	Speed    int    `json:"speed,omitempty"`
+	ID       string `json:"id" example:"link-001"`
+	Source   string `json:"source" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Target   string `json:"target" example:"660f9500-f30c-52e5-b827-557766551111"`
+	LinkType string `json:"link_type" example:"ethernet"`
+	Speed    int    `json:"speed,omitempty" example:"1000"`
+}
+
+// ScanRequest is the request body for POST /scan.
+type ScanRequest struct {
+	Subnet string `json:"subnet" example:"192.168.1.0/24"`
 }
 
 // handleScan triggers a new network scan.
-// POST /scan
+//
+//	@Summary		Start scan
+//	@Description	Trigger a new network scan on the given subnet. Returns immediately with scan ID.
+//	@Tags			recon
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		ScanRequest			true	"Subnet to scan"
+//	@Success		202		{object}	models.ScanResult	"Scan accepted"
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/scan [post]
 func (m *Module) handleScan(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Subnet string `json:"subnet"`
@@ -113,7 +129,17 @@ func (m *Module) handleScan(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleListScans returns a paginated list of scans.
-// GET /scans
+//
+//	@Summary		List scans
+//	@Description	Returns a paginated list of scan results.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			limit	query		int	false	"Max results"	default(50)
+//	@Param			offset	query		int	false	"Offset"		default(0)
+//	@Success		200		{array}		models.ScanResult
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/scans [get]
 func (m *Module) handleListScans(w http.ResponseWriter, r *http.Request) {
 	limit := queryInt(r, "limit", 50)
 	offset := queryInt(r, "offset", 0)
@@ -131,7 +157,18 @@ func (m *Module) handleListScans(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetScan returns a single scan with its discovered devices.
-// GET /scans/{id}
+//
+//	@Summary		Get scan
+//	@Description	Returns a single scan result including discovered devices.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Scan ID"
+//	@Success		200	{object}	models.ScanResult
+//	@Failure		400	{object}	models.APIProblem
+//	@Failure		404	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/scans/{id} [get]
 func (m *Module) handleGetScan(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
@@ -158,7 +195,15 @@ func (m *Module) handleGetScan(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTopology returns the network topology as a graph.
-// GET /topology
+//
+//	@Summary		Get topology
+//	@Description	Returns the network topology as a graph of nodes and edges.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	TopologyGraph
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/topology [get]
 func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 	devices, _, err := m.store.ListDevices(r.Context(), ListDevicesOptions{Limit: 10000})
 	if err != nil {

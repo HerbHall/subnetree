@@ -1,5 +1,14 @@
 package main
 
+//	@title						SubNetree API
+//	@version					0.1.0
+//	@description				Network monitoring and management platform API.
+//	@BasePath					/api/v1
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				JWT Bearer token. Format: "Bearer {token}"
+
 import (
 	"context"
 	"crypto/rand"
@@ -11,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/HerbHall/subnetree/api/swagger"
 	"github.com/HerbHall/subnetree/internal/auth"
 	"github.com/HerbHall/subnetree/internal/config"
 	"github.com/HerbHall/subnetree/internal/dashboard"
@@ -193,11 +203,12 @@ func main() {
 		zap.String("component", "server"),
 		zap.String("addr", addr),
 	)
+	devMode := viperCfg.GetBool("server.dev_mode")
 	readyCheck := server.ReadinessChecker(func(ctx context.Context) error {
 		return db.DB().PingContext(ctx)
 	})
 	dashboardHandler := dashboard.Handler()
-	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, settingsHandler)
+	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, settingsHandler)
 
 	// Start server in background
 	go func() {

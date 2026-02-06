@@ -25,16 +25,16 @@ var ValidRoles = map[Role]bool{
 
 // User represents a SubNetree user account.
 type User struct {
-	ID                  string     `json:"id"`
-	Username            string     `json:"username"`
-	Email               string     `json:"email"`
+	ID                  string     `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Username            string     `json:"username" example:"admin"`
+	Email               string     `json:"email" example:"admin@example.com"`
 	PasswordHash        string     `json:"-"` // Never serialized
-	Role                Role       `json:"role"`
-	AuthProvider        string     `json:"auth_provider"`
+	Role                Role       `json:"role" example:"admin"`
+	AuthProvider        string     `json:"auth_provider" example:"local"`
 	OIDCSubject         string     `json:"oidc_subject,omitempty"`
-	CreatedAt           time.Time  `json:"created_at"`
-	LastLogin           time.Time  `json:"last_login,omitempty"`
-	Disabled            bool       `json:"disabled"`
+	CreatedAt           time.Time  `json:"created_at" example:"2026-01-10T08:00:00Z"`
+	LastLogin           time.Time  `json:"last_login,omitempty" example:"2026-01-15T10:30:00Z"`
+	Disabled            bool       `json:"disabled" example:"false"`
 	FailedLoginAttempts int        `json:"-"`
 	LockedUntil         *time.Time `json:"locked_until,omitempty"`
 }

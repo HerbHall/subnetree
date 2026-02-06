@@ -43,19 +43,19 @@ const (
 
 // Device represents a network device tracked by SubNetree.
 type Device struct {
-	ID              string            `json:"id"`
-	Hostname        string            `json:"hostname"`
+	ID              string            `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Hostname        string            `json:"hostname" example:"web-server-01"`
 	IPAddresses     []string          `json:"ip_addresses"`
-	MACAddress      string            `json:"mac_address,omitempty"`
-	Manufacturer    string            `json:"manufacturer,omitempty"`
-	DeviceType      DeviceType        `json:"device_type"`
-	OS              string            `json:"os,omitempty"`
-	Status          DeviceStatus      `json:"status"`
-	DiscoveryMethod DiscoveryMethod   `json:"discovery_method"`
-	AgentID         string            `json:"agent_id,omitempty"`
-	LastSeen        time.Time         `json:"last_seen"`
-	FirstSeen       time.Time         `json:"first_seen"`
-	Notes           string            `json:"notes,omitempty"`
+	MACAddress      string            `json:"mac_address,omitempty" example:"00:1a:2b:3c:4d:5e"`
+	Manufacturer    string            `json:"manufacturer,omitempty" example:"Dell Inc."`
+	DeviceType      DeviceType        `json:"device_type" example:"server"`
+	OS              string            `json:"os,omitempty" example:"Ubuntu 22.04"`
+	Status          DeviceStatus      `json:"status" example:"online"`
+	DiscoveryMethod DiscoveryMethod   `json:"discovery_method" example:"icmp"`
+	AgentID         string            `json:"agent_id,omitempty" example:"agent-01"`
+	LastSeen        time.Time         `json:"last_seen" example:"2026-01-15T10:30:00Z"`
+	FirstSeen       time.Time         `json:"first_seen" example:"2026-01-10T08:00:00Z"`
+	Notes           string            `json:"notes,omitempty" example:"Production web server"`
 	Tags            []string          `json:"tags,omitempty"`
 	CustomFields    map[string]string `json:"custom_fields,omitempty"`
 }

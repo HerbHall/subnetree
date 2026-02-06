@@ -1,4 +1,4 @@
-.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto clean license-check
+.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check
 
 # Binary names
 SERVER_BIN=subnetree
@@ -65,6 +65,10 @@ proto:
 	protoc --go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		api/proto/v1/*.proto
+
+swagger:
+	@which swag > /dev/null 2>&1 || (echo "swag not found. Install: go install github.com/swaggo/swag/cmd/swag@latest" && exit 1)
+	swag init -g cmd/subnetree/main.go -o api/swagger --parseDependency --parseInternal
 
 # Allowed licenses for dependencies (BSL 1.1 compatible)
 ALLOWED_LICENSES=Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0

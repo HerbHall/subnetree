@@ -7,11 +7,11 @@ import (
 
 // NetworkInterface represents a network interface with its properties.
 type NetworkInterface struct {
-	Name      string `json:"name"`
-	IPAddress string `json:"ip_address"`
-	Subnet    string `json:"subnet"`
-	MAC       string `json:"mac"`
-	Status    string `json:"status"` // "up" or "down"
+	Name      string `json:"name" example:"eth0"`
+	IPAddress string `json:"ip_address" example:"192.168.1.100"`
+	Subnet    string `json:"subnet" example:"192.168.1.0/24"`
+	MAC       string `json:"mac" example:"00:1a:2b:3c:4d:5e"`
+	Status    string `json:"status" example:"up"` // "up" or "down"
 }
 
 // InterfaceService provides methods for network interface discovery.

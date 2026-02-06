@@ -60,6 +60,15 @@ func (m *Module) Routes() []plugin.Route {
 	}
 }
 
+// handleStatus returns the monitoring module status.
+//
+//	@Summary		Monitoring status
+//	@Description	Returns the current status of the Pulse monitoring module.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	map[string]string
+//	@Router			/pulse/status [get]
 func (m *Module) handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{

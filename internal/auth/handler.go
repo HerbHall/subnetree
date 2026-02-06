@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	_ "github.com/HerbHall/subnetree/pkg/models" // swagger type reference
 	"go.uber.org/zap"
 )
 
@@ -40,6 +41,19 @@ func (h *Handler) Middleware() func(http.Handler) http.Handler {
 	return AuthMiddleware(h.service.Tokens())
 }
 
+// handleLogin authenticates a user and returns a token pair.
+//
+//	@Summary		Login
+//	@Description	Authenticate with username and password to receive a JWT token pair.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		LoginRequest	true	"Login credentials"
+//	@Success		200		{object}	TokenPair
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/login [post]
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Username string `json:"username"`
@@ -68,6 +82,19 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, pair)
 }
 
+// handleRefresh validates a refresh token and returns a new token pair.
+//
+//	@Summary		Refresh tokens
+//	@Description	Exchange a valid refresh token for a new token pair (token rotation).
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		RefreshRequest	true	"Refresh token"
+//	@Success		200		{object}	TokenPair
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/refresh [post]
 func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
@@ -95,6 +122,18 @@ func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, pair)
 }
 
+// handleLogout revokes a refresh token.
+//
+//	@Summary		Logout
+//	@Description	Revoke a refresh token to end a session.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body	LogoutRequest	true	"Refresh token to revoke"
+//	@Success		204		"No Content"
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/logout [post]
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
@@ -117,6 +156,18 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleSetup creates the initial admin account.
+//
+//	@Summary		Initial setup
+//	@Description	Create the first admin account. Only works when no users exist.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		SetupRequest	true	"Admin account details"
+//	@Success		201		{object}	User
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		409		{object}	models.APIProblem
+//	@Router			/auth/setup [post]
 func (h *Handler) handleSetup(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Username string `json:"username"`
@@ -145,6 +196,18 @@ func (h *Handler) handleSetup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, user)
 }
 
+// handleListUsers returns all users.
+//
+//	@Summary		List users
+//	@Description	Returns all user accounts. Requires admin role.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{array}		User
+//	@Failure		401	{object}	models.APIProblem
+//	@Failure		403	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/users [get]
 func (h *Handler) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAdmin(w, r) {
 		return
@@ -160,6 +223,20 @@ func (h *Handler) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, users)
 }
 
+// handleGetUser returns a user by ID.
+//
+//	@Summary		Get user
+//	@Description	Returns a single user by ID. Requires admin role.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	User
+//	@Failure		401	{object}	models.APIProblem
+//	@Failure		403	{object}	models.APIProblem
+//	@Failure		404	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/users/{id} [get]
 func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAdmin(w, r) {
 		return
@@ -179,6 +256,23 @@ func (h *Handler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
+// handleUpdateUser updates a user's email, role, and disabled status.
+//
+//	@Summary		Update user
+//	@Description	Update a user's email, role, or disabled status. Requires admin role.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string				true	"User ID"
+//	@Param			request	body		UpdateUserRequest	true	"Updated user fields"
+//	@Success		200		{object}	User
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		403		{object}	models.APIProblem
+//	@Failure		404		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/users/{id} [put]
 func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAdmin(w, r) {
 		return
@@ -214,6 +308,19 @@ func (h *Handler) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
+// handleDeleteUser removes a user by ID.
+//
+//	@Summary		Delete user
+//	@Description	Delete a user account by ID. Requires admin role.
+//	@Tags			users
+//	@Security		BearerAuth
+//	@Param			id	path	string	true	"User ID"
+//	@Success		204	"No Content"
+//	@Failure		401	{object}	models.APIProblem
+//	@Failure		403	{object}	models.APIProblem
+//	@Failure		404	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/users/{id} [delete]
 func (h *Handler) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	if !h.requireAdmin(w, r) {
 		return

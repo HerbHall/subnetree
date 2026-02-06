@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	_ "github.com/HerbHall/subnetree/pkg/models" // swagger type reference
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
@@ -61,11 +62,31 @@ func (m *Module) Routes() []plugin.Route {
 	}
 }
 
+// handleListAgents returns all connected Scout agents.
+//
+//	@Summary		List agents
+//	@Description	Returns all registered Scout agents.
+//	@Tags			dispatch
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{array}	models.AgentInfo
+//	@Router			/dispatch/agents [get]
 func (m *Module) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode([]any{})
 }
 
+// handleGetAgent returns a single Scout agent by ID.
+//
+//	@Summary		Get agent
+//	@Description	Returns a single Scout agent by ID.
+//	@Tags			dispatch
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Agent ID"
+//	@Success		200	{object}	models.AgentInfo
+//	@Failure		404	{object}	models.APIProblem
+//	@Router			/dispatch/agents/{id} [get]
 func (m *Module) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{

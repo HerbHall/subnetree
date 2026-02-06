@@ -18,11 +18,11 @@ const (
 
 // Problem represents an RFC 7807 Problem Details response.
 type Problem struct {
-	Type     string `json:"type"`
-	Title    string `json:"title"`
-	Status   int    `json:"status"`
-	Detail   string `json:"detail,omitempty"`
-	Instance string `json:"instance,omitempty"`
+	Type     string `json:"type" example:"https://subnetree.com/problems/bad-request"`
+	Title    string `json:"title" example:"Bad Request"`
+	Status   int    `json:"status" example:"400"`
+	Detail   string `json:"detail,omitempty" example:"invalid subnet CIDR"`
+	Instance string `json:"instance,omitempty" example:"/api/v1/recon/scan"`
 }
 
 // WriteProblem writes an RFC 7807 Problem Details JSON response.
