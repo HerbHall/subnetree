@@ -150,6 +150,7 @@ describe('LoginPage', () => {
     vi.mocked(loginApi).mockResolvedValue({
       access_token: 'test-token',
       refresh_token: 'test-refresh',
+      expires_in: 900,
     })
 
     // Mock jwt-decode for the store

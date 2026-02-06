@@ -249,12 +249,14 @@ describe('SetupPage', () => {
         username: 'admin',
         email: 'admin@test.com',
         role: 'admin',
+        auth_provider: 'local',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        disabled: false,
       })
       vi.mocked(loginApi).mockResolvedValue({
         access_token: 'test-token',
         refresh_token: 'test-refresh',
+        expires_in: 900,
       })
 
       render(<SetupPage />)
@@ -275,12 +277,14 @@ describe('SetupPage', () => {
         username: 'admin',
         email: 'admin@test.com',
         role: 'admin',
+        auth_provider: 'local',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        disabled: false,
       })
       vi.mocked(loginApi).mockResolvedValue({
         access_token: 'test-token',
         refresh_token: 'test-refresh',
+        expires_in: 900,
       })
 
       render(<SetupPage />)

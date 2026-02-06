@@ -82,6 +82,7 @@ describe('useAuthStore', () => {
       vi.mocked(loginApi).mockResolvedValue({
         access_token: 'valid-token',
         refresh_token: 'refresh-token',
+        expires_in: 900,
       })
 
       const { login } = useAuthStore.getState()
@@ -108,6 +109,7 @@ describe('useAuthStore', () => {
       vi.mocked(refreshApi).mockResolvedValue({
         access_token: 'valid-token',
         refresh_token: 'new-refresh-token',
+        expires_in: 900,
       })
 
       // Set initial tokens
