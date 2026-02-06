@@ -2,6 +2,24 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ScanProgressPanel } from '../scan-progress-panel'
 import type { ScanProgress } from '@/stores/scan'
+import type { Device } from '@/api/types'
+
+/** Create a minimal Device with only required fields for testing. */
+function testDevice(overrides: Partial<Device> & { id: string }): Device {
+  return {
+    ip_addresses: [],
+    hostname: '',
+    mac_address: '',
+    manufacturer: '',
+    device_type: 'unknown',
+    os: '',
+    status: 'online',
+    discovery_method: 'scan',
+    first_seen: new Date().toISOString(),
+    last_seen: new Date().toISOString(),
+    ...overrides,
+  }
+}
 
 describe('ScanProgressPanel', () => {
   const createBaseScan = (overrides?: Partial<ScanProgress>): ScanProgress => ({
@@ -12,6 +30,7 @@ describe('ScanProgressPanel', () => {
     subnetSize: 256,
     hostsAlive: 0,
     newDevices: [],
+    startedAt: new Date(),
     ...overrides,
   })
 
@@ -123,21 +142,9 @@ describe('ScanProgressPanel', () => {
       status: 'scanning',
       devicesFound: 3,
       newDevices: [
-        {
-          id: 'device-1',
-          ip_addresses: ['192.168.1.10'],
-          hostname: 'server-1',
-          manufacturer: 'Dell',
-        },
-        {
-          id: 'device-2',
-          ip_addresses: ['192.168.1.20'],
-          hostname: 'laptop-2',
-        },
-        {
-          id: 'device-3',
-          ip_addresses: ['192.168.1.30'],
-        },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.10'], hostname: 'server-1', manufacturer: 'Dell' }),
+        testDevice({ id: 'device-2', ip_addresses: ['192.168.1.20'], hostname: 'laptop-2' }),
+        testDevice({ id: 'device-3', ip_addresses: ['192.168.1.30'] }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
@@ -154,11 +161,7 @@ describe('ScanProgressPanel', () => {
       devicesFound: 1,
       hostsAlive: 5,
       newDevices: [
-        {
-          id: 'device-1',
-          ip_addresses: ['192.168.1.10'],
-          hostname: 'web-server',
-        },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.10'], hostname: 'web-server' }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={20} />)
@@ -171,11 +174,7 @@ describe('ScanProgressPanel', () => {
       status: 'scanning',
       devicesFound: 1,
       newDevices: [
-        {
-          id: 'device-1',
-          ip_addresses: ['192.168.1.10'],
-          manufacturer: 'Apple',
-        },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.10'], manufacturer: 'Apple' }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
@@ -199,10 +198,7 @@ describe('ScanProgressPanel', () => {
       status: 'completed',
       devicesFound: 3,
       newDevices: [
-        {
-          id: 'device-1',
-          ip_addresses: ['192.168.1.10'],
-        },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.10'] }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={100} />)
@@ -216,10 +212,7 @@ describe('ScanProgressPanel', () => {
       error: 'Network error',
       devicesFound: 1,
       newDevices: [
-        {
-          id: 'device-1',
-          ip_addresses: ['192.168.1.10'],
-        },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.10'] }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
@@ -232,14 +225,14 @@ describe('ScanProgressPanel', () => {
       status: 'scanning',
       devicesFound: 10,
       newDevices: [
-        { id: 'device-1', ip_addresses: ['192.168.1.1'] },
-        { id: 'device-2', ip_addresses: ['192.168.1.2'] },
-        { id: 'device-3', ip_addresses: ['192.168.1.3'] },
-        { id: 'device-4', ip_addresses: ['192.168.1.4'] },
-        { id: 'device-5', ip_addresses: ['192.168.1.5'] },
-        { id: 'device-6', ip_addresses: ['192.168.1.6'] },
-        { id: 'device-7', ip_addresses: ['192.168.1.7'] },
-        { id: 'device-8', ip_addresses: ['192.168.1.8'] },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.1'] }),
+        testDevice({ id: 'device-2', ip_addresses: ['192.168.1.2'] }),
+        testDevice({ id: 'device-3', ip_addresses: ['192.168.1.3'] }),
+        testDevice({ id: 'device-4', ip_addresses: ['192.168.1.4'] }),
+        testDevice({ id: 'device-5', ip_addresses: ['192.168.1.5'] }),
+        testDevice({ id: 'device-6', ip_addresses: ['192.168.1.6'] }),
+        testDevice({ id: 'device-7', ip_addresses: ['192.168.1.7'] }),
+        testDevice({ id: 'device-8', ip_addresses: ['192.168.1.8'] }),
       ],
     })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
@@ -260,9 +253,9 @@ describe('ScanProgressPanel', () => {
       status: 'scanning',
       devicesFound: 3,
       newDevices: [
-        { id: 'device-1', ip_addresses: ['192.168.1.1'] },
-        { id: 'device-2', ip_addresses: ['192.168.1.2'] },
-        { id: 'device-3', ip_addresses: ['192.168.1.3'] },
+        testDevice({ id: 'device-1', ip_addresses: ['192.168.1.1'] }),
+        testDevice({ id: 'device-2', ip_addresses: ['192.168.1.2'] }),
+        testDevice({ id: 'device-3', ip_addresses: ['192.168.1.3'] }),
       ],
     })
     const { container } = render(<ScanProgressPanel activeScan={scan} progress={0} />)
