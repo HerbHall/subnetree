@@ -328,10 +328,10 @@ describe('DeviceDetailPage', () => {
     })
 
     // Find the Edit button in the Notes section
-    const notesCard = screen.getByText('Notes').closest('.rounded-lg') as HTMLElement
+    const notesCard = screen.getByText('Notes').closest('.rounded-lg')
     expect(notesCard).toBeInTheDocument()
 
-    const editButtons = within(notesCard).getAllByRole('button', { name: /edit/i })
+    const editButtons = within(notesCard as HTMLElement).getAllByRole('button', { name: /edit/i })
     await user.click(editButtons[0])
 
     // Should show textarea with current notes
@@ -357,10 +357,10 @@ describe('DeviceDetailPage', () => {
     })
 
     // Find the Tags section (it's after Notes)
-    const tagsCard = screen.getByText('Tags').closest('.rounded-lg') as HTMLElement
+    const tagsCard = screen.getByText('Tags').closest('.rounded-lg')
     expect(tagsCard).toBeInTheDocument()
 
-    const editButtons = within(tagsCard).getAllByRole('button', { name: /edit/i })
+    const editButtons = within(tagsCard as HTMLElement).getAllByRole('button', { name: /edit/i })
     await user.click(editButtons[0])
 
     // Should show input for tags
