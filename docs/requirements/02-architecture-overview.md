@@ -19,6 +19,8 @@ Each module fills one or more **roles** (abstract capabilities). Alternative imp
 | Agent Management | **Dispatch** | `agent_management` | Scout agent enrollment, check-in, command dispatch, status tracking |
 | Credentials | **Vault** | `credential_store` | Encrypted credential storage, per-device credential assignment |
 | Remote Access | **Gateway** | `remote_access` | Browser-based SSH, RDP (via Guacamole), HTTP/HTTPS reverse proxy, VNC |
+| Notifications | **Webhook** | `webhook` | Event-driven webhook notifications to external services |
+| AI Provider | **LLM** | `llm` | LLM provider integration (Ollama); optional, product works without it |
 | Overlay Network | **Tailscale** | `overlay_network` | Tailscale tailnet device discovery, overlay IP enrichment, subnet route awareness |
 
 ### Communication
@@ -47,10 +49,13 @@ Tailscale (requires: credential_store for API key/OAuth storage)
   |
   +---> Recon (optional: overlay_network for Tailscale-discovered devices)
   +---> Gateway (optional: overlay_network for Tailscale IP connectivity)
+
+Webhook (no deps, provides webhook notifications)
+LLM (no deps, provides llm; Required: false)
 ```
 
-**Topological Startup Order:** Vault -> Dispatch -> Tailscale -> Recon -> Pulse -> Gateway
-**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Tailscale -> Dispatch -> Vault
+**Topological Startup Order:** Vault -> Dispatch -> Webhook -> LLM -> Tailscale -> Recon -> Pulse -> Gateway
+**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Tailscale -> LLM -> Webhook -> Dispatch -> Vault
 
 ### Go Architecture Conventions
 

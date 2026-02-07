@@ -61,6 +61,8 @@
 
 ### Phase 1: Foundation (Server + Dashboard + Discovery + Topology)
 
+**Status:** v0.1.0-alpha shipped 2026-02-07. Core scanning, dashboard, topology, and LLM integration are functional.
+
 **Goal:** Functional web-based network scanner with topology visualization. Validate architecture. Time to First Value under 10 minutes.
 
 #### Pre-Phase Tooling Research
@@ -126,7 +128,7 @@
 - [ ] Tailscale Funnel/Serve guide: exposing dashboard without port forwarding
 
 #### Operations
-- [ ] Backup/restore CLI commands (`subnetree backup`, `subnetree restore`)
+- [x] Backup/restore CLI commands (`subnetree backup`, `subnetree restore`)
 - [ ] Data retention configuration with automated purge job
 - [x] Security headers middleware (CSP, X-Frame-Options, HSTS, etc.)
 - [x] Account lockout after failed login attempts
@@ -136,7 +138,7 @@
 - [x] Test infrastructure: `internal/testutil/` with mocks, fixtures, helpers, mock clock
 - [ ] Test infrastructure: `testdata/` directory with SNMP fixtures, test configs, migration snapshots
 - [x] Plugin contract tests: table-driven tests for `Plugin` interface and all optional interfaces
-- [ ] Plugin isolation tests: panic recovery in Init, Start, Stop, and HTTP handlers
+- [x] Plugin isolation tests: panic recovery in Init, Start, Stop, and HTTP handlers
 - [x] Plugin lifecycle tests: full Init → Start → Stop cycle, dependency ordering, cascade disable
 - [x] Plugin API version validation tests: too old, too new, exact match, backward-compatible range
 - [x] API endpoint tests: `httptest.NewRecorder()` for all routes (status codes, content types, RFC 7807 errors)
@@ -165,22 +167,22 @@
 - [x] GitHub Dependabot: enable automated dependency vulnerability alerts
 - [ ] GitHub Insights: establish baseline tracking cadence (weekly traffic review)
 - [ ] Release download tracking: GoReleaser generates checksums, GitHub Releases API provides download counts
-- [ ] Docker image pull count tracking: publish to GitHub Container Registry (GHCR) or Docker Hub
+- [x] Docker image pull count tracking: publish to GitHub Container Registry (GHCR) or Docker Hub
 - [ ] README badges: CI build, coverage, Go Report Card, Go version, license, latest release, Docker pulls (see Success Metrics)
 
 #### Community & Launch Readiness
 - [x] CONTRIBUTING.md: development setup, code style, PR process, testing expectations, CLA explanation
 - [x] Pull request template (`.github/pull_request_template.md`) with checklist (tests, lint, description)
-- [ ] First tagged release: `v0.1.0-alpha` with pre-built binaries (GoReleaser) and GitHub Release notes
+- [x] First tagged release: `v0.1.0-alpha` with pre-built binaries (GoReleaser) and GitHub Release notes
 - [x] Dockerfile: multi-stage build (builder + distroless/alpine runtime), multi-arch (`linux/amd64`, `linux/arm64`)
 - [x] docker-compose.yml: one-command deployment matching the spec in Deployment section
-- [ ] README: "Why SubNetree?" section -- value proposition, feature comparison table (discovery + monitoring + remote access + vault + IoT in one tool), clear differentiation from Zabbix/LibreNMS/Uptime Kuma
+- [x] README: "Why SubNetree?" section -- value proposition, feature comparison table (discovery + monitoring + remote access + vault + IoT in one tool), clear differentiation from Zabbix/LibreNMS/Uptime Kuma
 - [ ] README: status badges (CI build, Go version, license, latest release, Docker pulls)
 - [x] README: Docker quickstart section (`docker run` one-liner + docker-compose snippet)
 - [ ] README: screenshots/GIF of dashboard (blocked on dashboard implementation -- placeholder with architecture diagram until then)
-- [ ] README: "Current Status" section -- honest about what works today vs. what's planned, links to roadmap
+- [x] README: "Current Status" section -- honest about what works today vs. what's planned, links to roadmap
 - [x] README: clarify licensing wording to "free for personal, home-lab, and non-competing production use"
-- [ ] Seed GitHub Issues: 5–10 issues labeled `good first issue` and `help wanted` (e.g., "add device type icon mapping", "write Prometheus exporter example plugin", "add ARM64 CI build target")
+- [x] Seed GitHub Issues: 5–10 issues labeled `good first issue` and `help wanted` (e.g., "add device type icon mapping", "write Prometheus exporter example plugin", "add ARM64 CI build target")
 - [ ] Seed GitHub Discussions: introductory post, roadmap discussion thread, "plugin ideas" thread, "show your setup" thread
 - [ ] Community channel: create Discord server (or Matrix space) for real-time contributor discussion, linked from README and CONTRIBUTING.md
 - [ ] Blog post / announcement: publish initial announcement on personal blog, r/homelab, r/selfhosted, Hacker News (after v0.1.0-alpha has working dashboard + discovery)
@@ -303,7 +305,7 @@
 - [ ] Benchmark AES-256-GCM envelope encryption libraries in Go
 - [ ] Benchmark Argon2id key derivation across target platforms (cost parameter tuning)
 - [ ] Evaluate memguard for in-memory secret protection (Go compatibility, platform support)
-- [ ] Research LLM provider SDKs: OpenAI Go client, Anthropic SDK, Ollama local API
+- [x] Research LLM provider SDKs: OpenAI Go client, Anthropic SDK, Ollama local API (Ollama provider shipped in v0.1.0-alpha; OpenAI/Anthropic deferred)
 - [ ] Evaluate data anonymization approaches for LLM context (PII stripping, metric-only summaries)
 
 - [ ] Gateway: SSH-in-browser via xterm.js
