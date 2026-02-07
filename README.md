@@ -1,5 +1,7 @@
 # SubNetree
 
+[![CI](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml/badge.svg)](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/HerbHall/subnetree?include_prereleases)](https://github.com/HerbHall/subnetree/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HerbHall/subnetree)](https://goreportcard.com/report/github.com/HerbHall/subnetree)
 [![codecov](https://codecov.io/gh/HerbHall/subnetree/branch/main/graph/badge.svg)](https://codecov.io/gh/HerbHall/subnetree)
 [![License](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
@@ -12,7 +14,7 @@
 
 Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home Assistant for automation, plus routers, NAS boxes, and random IoT devices. SubNetree doesn't replace any of them -- it's your **dashboard and aggregator** that:
 
-- **Discovers everything** on your LAN automatically (ARP, ICMP, mDNS, SNMP)
+- **Discovers everything** on your LAN automatically (ARP, ICMP -- with mDNS, SNMP, UPnP planned)
 - **Shows status at a glance** from multiple platforms in one place
 - **Launches anything** with one click -- web UIs, SSH, RDP -- credentials handled
 - **Extends via plugins** to monitor whatever you need
@@ -28,10 +30,12 @@ Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 - **Real-Time Updates**: WebSocket-powered scan progress with live device feed
 - **Authentication**: JWT-based auth with first-run setup wizard
 - **Backup/Restore**: CLI commands for data safety
+- **AI Integration**: Optional Ollama-powered LLM provider (query interface coming)
 - **Docker**: Multi-stage builds with health checks
 
 ### Coming Next
 
+- AI-powered network insights (query interface for the shipped Ollama integration)
 - Monitoring & alerting (Pulse module)
 - Scout agents for detailed host metrics
 - Credential vault for stored passwords
@@ -90,7 +94,7 @@ docker-compose up -d
 
 ### Discovery & Mapping
 
-- LAN scanning with ARP, ICMP, mDNS, SNMP, UPnP
+- LAN scanning with ARP and ICMP (mDNS, SNMP, UPnP in Phase 2)
 - Automatic device identification (OS, manufacturer, type)
 - Network topology visualization
 
@@ -140,8 +144,10 @@ docker-compose up -d
                    | +------+ +------+ | mDNS   +----------+
                    | |Dispatch|Vault | |
                    | +------+ +------+ |
-                   | |Gateway|        |
-                   | +------+         |
+                   | |Gateway|Webhook| |
+                   | +------+ +------+ |
+                   | | LLM  |        |
+                   | +------+        |
                    +-------------------+
 ```
 
@@ -154,6 +160,8 @@ docker-compose up -d
 | **Dispatch** | Scout agent enrollment and management |
 | **Vault** | Encrypted credential storage |
 | **Gateway** | Browser-based remote access (SSH, RDP, HTTP proxy) |
+| **Webhook** | Event-driven webhook notifications |
+| **LLM** | AI provider integration (Ollama, optional) |
 
 ## Building from Source
 
@@ -209,9 +217,13 @@ internal/
   dispatch/       Agent management module
   vault/          Credential management module
   gateway/        Remote access module
+  webhook/        Webhook notification module
+  llm/            LLM plugin (Ollama provider)
 web/              React dashboard (Vite + shadcn/ui)
 pkg/
   plugin/         Public plugin SDK (Apache 2.0)
+  llm/            LLM provider interface (Apache 2.0)
+  roles/          Plugin role definitions (Apache 2.0)
   models/         Shared data types
 api/
   proto/v1/       gRPC service definitions
@@ -219,7 +231,7 @@ api/
 
 ## Roadmap
 
-- **Phase 1** (Current): Server + dashboard + agentless scanning
+- **Phase 1** (v0.1.0-alpha shipped): Server + dashboard + agentless scanning + LLM integration
 - **Phase 1b**: Windows Scout agent
 - **Phase 2**: Enhanced discovery (SNMP, mDNS, UPnP) + monitoring + Linux agent
 - **Phase 3**: Remote access (SSH, RDP) + credential vault
