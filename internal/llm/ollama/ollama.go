@@ -212,7 +212,7 @@ func (p *Provider) Chat(ctx context.Context, messages []llm.Message, opts ...llm
 
 // Heartbeat checks whether the Ollama server is reachable.
 func (p *Provider) Heartbeat(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/", http.NoBody)
 	if err != nil {
 		return mapError(err)
 	}
@@ -231,7 +231,7 @@ func (p *Provider) Heartbeat(ctx context.Context) error {
 
 // ListModels returns the names of locally available models.
 func (p *Provider) ListModels(ctx context.Context) ([]string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/api/tags", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/api/tags", http.NoBody)
 	if err != nil {
 		return nil, mapError(err)
 	}
