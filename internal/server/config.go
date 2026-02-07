@@ -49,6 +49,15 @@ func LoadConfig(configPath string) (*viper.Viper, error) {
 	v.SetDefault("plugins.llm.url", "http://localhost:11434")
 	v.SetDefault("plugins.llm.model", "qwen2.5:32b")
 	v.SetDefault("plugins.llm.timeout", "5m")
+	v.SetDefault("plugins.insight.ewma_alpha", 0.1)
+	v.SetDefault("plugins.insight.learning_period", "168h")
+	v.SetDefault("plugins.insight.min_samples_stable", 168)
+	v.SetDefault("plugins.insight.zscore_threshold", 3.0)
+	v.SetDefault("plugins.insight.cusum_drift", 0.5)
+	v.SetDefault("plugins.insight.cusum_threshold", 5.0)
+	v.SetDefault("plugins.insight.forecast_window", "168h")
+	v.SetDefault("plugins.insight.anomaly_retention", "720h")
+	v.SetDefault("plugins.insight.maintenance_interval", "1h")
 
 	if configPath != "" {
 		v.SetConfigFile(configPath)
