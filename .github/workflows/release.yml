@@ -47,6 +47,9 @@ jobs:
           rm -rf internal/dashboard/dist
           cp -r web/dist internal/dashboard/dist
 
+      - name: Clean build artifacts
+        run: git checkout -- web/
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

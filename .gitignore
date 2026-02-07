@@ -42,6 +42,8 @@ desktop.ini
 web/node_modules/
 web/dist/
 web/.env
+web/coverage/
+*.tsbuildinfo
 
 # Embedded dashboard build (copied from web/dist/)
 internal/dashboard/dist/
