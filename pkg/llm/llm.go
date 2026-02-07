@@ -53,8 +53,8 @@ func WithTemperature(temp float64) CallOption {
 }
 
 // WithMaxTokens sets the maximum number of tokens to generate.
-func WithMaxTokens(max int) CallOption {
-	return func(c *CallConfig) { c.MaxTokens = max }
+func WithMaxTokens(n int) CallOption {
+	return func(c *CallConfig) { c.MaxTokens = n }
 }
 
 // WithStreamFunc enables streaming mode. The function is called for each
