@@ -9,6 +9,7 @@ package roles
 import (
 	"context"
 
+	"github.com/HerbHall/subnetree/pkg/llm"
 	"github.com/HerbHall/subnetree/pkg/models"
 )
 
@@ -20,6 +21,7 @@ const (
 	RoleAgentManagement = "agent_management"
 	RoleNotification    = "notification"
 	RoleRemoteAccess    = "remote_access"
+	RoleLLM             = "llm"
 )
 
 // DiscoveryProvider is implemented by plugins that discover network devices.
@@ -68,4 +70,11 @@ type Notifier interface {
 type RemoteAccessProvider interface {
 	// Available reports whether remote access is available for a device.
 	Available(ctx context.Context, deviceID string) (bool, error)
+}
+
+// LLMProvider is implemented by plugins that provide LLM capabilities.
+// Resolve via PluginResolver.ResolveByRole(RoleLLM) then type-assert.
+type LLMProvider interface {
+	// Provider returns the underlying LLM provider interface.
+	Provider() llm.Provider
 }
