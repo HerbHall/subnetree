@@ -74,7 +74,7 @@ func LinearRegression(times, values []float64, threshold float64) *RegressionRes
 		d := time.Duration(hoursToLimit * float64(time.Hour))
 		result.TimeToLimit = &d
 	} else if slope < 0 && predicted > threshold {
-		hoursToLimit := (threshold - predicted) / slope // negative/negative = positive
+		hoursToLimit := (threshold - predicted) / slope
 		d := time.Duration(hoursToLimit * float64(time.Hour))
 		result.TimeToLimit = &d
 	}

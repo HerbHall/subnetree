@@ -94,7 +94,7 @@ func Correlate(alerts []Alert, topology []TopologyEdge, window time.Duration) []
 	}
 
 	// Build result -- only multi-device groups
-	var result []Group
+	result := make([]Group, 0, len(groups))
 	for _, g := range groups {
 		deviceSet := make(map[string]bool)
 		var earliest Alert
@@ -116,6 +116,9 @@ func Correlate(alerts []Alert, topology []TopologyEdge, window time.Duration) []
 		result = append(result, *g)
 	}
 
+	if len(result) == 0 {
+		return nil
+	}
 	return result
 }
 
