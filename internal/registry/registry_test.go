@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -687,6 +688,173 @@ func TestStopAll_DisabledPluginsSkipped(t *testing.T) {
 	// Only active plugin should have Stop() called.
 	if stopCount != 1 {
 		t.Errorf("stop count = %d, want 1 (disabled plugin should be skipped)", stopCount)
+	}
+}
+
+// --- Panic Recovery Tests ---
+
+// panicPlugin is a test plugin that panics on configurable lifecycle methods.
+type panicPlugin struct {
+	testPlugin
+	panicOnInit  bool
+	panicOnStart bool
+	panicOnStop  bool
+}
+
+func (p *panicPlugin) Init(ctx context.Context, deps plugin.Dependencies) error {
+	if p.panicOnInit {
+		panic("test panic in Init")
+	}
+	return p.testPlugin.Init(ctx, deps)
+}
+
+func (p *panicPlugin) Start(ctx context.Context) error {
+	if p.panicOnStart {
+		panic("test panic in Start")
+	}
+	return p.testPlugin.Start(ctx)
+}
+
+func (p *panicPlugin) Stop(ctx context.Context) error {
+	if p.panicOnStop {
+		panic("test panic in Stop")
+	}
+	return p.testPlugin.Stop(ctx)
+}
+
+func TestInitAll_PanicRecovery_OptionalPlugin(t *testing.T) {
+	reg := New(testLogger())
+
+	pp := &panicPlugin{
+		testPlugin:  *newTestPlugin("panicker"),
+		panicOnInit: true,
+	}
+	normal := newTestPlugin("normal")
+
+	reg.Register(pp)
+	reg.Register(normal)
+	reg.Validate()
+
+	ctx := context.Background()
+	if err := reg.InitAll(ctx, testDeps()); err != nil {
+		t.Fatalf("InitAll() error = %v, want nil (optional panic should not propagate)", err)
+	}
+
+	if !reg.IsDisabled("panicker") {
+		t.Error("expected panicking optional plugin to be disabled")
+	}
+	if reg.IsDisabled("normal") {
+		t.Error("expected normal plugin to remain active")
+	}
+}
+
+func TestInitAll_PanicRecovery_RequiredPlugin(t *testing.T) {
+	reg := New(testLogger())
+
+	pp := &panicPlugin{
+		testPlugin:  *newTestPlugin("panicker"),
+		panicOnInit: true,
+	}
+	pp.info.Required = true
+
+	reg.Register(pp)
+	reg.Validate()
+
+	ctx := context.Background()
+	err := reg.InitAll(ctx, testDeps())
+	if err == nil {
+		t.Fatal("InitAll() expected error for required panicking plugin, got nil")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "panicked") {
+		t.Errorf("error = %q, want it to contain 'panicked'", got)
+	}
+}
+
+func TestStartAll_PanicRecovery_OptionalPlugin(t *testing.T) {
+	reg := New(testLogger())
+
+	pp := &panicPlugin{
+		testPlugin:   *newTestPlugin("panicker"),
+		panicOnStart: true,
+	}
+	normal := newTestPlugin("normal")
+
+	reg.Register(pp)
+	reg.Register(normal)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+
+	if err := reg.StartAll(ctx); err != nil {
+		t.Fatalf("StartAll() error = %v, want nil (optional panic should not propagate)", err)
+	}
+
+	if !reg.IsDisabled("panicker") {
+		t.Error("expected panicking optional plugin to be disabled")
+	}
+	if reg.IsDisabled("normal") {
+		t.Error("expected normal plugin to remain active")
+	}
+}
+
+func TestStartAll_PanicRecovery_RequiredPlugin(t *testing.T) {
+	reg := New(testLogger())
+
+	pp := &panicPlugin{
+		testPlugin:   *newTestPlugin("panicker"),
+		panicOnStart: true,
+	}
+	pp.info.Required = true
+
+	reg.Register(pp)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+
+	err := reg.StartAll(ctx)
+	if err == nil {
+		t.Fatal("StartAll() expected error for required panicking plugin, got nil")
+	}
+
+	if got := err.Error(); !strings.Contains(got, "panicked") {
+		t.Errorf("error = %q, want it to contain 'panicked'", got)
+	}
+}
+
+func TestStopAll_PanicRecovery(t *testing.T) {
+	reg := New(testLogger())
+
+	pp := &panicPlugin{
+		testPlugin:  *newTestPlugin("panicker"),
+		panicOnStop: true,
+	}
+
+	var stopOrder []string
+	normal := newShutdownPlugin("normal", &stopOrder)
+
+	reg.Register(pp)
+	reg.Register(normal)
+	reg.Validate()
+
+	ctx := context.Background()
+	reg.InitAll(ctx, testDeps())
+	reg.StartAll(ctx)
+
+	// Should not panic -- recovery catches it.
+	reg.StopAll(ctx)
+
+	// The non-panicking plugin should still have had Stop() called.
+	foundNormal := false
+	for _, name := range stopOrder {
+		if name == "normal" {
+			foundNormal = true
+		}
+	}
+	if !foundNormal {
+		t.Error("expected normal plugin Stop() to be called despite other plugin panicking")
 	}
 }
 
