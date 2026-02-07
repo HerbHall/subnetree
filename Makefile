@@ -1,4 +1,4 @@
-.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check
+.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check ai-review ai-test ai-doc
 
 # Binary names
 SERVER_BIN=subnetree
@@ -81,6 +81,23 @@ license-check:
 
 license-report:
 	@go-licenses report ./... --template=csv 2>/dev/null || go-licenses csv ./... 2>/dev/null
+
+# AI dev tools (requires Ollama on localhost:11434)
+OLLAMA_HOST ?= http://127.0.0.1:11434
+
+ai-review:
+	@bash tools/ai-review.sh
+
+ai-review-all:
+	@bash tools/ai-review.sh --all
+
+ai-test:
+	@test -n "$(FILE)" || (echo "Usage: make ai-test FILE=path/to/file.go" && exit 1)
+	@bash tools/ai-test.sh $(FILE)
+
+ai-doc:
+	@test -n "$(FILE)" || (echo "Usage: make ai-doc FILE=path/to/file.go" && exit 1)
+	@bash tools/ai-doc.sh $(FILE)
 
 clean:
 	rm -rf bin/ $(WEB_DIR)/dist $(WEB_DIR)/node_modules/.cache internal/dashboard/dist
