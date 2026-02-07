@@ -159,14 +159,25 @@ func (r *Registry) InitAll(ctx context.Context, depsFn func(name string) plugin.
 		// Validate config if plugin implements Validator.
 		r.logger.Info("initializing plugin", zap.String("name", name))
 		deps := depsFn(name)
-		if err := p.Init(ctx, deps); err != nil {
+		var initErr error
+		func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					initErr = fmt.Errorf("plugin panicked during Init: %v", rec)
+					r.logger.Error("plugin panic recovered during Init",
+						zap.String("plugin", name), zap.Any("panic", rec))
+				}
+			}()
+			initErr = p.Init(ctx, deps)
+		}()
+		if initErr != nil {
 			info := r.infos[name]
 			if info.Required {
-				return fmt.Errorf("required plugin %q failed to initialize: %w", name, err)
+				return fmt.Errorf("required plugin %q failed to initialize: %w", name, initErr)
 			}
 			r.logger.Error("optional plugin failed to initialize, disabling",
 				zap.String("name", name),
-				zap.Error(err),
+				zap.Error(initErr),
 			)
 			r.disabled[name] = true
 			continue
@@ -212,14 +223,25 @@ func (r *Registry) StartAll(ctx context.Context) error {
 		}
 		p := r.plugins[name]
 		r.logger.Info("starting plugin", zap.String("name", name))
-		if err := p.Start(ctx); err != nil {
+		var startErr error
+		func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					startErr = fmt.Errorf("plugin panicked during Start: %v", rec)
+					r.logger.Error("plugin panic recovered during Start",
+						zap.String("plugin", name), zap.Any("panic", rec))
+				}
+			}()
+			startErr = p.Start(ctx)
+		}()
+		if startErr != nil {
 			info := r.infos[name]
 			if info.Required {
-				return fmt.Errorf("required plugin %q failed to start: %w", name, err)
+				return fmt.Errorf("required plugin %q failed to start: %w", name, startErr)
 			}
 			r.logger.Error("optional plugin failed to start, disabling",
 				zap.String("name", name),
-				zap.Error(err),
+				zap.Error(startErr),
 			)
 			r.disabled[name] = true
 		}
@@ -239,9 +261,17 @@ func (r *Registry) StopAll(ctx context.Context) {
 		}
 		p := r.plugins[name]
 		r.logger.Info("stopping plugin", zap.String("name", name))
-		if err := p.Stop(ctx); err != nil {
-			r.logger.Error("failed to stop plugin", zap.String("name", name), zap.Error(err))
-		}
+		func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					r.logger.Error("plugin panic recovered during Stop",
+						zap.String("plugin", name), zap.Any("panic", rec))
+				}
+			}()
+			if err := p.Stop(ctx); err != nil {
+				r.logger.Error("failed to stop plugin", zap.String("name", name), zap.Error(err))
+			}
+		}()
 	}
 }
 
