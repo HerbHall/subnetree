@@ -9,6 +9,7 @@ package roles
 import (
 	"context"
 
+	"github.com/HerbHall/subnetree/pkg/analytics"
 	"github.com/HerbHall/subnetree/pkg/llm"
 	"github.com/HerbHall/subnetree/pkg/models"
 )
@@ -22,6 +23,7 @@ const (
 	RoleNotification    = "notification"
 	RoleRemoteAccess    = "remote_access"
 	RoleLLM             = "llm"
+	RoleAnalytics       = "analytics"
 )
 
 // DiscoveryProvider is implemented by plugins that discover network devices.
@@ -77,4 +79,18 @@ type RemoteAccessProvider interface {
 type LLMProvider interface {
 	// Provider returns the underlying LLM provider interface.
 	Provider() llm.Provider
+}
+
+// AnalyticsProvider is implemented by plugins that analyze metrics and devices.
+// Resolve via PluginResolver.ResolveByRole(RoleAnalytics) then type-assert.
+type AnalyticsProvider interface {
+	// Anomalies returns detected anomalies, optionally filtered by device.
+	// Pass empty deviceID to list all anomalies.
+	Anomalies(ctx context.Context, deviceID string) ([]analytics.Anomaly, error)
+
+	// Baselines returns learned baselines for a device.
+	Baselines(ctx context.Context, deviceID string) ([]analytics.Baseline, error)
+
+	// Forecasts returns capacity forecasts for a device.
+	Forecasts(ctx context.Context, deviceID string) ([]analytics.Forecast, error)
 }

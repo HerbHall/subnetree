@@ -19,6 +19,113 @@ definitions:
         example: 192.168.1.0/24
         type: string
     type: object
+  github_com_HerbHall_subnetree_pkg_analytics.AlertGroup:
+    properties:
+      alert_count:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      device_ids:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      root_cause:
+        description: Device ID identified as root
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_analytics.Anomaly:
+    properties:
+      description:
+        type: string
+      detected_at:
+        type: string
+      deviation:
+        description: How far from baseline (sigma)
+        type: number
+      device_id:
+        type: string
+      expected:
+        description: Baseline expected value
+        type: number
+      id:
+        type: string
+      metric_name:
+        type: string
+      resolved_at:
+        type: string
+      severity:
+        description: '"info", "warning", "critical"'
+        type: string
+      type:
+        description: '"zscore", "cusum", "trend"'
+        type: string
+      value:
+        description: Observed value
+        type: number
+    type: object
+  github_com_HerbHall_subnetree_pkg_analytics.Baseline:
+    properties:
+      algorithm:
+        description: '"ewma", "holt_winters"'
+        type: string
+      device_id:
+        type: string
+      mean:
+        type: number
+      metric_name:
+        type: string
+      samples:
+        type: integer
+      stable:
+        description: true after learning period
+        type: boolean
+      std_dev:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_analytics.Forecast:
+    properties:
+      confidence:
+        description: 0.0-1.0
+        type: number
+      current_value:
+        type: number
+      device_id:
+        type: string
+      generated_at:
+        type: string
+      metric_name:
+        type: string
+      predicted_value:
+        type: number
+      slope:
+        description: Rate of change per hour
+        type: number
+      threshold:
+        type: number
+      time_to_threshold:
+        $ref: '#/definitions/time.Duration'
+    type: object
+  github_com_HerbHall_subnetree_pkg_analytics.NLQueryRequest:
+    properties:
+      query:
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_analytics.NLQueryResponse:
+    properties:
+      answer:
+        type: string
+      model:
+        type: string
+      query:
+        type: string
+      structured: {}
+    type: object
   github_com_HerbHall_subnetree_pkg_models.APIProblem:
     properties:
       detail:
@@ -414,6 +521,43 @@ definitions:
         example: https://subnetree.com/problems/settings-error
         type: string
     type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    format: int64
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
 info:
   contact: {}
   description: Network monitoring and management platform API.
@@ -602,6 +746,180 @@ paths:
       summary: Health check
       tags:
       - system
+  /insight/anomalies:
+    get:
+      description: Returns all detected anomalies across all devices.
+      parameters:
+      - default: 50
+        description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Anomaly'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List anomalies
+      tags:
+      - insight
+  /insight/anomalies/{device_id}:
+    get:
+      description: Returns anomalies for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      - default: 50
+        description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Anomaly'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device anomalies
+      tags:
+      - insight
+  /insight/baselines/{device_id}:
+    get:
+      description: Returns learned baselines for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Baseline'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device baselines
+      tags:
+      - insight
+  /insight/correlations:
+    get:
+      description: Returns active alert correlation groups.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.AlertGroup'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List correlations
+      tags:
+      - insight
+  /insight/forecasts/{device_id}:
+    get:
+      description: Returns capacity forecasts for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Forecast'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device forecasts
+      tags:
+      - insight
+  /insight/query:
+    post:
+      consumes:
+      - application/json
+      description: Translate a natural language question into a structured query and
+        return results.
+      parameters:
+      - description: Query
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.NLQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.NLQueryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Natural language query
+      tags:
+      - insight
   /plugins:
     get:
       description: Returns all registered plugins with their metadata.

@@ -296,6 +296,277 @@ const docTemplate = `{
                 }
             }
         },
+        "/insight/anomalies": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all detected anomalies across all devices.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "List anomalies",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Anomaly"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insight/anomalies/{device_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns anomalies for a specific device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Device anomalies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Maximum results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Anomaly"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insight/baselines/{device_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns learned baselines for a specific device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Device baselines",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Baseline"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insight/correlations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns active alert correlation groups.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "List correlations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.AlertGroup"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insight/forecasts/{device_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns capacity forecasts for a specific device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Device forecasts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Forecast"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insight/query": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Translate a natural language question into a structured query and return results.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Natural language query",
+                "parameters": [
+                    {
+                        "description": "Query",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.NLQueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.NLQueryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/plugins": {
             "get": {
                 "description": "Returns all registered plugins with their metadata.",
@@ -886,6 +1157,164 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_HerbHall_subnetree_pkg_analytics.AlertGroup": {
+            "type": "object",
+            "properties": {
+                "alert_count": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "device_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "root_cause": {
+                    "description": "Device ID identified as root",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.Anomaly": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "detected_at": {
+                    "type": "string"
+                },
+                "deviation": {
+                    "description": "How far from baseline (sigma)",
+                    "type": "number"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "expected": {
+                    "description": "Baseline expected value",
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metric_name": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "\"info\", \"warning\", \"critical\"",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"zscore\", \"cusum\", \"trend\"",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Observed value",
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.Baseline": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "description": "\"ewma\", \"holt_winters\"",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "mean": {
+                    "type": "number"
+                },
+                "metric_name": {
+                    "type": "string"
+                },
+                "samples": {
+                    "type": "integer"
+                },
+                "stable": {
+                    "description": "true after learning period",
+                    "type": "boolean"
+                },
+                "std_dev": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.Forecast": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "description": "0.0-1.0",
+                    "type": "number"
+                },
+                "current_value": {
+                    "type": "number"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "metric_name": {
+                    "type": "string"
+                },
+                "predicted_value": {
+                    "type": "number"
+                },
+                "slope": {
+                    "description": "Rate of change per hour",
+                    "type": "number"
+                },
+                "threshold": {
+                    "type": "number"
+                },
+                "time_to_threshold": {
+                    "$ref": "#/definitions/time.Duration"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.NLQueryRequest": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.NLQueryResponse": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "structured": {}
+            }
+        },
         "github_com_HerbHall_subnetree_pkg_models.APIProblem": {
             "type": "object",
             "properties": {
@@ -1443,6 +1872,46 @@ const docTemplate = `{
                     "example": "https://subnetree.com/problems/settings-error"
                 }
             }
+        },
+        "time.Duration": {
+            "type": "integer",
+            "format": "int64",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000,
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour",
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
         }
     },
     "securityDefinitions": {
