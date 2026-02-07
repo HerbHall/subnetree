@@ -46,6 +46,9 @@ func LoadConfig(configPath string) (*viper.Viper, error) {
 	v.SetDefault("plugins.webhook.enabled", true)
 	v.SetDefault("plugins.webhook.url", "")
 	v.SetDefault("plugins.webhook.timeout", "10s")
+	v.SetDefault("plugins.llm.url", "http://localhost:11434")
+	v.SetDefault("plugins.llm.model", "qwen2.5:32b")
+	v.SetDefault("plugins.llm.timeout", "5m")
 
 	if configPath != "" {
 		v.SetConfigFile(configPath)

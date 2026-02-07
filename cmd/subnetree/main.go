@@ -27,6 +27,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/dispatch"
 	"github.com/HerbHall/subnetree/internal/event"
 	"github.com/HerbHall/subnetree/internal/gateway"
+	"github.com/HerbHall/subnetree/internal/llm"
 	"github.com/HerbHall/subnetree/internal/pulse"
 	"github.com/HerbHall/subnetree/internal/recon"
 	"github.com/HerbHall/subnetree/internal/registry"
@@ -128,6 +129,7 @@ func main() {
 		vault.New(),
 		gateway.New(),
 		webhook.New(),
+		llm.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
