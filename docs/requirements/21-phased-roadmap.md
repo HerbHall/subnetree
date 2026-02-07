@@ -65,13 +65,13 @@
 
 #### Pre-Phase Tooling Research
 - [x] Evaluate and configure golangci-lint (15+ linters, project-specific `.golangci.yml`)
-- [ ] Establish test framework patterns: table-driven tests, testify assertions, testcontainers for integration
+- [x] Establish test framework patterns: table-driven tests, testify assertions, testcontainers for integration
 - [x] Set up Codecov integration for coverage tracking in CI
 - [x] Register repository on Go Report Card
 - [x] Configure GitHub Actions workflows: build, test, lint, license-check
 - [x] Configure Dependabot for Go modules and GitHub Actions
 - [x] Set up pre-commit hooks: gofmt, go vet, license header check (lefthook)
-- [ ] Evaluate and document React + TypeScript toolchain for dashboard (Vite, ESLint, Prettier)
+- [x] Evaluate and document React + TypeScript toolchain for dashboard (Vite, ESLint, Prettier)
 
 #### Architecture & Infrastructure
 - [x] Redesigned plugin system: `PluginInfo`, `Dependencies`, optional interfaces
@@ -81,7 +81,7 @@
 - [x] Plugin registry with topological sort, graceful degradation
 - [x] Store interface + SQLite implementation (modernc.org/sqlite, pure Go)
 - [x] Per-plugin database migrations (reserve `analytics_` table prefix for Phase 2 Insight plugin)
-- [ ] Repository interfaces in `internal/services/`
+- [x] Repository interfaces in `internal/services/`
 - [ ] Metrics collection format: uniform `(timestamp, device_id, metric_name, value, tags)` for analytics consumption
 
 #### Server & API
@@ -110,16 +110,16 @@
 - [x] Publishes `recon.device.discovered` events
 
 #### Dashboard
-- [ ] React + Vite + TypeScript + shadcn/ui + TanStack Query + Zustand
-- [ ] First-run setup wizard
-- [ ] Dashboard overview page (device counts, status summary)
-- [ ] Device list with search, filter, sort, pagination
-- [ ] Device detail page
-- [ ] Network topology visualization (auto-generated from LLDP/CDP/ARP)
-- [ ] Scan trigger with real-time progress (WebSocket)
-- [ ] Dark mode support
-- [ ] Settings page (server config, user profile)
-- [ ] About page with version info, license, and Community Supporters section
+- [x] React + Vite + TypeScript + shadcn/ui + TanStack Query + Zustand
+- [x] First-run setup wizard
+- [x] Dashboard overview page (device counts, status summary)
+- [x] Device list with search, filter, sort, pagination
+- [x] Device detail page
+- [x] Network topology visualization (auto-generated from LLDP/CDP/ARP)
+- [x] Scan trigger with real-time progress (WebSocket)
+- [x] Dark mode support
+- [x] Settings page (server config, user profile)
+- [x] About page with version info, license, and Community Supporters section
 
 #### Documentation
 - [ ] Tailscale deployment guide: running SubNetree + Scout over Tailscale
@@ -141,13 +141,13 @@
 - [x] Plugin API version validation tests: too old, too new, exact match, backward-compatible range
 - [x] API endpoint tests: `httptest.NewRecorder()` for all routes (status codes, content types, RFC 7807 errors)
 - [x] Security middleware tests: auth enforcement, security headers, CORS, CSRF, rate limiting (429)
-- [ ] Input validation tests: malformed JSON, oversized payloads, SQL injection, XSS, path traversal
-- [ ] Secrets hygiene tests: verify credentials never appear in log output or error responses
-- [ ] Repository tests: in-memory SQLite CRUD, edge cases, transactions, constraint violations
+- [x] Input validation tests: malformed JSON, oversized payloads, SQL injection, XSS, path traversal
+- [x] Secrets hygiene tests: verify credentials never appear in log output or error responses
+- [x] Repository tests: in-memory SQLite CRUD, edge cases, transactions, constraint violations
 - [x] Database migration tests: fresh install, sequential upgrade, per-plugin isolation, idempotent check
 - [x] Configuration tests: defaults, env overrides, YAML overrides, invalid values, `config_version` validation
 - [ ] Version compatibility tests: Plugin API, agent proto, config version, database schema version
-- [ ] Graceful shutdown tests: SIGTERM/SIGINT handling, per-plugin timeout, connection draining
+- [x] Graceful shutdown tests: SIGTERM/SIGINT handling, per-plugin timeout, connection draining
 - [x] Health endpoint tests: `/healthz`, `/readyz`, per-plugin health status
 - [ ] Fuzz tests: API input fuzzing, configuration fuzzing (Go `testing.F`)
 - [ ] Performance baselines: benchmark key operations, memory profile at 0/50 devices, startup time
@@ -155,9 +155,9 @@
 - [x] CI pipeline: GitHub Actions `ci.yml` with golangci-lint, `go test -race`, build, coverage report, license check
 - [ ] CI coverage enforcement: fail PR if any package drops below minimum coverage target
 - [x] `.golangci-lint.yml`: errcheck, gosec, gocritic, staticcheck, bodyclose, noctx, sqlclosecheck
-- [ ] GoReleaser configuration for cross-platform binary builds
+- [x] GoReleaser configuration for cross-platform binary builds
 - [x] Cross-platform CI: build verification for `linux/amd64`, `linux/arm64`, `windows/amd64`, `darwin/arm64`
-- [ ] OpenAPI spec generation (swaggo/swag)
+- [x] OpenAPI spec generation (swaggo/swag)
 
 #### Metrics & Measurement Infrastructure
 - [x] Codecov integration: GitHub Action uploads coverage report, badge in README, PR comments with coverage diff
@@ -172,14 +172,14 @@
 - [x] CONTRIBUTING.md: development setup, code style, PR process, testing expectations, CLA explanation
 - [x] Pull request template (`.github/pull_request_template.md`) with checklist (tests, lint, description)
 - [ ] First tagged release: `v0.1.0-alpha` with pre-built binaries (GoReleaser) and GitHub Release notes
-- [ ] Dockerfile: multi-stage build (builder + distroless/alpine runtime), multi-arch (`linux/amd64`, `linux/arm64`)
-- [ ] docker-compose.yml: one-command deployment matching the spec in Deployment section
+- [x] Dockerfile: multi-stage build (builder + distroless/alpine runtime), multi-arch (`linux/amd64`, `linux/arm64`)
+- [x] docker-compose.yml: one-command deployment matching the spec in Deployment section
 - [ ] README: "Why SubNetree?" section -- value proposition, feature comparison table (discovery + monitoring + remote access + vault + IoT in one tool), clear differentiation from Zabbix/LibreNMS/Uptime Kuma
 - [ ] README: status badges (CI build, Go version, license, latest release, Docker pulls)
-- [ ] README: Docker quickstart section (`docker run` one-liner + docker-compose snippet)
+- [x] README: Docker quickstart section (`docker run` one-liner + docker-compose snippet)
 - [ ] README: screenshots/GIF of dashboard (blocked on dashboard implementation -- placeholder with architecture diagram until then)
 - [ ] README: "Current Status" section -- honest about what works today vs. what's planned, links to roadmap
-- [ ] README: clarify licensing wording to "free for personal, home-lab, and non-competing production use"
+- [x] README: clarify licensing wording to "free for personal, home-lab, and non-competing production use"
 - [ ] Seed GitHub Issues: 5–10 issues labeled `good first issue` and `help wanted` (e.g., "add device type icon mapping", "write Prometheus exporter example plugin", "add ARM64 CI build target")
 - [ ] Seed GitHub Discussions: introductory post, roadmap discussion thread, "plugin ideas" thread, "show your setup" thread
 - [ ] Community channel: create Discord server (or Matrix space) for real-time contributor discussion, linked from README and CONTRIBUTING.md
