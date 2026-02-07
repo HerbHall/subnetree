@@ -17,6 +17,29 @@ Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 - **Launches anything** with one click -- web UIs, SSH, RDP -- credentials handled
 - **Extends via plugins** to monitor whatever you need
 
+## Current Status
+
+> **v0.1.0-alpha** -- Core scanning and dashboard are functional. Expect rough edges.
+
+### What Works Today
+
+- **Network Discovery**: ARP + ICMP scanning with OUI manufacturer lookup
+- **Interactive Dashboard**: Device list, detail pages, and network topology visualization
+- **Real-Time Updates**: WebSocket-powered scan progress with live device feed
+- **Authentication**: JWT-based auth with first-run setup wizard
+- **Backup/Restore**: CLI commands for data safety
+- **Docker**: Multi-stage builds with health checks
+
+### Coming Next
+
+- Monitoring & alerting (Pulse module)
+- Scout agents for detailed host metrics
+- Credential vault for stored passwords
+- Remote access (SSH, RDP, HTTP proxy)
+- Enhanced discovery (SNMP, mDNS, UPnP)
+
+See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
+
 ## Quick Start (Docker)
 
 ```bash
@@ -83,6 +106,21 @@ docker-compose up -d
 - Credential vault so you don't re-type passwords
 - Secure browser-based remote access (coming soon)
 
+## How SubNetree Compares
+
+| | SubNetree | Zabbix | LibreNMS | Uptime Kuma | Domotz |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| **Auto-Discovery** | ARP + ICMP | SNMP/agent | SNMP | -- | Proprietary |
+| **Dashboard** | Modern React | Dated PHP | Bootstrap | Clean | Cloud |
+| **Topology Map** | Interactive | Static | Auto | -- | Auto |
+| **Agent Optional** | Yes | Recommended | Recommended | -- | Required |
+| **Setup Time** | ~2 min | Hours | 30+ min | ~5 min | ~10 min |
+| **Self-Hosted** | Yes | Yes | Yes | Yes | No |
+| **License** | BSL 1.1* | GPL-2.0 | GPL-3.0 | MIT | Proprietary |
+| **Target User** | Homelabbers | Enterprise | Enterprise | Uptime only | MSPs |
+
+*BSL 1.1 converts to Apache 2.0 after 4 years. Free for personal/homelab use.
+
 ## Architecture
 
 ```
@@ -133,17 +171,17 @@ make build
 
 # Or build separately
 make build-server
-cd web && npm ci && npm run build
+cd web && pnpm install --frozen-lockfile && pnpm run build
 ```
 
 ### Run
 
 ```bash
 # Start server (serves dashboard at :8080)
-./bin/subnetree serve
+./bin/subnetree
 
 # With config file
-./bin/subnetree serve -config configs/subnetree.example.yaml
+./bin/subnetree -config configs/subnetree.example.yaml
 ```
 
 ### Development
@@ -186,6 +224,30 @@ api/
 - **Phase 2**: Enhanced discovery (SNMP, mDNS, UPnP) + monitoring + Linux agent
 - **Phase 3**: Remote access (SSH, RDP) + credential vault
 - **Phase 4**: Homelab integrations (Home Assistant, UnRAID, Proxmox)
+
+## Troubleshooting
+
+**Docker: Scanning finds no devices** --
+Use host networking for full ARP/ICMP access:
+
+```bash
+docker run -d --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
+```
+
+Or ensure `NET_RAW` and `NET_ADMIN` capabilities are set.
+
+**First-time setup** --
+Navigate to `http://localhost:8080` -- the setup wizard will prompt you to create an admin account.
+
+**Backup your data** --
+
+```bash
+# Create backup
+subnetree backup --data-dir /data --output my-backup.tar.gz
+
+# Restore from backup
+subnetree restore --input my-backup.tar.gz --data-dir /data --force
+```
 
 ## Support the Project
 

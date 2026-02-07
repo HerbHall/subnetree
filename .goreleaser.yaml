@@ -143,16 +143,6 @@ sboms:
     documents:
       - "{{ .ArtifactName }}.sbom.json"
 
-signs:
-  - cmd: cosign
-    artifacts: checksum
-    output: true
-    args:
-      - sign-blob
-      - "--yes"
-      - "--output-signature=${signature}"
-      - "${artifact}"
-
 release:
   github:
     owner: HerbHall
@@ -168,14 +158,11 @@ release:
     ```bash
     docker run -d -p 8080:8080 \
       -v subnetree-data:/data \
+      --cap-add NET_RAW --cap-add NET_ADMIN \
       ghcr.io/herbhall/subnetree:{{ .Tag }}
     ```
 
     **Binary:** Download the appropriate archive for your platform below.
-
-    See the [full changelog](https://github.com/HerbHall/subnetree/compare/{{.PreviousTag}}...{{.Tag}}) for all changes.
   footer: |
-    **Full Changelog**: https://github.com/HerbHall/subnetree/compare/{{.PreviousTag}}...{{.Tag}}
-
     ---
     Licensed under BSL 1.1 (core) and Apache 2.0 (plugin SDK).

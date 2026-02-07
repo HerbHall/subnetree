@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  packages: write
+  id-token: write
 
 jobs:
   release:
@@ -23,6 +25,27 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Embed frontend in Go binary
+        run: |
+          rm -rf internal/dashboard/dist
+          cp -r web/dist internal/dashboard/dist
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
