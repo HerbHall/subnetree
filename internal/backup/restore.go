@@ -53,7 +53,7 @@ func Restore(_ context.Context, archivePath, targetDir string, force bool) error
 			foundDB = true
 		}
 
-		destPath := filepath.Join(targetDir, hdr.Name)
+		destPath := filepath.Join(targetDir, filepath.Clean(hdr.Name)) //nolint:gosec // G305: path traversal checked by validateTarEntry above
 
 		// Check for existing files when force is disabled.
 		if !force {
@@ -109,13 +109,13 @@ func validateTarEntry(name, targetDir string) error {
 func extractFile(tr *tar.Reader, destPath string, hdr *tar.Header) error {
 	switch hdr.Typeflag {
 	case tar.TypeDir:
-		return os.MkdirAll(destPath, os.FileMode(hdr.Mode))
+		return os.MkdirAll(destPath, os.FileMode(hdr.Mode&0o777)) //nolint:gosec // G115: mode bits safely within uint32 range
 	case tar.TypeReg:
 		// Ensure parent directory exists.
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return err
 		}
-		out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode))
+		out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode&0o777)) //nolint:gosec // G115: mode bits safely within uint32 range
 		if err != nil {
 			return err
 		}

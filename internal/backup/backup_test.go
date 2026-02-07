@@ -100,7 +100,7 @@ func TestBackupRestore(t *testing.T) {
 				if err != nil {
 					t.Fatalf("config not restored: %v", err)
 				}
-				if string(data) == "" {
+				if len(data) == 0 {
 					t.Fatal("restored config is empty")
 				}
 			},
