@@ -39,7 +39,7 @@ Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 - Scout agents for detailed host metrics
 - Credential vault for stored passwords
 - Remote access (SSH, RDP, HTTP proxy)
-- Cloud LLM providers (OpenAI, Anthropic) alongside local Ollama
+- Additional LLM providers (OpenAI, Anthropic) planned alongside local Ollama
 - Enhanced discovery (SNMP, mDNS, UPnP)
 
 See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
@@ -127,28 +127,34 @@ docker-compose up -d
 
 ## Architecture
 
-```
-                    +------------------+
-                    |    Dashboard     |
-                    | (React + TS)     |
-                    +--------+---------+
-                             |
-                    REST / WebSocket
-                             |
-+----------+       +---------+---------+       +----------+
-|  Scout   | gRPC  |   SubNetree      |       | Network  |
-|  Agent   +------>+   Server          +------>+ Devices  |
-|          |       |                   | ICMP/  | (SNMP,   |
-+----------+       | +------+ +------+ | SNMP/  |  mDNS,   |
-                   | |Recon | |Pulse | | ARP/   |  UPnP)   |
-                   | +------+ +------+ | mDNS   +----------+
-                   | |Dispatch|Vault | |
-                   | +------+ +------+ |
-                   | |Gateway|Webhook| |
-                   | +------+ +------+ |
-                   | | LLM  |        |
-                   | +------+        |
-                   +-------------------+
+```mermaid
+graph TD
+    Dashboard["Dashboard<br/><small>React + TypeScript</small>"]
+    Scout["Scout Agent"]
+    Devices["Network Devices"]
+
+    subgraph Server["SubNetree Server"]
+        Recon["Recon"]
+        Pulse["Pulse"]
+        Insight["Insight"]
+        LLM["LLM"]
+        Dispatch["Dispatch"]
+        Vault["Vault"]
+        Gateway["Gateway"]
+        Webhook["Webhook"]
+        EventBus(["Event Bus"])
+
+        Recon --> EventBus
+        Pulse --> EventBus
+        Insight --> EventBus
+        Webhook --> EventBus
+    end
+
+    Dashboard -- "REST / WebSocket" --> Server
+    Scout -- "gRPC" --> Dispatch
+    Recon -- "ARP / ICMP" --> Devices
+    Pulse -- "ICMP" --> Devices
+    Insight --> LLM
 ```
 
 ### Modules
@@ -162,6 +168,7 @@ docker-compose up -d
 | **Gateway** | Browser-based remote access (SSH, RDP, HTTP proxy) |
 | **Webhook** | Event-driven webhook notifications |
 | **LLM** | AI provider integration (Ollama, optional) |
+| **Insight** | Statistical analytics, anomaly detection, NL queries |
 
 ## Building from Source
 
@@ -219,6 +226,7 @@ internal/
   gateway/        Remote access module
   webhook/        Webhook notification module
   llm/            LLM plugin (Ollama provider)
+  insight/        Analytics and anomaly detection
 web/              React dashboard (Vite + shadcn/ui)
 pkg/
   plugin/         Public plugin SDK (Apache 2.0)

@@ -14,7 +14,7 @@
 - [x] Create `docs/requirements/README.md` index with section descriptions
 - [x] Update `.claude/CLAUDE.md` Documentation Map to reference individual files
 - [x] Replace `requirements.md` with redirect to `docs/requirements/README.md`
-- [ ] Verify all cross-references resolve correctly
+- [x] Verify all cross-references resolve correctly
 
 #### Architecture Decision Records
 - [x] Create `docs/adr/` directory with MADR template
@@ -41,11 +41,11 @@
 - [x] Pre-commit hooks: gofmt, go vet, license header check (lefthook)
 
 #### Development Environment
-- [ ] Document development setup in `docs/guides/contributing.md`
-- [ ] Makefile: verify all targets work on Windows (MSYS2/Git Bash), Linux, macOS
+- [x] Document development setup in `docs/guides/development-setup.md`
+- [x] Makefile: verify all targets work on Windows (MSYS2/Git Bash), Linux, macOS
 - [x] `.editorconfig` for consistent formatting across editors
 - [x] VS Code recommended extensions list (`.vscode/extensions.json`)
-- [ ] Go workspace configuration (`go.work` if needed for multi-module)
+- [x] Go workspace configuration -- not needed (single module)
 
 #### Community Health Files
 - [x] CONTRIBUTING.md: fork-and-PR workflow, commit conventions, code review process
