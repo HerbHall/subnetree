@@ -35,7 +35,7 @@ make lint
 
 ### Project Structure
 
-```
+```text
 cmd/            Entry points (server, agent)
 internal/       Private packages (plugins, server, services)
 pkg/            Public packages (plugin SDK, models)
@@ -77,7 +77,7 @@ configs/        Example configuration files
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 feat: add device type icon mapping
 fix: prevent duplicate scan entries on network change
 refactor: extract plugin lifecycle into separate package
