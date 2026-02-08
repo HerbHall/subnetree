@@ -590,34 +590,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/pulse/status": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the current status of the Pulse monitoring module.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pulse"
-                ],
-                "summary": "Monitoring status",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/recon/scan": {
             "post": {
                 "security": [

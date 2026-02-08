@@ -898,23 +898,6 @@ paths:
       summary: List plugins
       tags:
       - system
-  /pulse/status:
-    get:
-      description: Returns the current status of the Pulse monitoring module.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Monitoring status
-      tags:
-      - pulse
   /recon/scan:
     post:
       consumes:
