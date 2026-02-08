@@ -349,14 +349,12 @@ export function DashboardPage() {
             ) : recentDevices.length === 0 ? (
               <div className="text-center py-8">
                 <Radar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground mb-3">No devices discovered yet</p>
-                <Button
-                  size="sm"
-                  onClick={() => scanMutation.mutate()}
-                  disabled={scanMutation.isPending}
-                >
-                  {scanMutation.isPending ? 'Scanning...' : 'Run First Scan'}
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  No devices discovered yet
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Run a scan to discover devices on your network
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
