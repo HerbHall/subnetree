@@ -218,6 +218,21 @@ func main() {
 	wsHandler := ws.NewHandler(tokens, bus, logger.Named("ws"))
 	logger.Info("websocket handler initialized", zap.String("component", "ws"))
 
+	// Create Gateway SSH WebSocket handler.
+	// Find the gateway module in the registered plugins for SSH handler wiring.
+	var gw *gateway.Module
+	for _, m := range modules {
+		if g, ok := m.(*gateway.Module); ok {
+			gw = g
+			break
+		}
+	}
+	var sshHandler *gateway.SSHWebSocketHandler
+	if gw != nil {
+		sshHandler = gateway.NewSSHWebSocketHandler(gw, &tokenAdapter{tokens}, logger.Named("gateway-ssh"))
+		logger.Info("gateway SSH handler initialized", zap.String("component", "gateway"))
+	}
+
 	// Create and start HTTP server
 	addr := viperCfg.GetString("server.host") + ":" + viperCfg.GetString("server.port")
 	if addr == ":" {
@@ -232,7 +247,11 @@ func main() {
 		return db.DB().PingContext(ctx)
 	})
 	dashboardHandler := dashboard.Handler()
-	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, settingsHandler, wsHandler)
+	extraRoutes := []server.SimpleRouteRegistrar{settingsHandler, wsHandler}
+	if sshHandler != nil {
+		extraRoutes = append(extraRoutes, sshHandler)
+	}
+	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, extraRoutes...)
 
 	// Start server in background
 	go func() {
@@ -261,4 +280,18 @@ func main() {
 	}
 
 	logger.Info("SubNetree server stopped")
+}
+
+// tokenAdapter adapts auth.TokenService to the gateway.TokenValidator interface.
+// Lives in the composition root to avoid coupling gateway -> auth.
+type tokenAdapter struct {
+	svc *auth.TokenService
+}
+
+func (a *tokenAdapter) ValidateAccessToken(token string) (*gateway.TokenClaims, error) {
+	claims, err := a.svc.ValidateAccessToken(token)
+	if err != nil {
+		return nil, err
+	}
+	return &gateway.TokenClaims{UserID: claims.UserID}, nil
 }
