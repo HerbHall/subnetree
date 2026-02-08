@@ -496,7 +496,7 @@ else
             SCAN_STATUS=$(curl -sf "$BASE_URL/api/v1/recon/scans/$SCAN_ID" \
                 -H "Authorization: Bearer $ACCESS_TOKEN" 2>&1 || echo "{}")
             STATUS=$(json_field "$SCAN_STATUS" "status")
-            DEVICE_COUNT=$(json_field "$SCAN_STATUS" "device_count")
+            DEVICE_COUNT=$(json_field "$SCAN_STATUS" "total")
             log_info "  Status: $STATUS, Devices: $DEVICE_COUNT (${i}0s)"
             if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
                 break

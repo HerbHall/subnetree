@@ -343,7 +343,7 @@ plugins:
                 $scanCheck = Invoke-Api -Uri "$BaseUrl/api/v1/recon/scans/$scanId" -Token $accessToken
                 if ($scanCheck) {
                     $scanStatus = $scanCheck.status
-                    $deviceCount = $scanCheck.device_count
+                    $deviceCount = [int]$scanCheck.total
                     Log-Info "  Status: $scanStatus, Devices: $deviceCount ($($i*5)s)"
                 }
                 if ($scanStatus -eq "completed" -or $scanStatus -eq "failed") { break }
@@ -364,13 +364,15 @@ plugins:
     Write-Host "  10. PULSE MONITORING"
     Write-Host "========================================="
 
-    $checks = Invoke-Api -Uri "$BaseUrl/api/v1/pulse/checks" -Token $accessToken
-    if ($null -ne $checks) { Log-Pass "Pulse checks endpoint responds" }
-    else { Log-Warn "Pulse checks endpoint failed" }
-
-    $alerts = Invoke-Api -Uri "$BaseUrl/api/v1/pulse/alerts" -Token $accessToken
-    if ($null -ne $alerts) { Log-Pass "Pulse alerts endpoint responds" }
-    else { Log-Warn "Pulse alerts endpoint failed" }
+    # Use raw HTTP check -- ConvertFrom-Json drops empty arrays in PS5.1
+    foreach ($ep in @("checks", "alerts")) {
+        try {
+            $resp = Invoke-WebRequest -Uri "$BaseUrl/api/v1/pulse/$ep" `
+                -Headers @{ "Authorization" = "Bearer $accessToken" } -UseBasicParsing -TimeoutSec 5
+            if ($resp.StatusCode -eq 200) { Log-Pass "Pulse $ep endpoint responds (HTTP 200)" }
+            else { Log-Warn "Pulse $ep returned HTTP $($resp.StatusCode)" }
+        } catch { Log-Warn "Pulse $ep endpoint failed" }
+    }
 
     Write-Host ""
 
@@ -379,9 +381,13 @@ plugins:
     Write-Host "  11. INSIGHT ANALYTICS"
     Write-Host "========================================="
 
-    $anomalies = Invoke-Api -Uri "$BaseUrl/api/v1/insight/anomalies" -Token $accessToken
-    if ($null -ne $anomalies) { Log-Pass "Insight anomalies endpoint responds" }
-    else { Log-Warn "Insight anomalies endpoint failed" }
+    # Use raw HTTP check -- ConvertFrom-Json drops empty arrays in PS5.1
+    try {
+        $resp = Invoke-WebRequest -Uri "$BaseUrl/api/v1/insight/anomalies" `
+            -Headers @{ "Authorization" = "Bearer $accessToken" } -UseBasicParsing -TimeoutSec 5
+        if ($resp.StatusCode -eq 200) { Log-Pass "Insight anomalies endpoint responds (HTTP 200)" }
+        else { Log-Warn "Insight anomalies returned HTTP $($resp.StatusCode)" }
+    } catch { Log-Warn "Insight anomalies endpoint failed" }
 
     Write-Host ""
 

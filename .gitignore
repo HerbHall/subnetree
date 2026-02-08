@@ -38,6 +38,8 @@ desktop.ini
 # Data directory
 /data/
 *.db
+*.db-shm
+*.db-wal
 
 # Working files
 whats-next.md
