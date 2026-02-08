@@ -250,6 +250,8 @@ plugins:
 CONF
 
 log_info "Starting server on port $PORT ..."
+# Set vault passphrase via env var to prevent interactive prompt blocking startup.
+export SUBNETREE_VAULT_PASSPHRASE="TestVaultPass123!"
 "./extracted/$BINARY" -config "$WORKDIR/config.yaml" > "$WORKDIR/server.log" 2>&1 &
 SERVER_PID=$!
 log_info "Server PID: $SERVER_PID"

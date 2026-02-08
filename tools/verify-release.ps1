@@ -161,6 +161,8 @@ plugins:
 "@ | Set-Content $ConfigPath
 
     Log-Info "Starting server on port $Port ..."
+    # Set vault passphrase via env var to prevent interactive prompt blocking startup.
+    $env:SUBNETREE_VAULT_PASSPHRASE = "TestVaultPass123!"
     $ServerProcess = Start-Process -FilePath $BinaryPath -ArgumentList "-config",$ConfigPath `
         -RedirectStandardOutput "$WorkDir\server-stdout.log" `
         -RedirectStandardError "$WorkDir\server-stderr.log" `
