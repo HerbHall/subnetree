@@ -555,12 +555,6 @@ func TestHandleDeviceAlerts_NilStore(t *testing.T) {
 func TestHandleDeviceStatus_WithData(t *testing.T) {
 	m, _ := newTestModule(t)
 
-	// Start the module so the Status method works.
-	if err := m.Start(context.Background()); err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-	t.Cleanup(func() { _ = m.Stop(context.Background()) })
-
 	now := time.Now().UTC().Truncate(time.Second)
 	// Insert check first (foreign key constraint).
 	check := &Check{

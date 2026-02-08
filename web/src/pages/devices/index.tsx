@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -21,6 +21,7 @@ import { getTopology, triggerScan } from '@/api/devices'
 import { useScanStore } from '@/stores/scan'
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 type ViewMode = 'grid' | 'list' | 'table'
 type SortField = 'label' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
@@ -73,6 +74,21 @@ export function DevicesPage() {
     queryKey: ['topology'],
     queryFn: getTopology,
   })
+
+  // Keyboard shortcuts
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const focusSearch = useCallback(() => searchInputRef.current?.focus(), [])
+  const refreshData = useCallback(() => { refetch() }, [refetch])
+
+  useKeyboardShortcuts(
+    useMemo(
+      () => [
+        { key: '/', handler: focusSearch, description: 'Focus search' },
+        { key: 'r', handler: refreshData, description: 'Refresh data' },
+      ],
+      [focusSearch, refreshData]
+    )
+  )
 
   // Scan mutation
   const scanMutation = useMutation({
@@ -245,6 +261,7 @@ export function DevicesPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Search hostname, IP, MAC, manufacturer..."
             value={searchQuery}
             onChange={(e) => {
