@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
@@ -27,6 +27,7 @@ import { getTopology, triggerScan, listScans } from '@/api/devices'
 import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 const REFRESH_OPTIONS = [
   { label: '15s', value: 15 * 1000 },
@@ -73,6 +74,7 @@ export function DashboardPage() {
     data: topology,
     isLoading: topologyLoading,
     error: topologyError,
+    refetch: refetchTopology,
   } = useQuery({
     queryKey: ['topology'],
     queryFn: getTopology,
@@ -93,6 +95,14 @@ export function DashboardPage() {
   const scanMutation = useMutation({
     mutationFn: () => triggerScan(),
   })
+
+  // Keyboard shortcuts
+  const handleRefresh = useCallback(() => { refetchTopology() }, [refetchTopology])
+  const dashboardShortcuts = useMemo(
+    () => [{ key: 'r', handler: handleRefresh, description: 'Refresh data' }],
+    [handleRefresh]
+  )
+  useKeyboardShortcuts(dashboardShortcuts)
 
   const devices = topology?.nodes || []
   const loading = topologyLoading

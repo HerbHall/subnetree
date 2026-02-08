@@ -1,7 +1,10 @@
-import { Outlet, NavLink } from 'react-router-dom'
+import { useState, useCallback, useMemo } from 'react'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { LayoutDashboard, Monitor, Network, Settings, Info, LogOut } from 'lucide-react'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +17,27 @@ const navItems = [
 export function AppLayout() {
   const logout = useAuthStore((s) => s.logout)
   const user = useAuthStore((s) => s.user)
+  const navigate = useNavigate()
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  const goToDashboard = useCallback(() => navigate('/dashboard'), [navigate])
+  const goToDevices = useCallback(() => navigate('/devices'), [navigate])
+  const goToTopology = useCallback(() => navigate('/topology'), [navigate])
+  const goToSettings = useCallback(() => navigate('/settings'), [navigate])
+
+  const shortcuts = useMemo(
+    () => [
+      { key: '?', shift: true, handler: openShortcuts, description: 'Show keyboard shortcuts' },
+      { key: '1', handler: goToDashboard, description: 'Go to Dashboard' },
+      { key: '2', handler: goToDevices, description: 'Go to Devices' },
+      { key: '3', handler: goToTopology, description: 'Go to Topology' },
+      { key: '4', handler: goToSettings, description: 'Go to Settings' },
+    ],
+    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToSettings]
+  )
+
+  useKeyboardShortcuts(shortcuts)
 
   return (
     <div className="flex min-h-screen">
@@ -57,6 +81,7 @@ export function AppLayout() {
       <main className="flex-1 p-6">
         <Outlet />
       </main>
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   )
 }
