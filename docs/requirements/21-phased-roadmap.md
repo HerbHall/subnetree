@@ -124,8 +124,8 @@
 - [x] About page with version info, license, and Community Supporters section
 
 #### Documentation
-- [ ] Tailscale deployment guide: running SubNetree + Scout over Tailscale
-- [ ] Tailscale Funnel/Serve guide: exposing dashboard without port forwarding
+- [x] Tailscale deployment guide: running SubNetree + Scout over Tailscale
+- [x] Tailscale Funnel/Serve guide: exposing dashboard without port forwarding
 
 #### Operations
 - [x] Backup/restore CLI commands (`subnetree backup`, `subnetree restore`)

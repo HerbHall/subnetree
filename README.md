@@ -269,6 +269,12 @@ subnetree backup --data-dir /data --output my-backup.tar.gz
 subnetree restore --input my-backup.tar.gz --data-dir /data --force
 ```
 
+## Guides
+
+- [Development Setup](docs/guides/development-setup.md) -- local dev environment
+- [Tailscale Deployment](docs/guides/tailscale-deployment.md) -- running SubNetree + Scout over Tailscale
+- [Tailscale Serve & Funnel](docs/guides/tailscale-funnel.md) -- exposing the dashboard without port forwarding
+
 ## Community
 
 - [GitHub Discussions](https://github.com/HerbHall/subnetree/discussions) -- questions, ideas, and general chat
