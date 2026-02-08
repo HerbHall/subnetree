@@ -261,6 +261,14 @@ subnetree backup --data-dir /data --output my-backup.tar.gz
 subnetree restore --input my-backup.tar.gz --data-dir /data --force
 ```
 
+## Community
+
+- [GitHub Discussions](https://github.com/HerbHall/subnetree/discussions) -- questions, ideas, and general chat
+- [Issue Tracker](https://github.com/HerbHall/subnetree/issues) -- bug reports and feature requests
+- [Contributing Guide](CONTRIBUTING.md) -- how to get involved
+
+New here? Check out the [Welcome thread](https://github.com/HerbHall/subnetree/discussions/114) or share your setup in [Show Your Setup](https://github.com/HerbHall/subnetree/discussions/117).
+
 ## Support the Project
 
 SubNetree is **free for personal, homelab, and non-competing production use**. If you find it useful:
