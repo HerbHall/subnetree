@@ -7,6 +7,14 @@
     <title>SubNetree</title>
   </head>
   <body>
+    <script>
+      // Apply cached theme before React renders to prevent FOUC
+      try {
+        var t = JSON.parse(localStorage.getItem('nv-theme') || '{}');
+        var m = t.state && t.state.activeTheme && t.state.activeTheme.base_mode;
+        if (m === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch(e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
