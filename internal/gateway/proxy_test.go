@@ -281,26 +281,25 @@ func TestProxyErrorHandler(t *testing.T) {
 }
 
 // parseHostPort splits an httptest server URL into host and port.
-func parseHostPort(t *testing.T, rawURL string) (string, int) {
+func parseHostPort(t *testing.T, rawURL string) (host string, port int) {
 	t.Helper()
 	// httptest URLs look like "http://127.0.0.1:PORT"
-	var host string
-	var port int
 	// Strip scheme.
 	addr := rawURL
 	if len(addr) > 7 && addr[:7] == "http://" {
 		addr = addr[7:]
 	}
 	for i := len(addr) - 1; i >= 0; i-- {
-		if addr[i] == ':' {
-			host = addr[:i]
-			p := 0
-			for _, c := range addr[i+1:] {
-				p = p*10 + int(c-'0')
-			}
-			port = p
-			break
+		if addr[i] != ':' {
+			continue
 		}
+		host = addr[:i]
+		p := 0
+		for _, c := range addr[i+1:] {
+			p = p*10 + int(c-'0')
+		}
+		port = p
+		break
 	}
 	if host == "" {
 		t.Fatalf("failed to parse host:port from %q", rawURL)

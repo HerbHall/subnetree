@@ -159,7 +159,7 @@ func newTestSSHHTTPServer(t *testing.T, bridge *SSHBridge) *httptest.Server {
 func sshWSURL(srvURL, deviceID string, params map[string]string) string {
 	base := "ws" + strings.TrimPrefix(srvURL, "http") +
 		"/api/v1/ws/gateway/ssh/" + deviceID
-	var parts []string
+	parts := make([]string, 0, len(params))
 	for k, v := range params {
 		parts = append(parts, k+"="+v)
 	}
@@ -287,7 +287,10 @@ func TestSSHBridge_CustomPort(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -325,7 +328,10 @@ func TestSSHBridge_SSHDialError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -361,7 +367,10 @@ func TestSSHBridge_InvalidCredentialsJSON(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -391,7 +400,10 @@ func TestSSHBridge_EmptyUsername(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -429,7 +441,10 @@ func TestSSHBridge_FullSession(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -468,12 +483,12 @@ func TestSSHBridge_FullSession(t *testing.T) {
 	}
 
 	// Read echoed response.
-	_, resp, err := conn.Read(ctx)
+	_, echoData, err := conn.Read(ctx)
 	if err != nil {
 		t.Fatalf("read echo: %v", err)
 	}
-	if string(resp) != "hello ssh" {
-		t.Errorf("echo = %q, want %q", string(resp), "hello ssh")
+	if string(echoData) != "hello ssh" {
+		t.Errorf("echo = %q, want %q", string(echoData), "hello ssh")
 	}
 
 	// Close the WebSocket to trigger cleanup.
@@ -518,7 +533,10 @@ func TestSSHBridge_SessionCreatedEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -571,7 +589,10 @@ func TestSSHBridge_SSHAuthFailure(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -614,7 +635,10 @@ func TestSSHBridge_HostFromQuery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}

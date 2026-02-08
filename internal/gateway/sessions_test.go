@@ -90,7 +90,7 @@ func TestSessionManager_List_Empty(t *testing.T) {
 	sm := NewSessionManager(10)
 
 	sessions := sm.List()
-	if sessions != nil && len(sessions) != 0 {
+	if len(sessions) != 0 {
 		t.Errorf("List() returned %d sessions for empty manager, want 0", len(sessions))
 	}
 }
