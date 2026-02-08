@@ -229,6 +229,8 @@ server:
   host: "127.0.0.1"
   port: $PORT
   data_dir: "$WORKDIR/data"
+database:
+  path: "$WORKDIR/data/subnetree.db"
 logging:
   level: "debug"
   format: "console"
@@ -295,13 +297,6 @@ if [ "$READYZ" != "FAILED" ]; then
     log_pass "/readyz responds"
 else
     log_fail "/readyz not responding"
-fi
-
-HEALTH_API=$(curl -sf "$BASE_URL/api/v1/health" 2>&1 || echo "FAILED")
-if [ "$HEALTH_API" != "FAILED" ]; then
-    log_pass "/api/v1/health responds"
-else
-    log_fail "/api/v1/health not responding"
 fi
 
 METRICS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/metrics" 2>&1)
@@ -401,6 +396,15 @@ else
     log_warn "Unauthenticated request returned $UNAUTH_STATUS (expected 401)"
 fi
 
+# Authenticated health endpoint
+HEALTH_API=$(curl -sf "$BASE_URL/api/v1/health" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" 2>&1 || echo "FAILED")
+if [ "$HEALTH_API" != "FAILED" ]; then
+    log_pass "/api/v1/health responds (authenticated)"
+else
+    log_fail "/api/v1/health not responding"
+fi
+
 echo ""
 
 # --- 8. Vault ---
@@ -409,8 +413,9 @@ echo "========================================="
 echo "  8. CREDENTIAL VAULT"
 echo "========================================="
 
-VAULT_STATUS=$(curl -sf "$BASE_URL/api/v1/vault/status" 2>&1 || echo "FAILED")
-if echo "$VAULT_STATUS" | grep -q "sealed"; then
+VAULT_STATUS=$(curl -sf "$BASE_URL/api/v1/vault/status" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" 2>&1 || echo "FAILED")
+if echo "$VAULT_STATUS" | grep -q "sealed\|unsealed"; then
     log_pass "Vault status endpoint responds"
 else
     log_fail "Vault status failed: $VAULT_STATUS"
@@ -419,6 +424,7 @@ fi
 # Initialize and unseal
 UNSEAL_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/v1/vault/unseal" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
     -d '{"passphrase":"TestVaultPass123!"}' 2>&1 || echo "FAILED")
 
 if echo "$UNSEAL_RESPONSE" | grep -q "unsealed"; then
@@ -454,7 +460,8 @@ fi
 
 # Seal vault
 SEAL_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/v1/vault/seal" \
-    -H "Content-Type: application/json" 2>&1 || echo "FAILED")
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" 2>&1 || echo "FAILED")
 
 if echo "$SEAL_RESPONSE" | grep -q "sealed"; then
     log_pass "Vault sealed"
@@ -552,12 +559,12 @@ echo "========================================="
 echo "  11. INSIGHT ANALYTICS"
 echo "========================================="
 
-ANOMALIES=$(curl -sf "$BASE_URL/api/v1/analytics/anomalies" \
+ANOMALIES=$(curl -sf "$BASE_URL/api/v1/insight/anomalies" \
     -H "Authorization: Bearer $ACCESS_TOKEN" 2>&1 || echo "FAILED")
 if [ "$ANOMALIES" != "FAILED" ]; then
-    log_pass "Analytics anomalies endpoint responds"
+    log_pass "Insight anomalies endpoint responds"
 else
-    log_warn "Analytics anomalies endpoint failed"
+    log_warn "Insight anomalies endpoint failed"
 fi
 
 echo ""

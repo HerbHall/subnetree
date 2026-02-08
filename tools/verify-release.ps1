@@ -135,11 +135,14 @@ try {
 
     $ConfigPath = "$WorkDir\config.yaml"
     $DataDir = "$WorkDir\data"
+    $DbPath = "$DataDir\subnetree.db"
     @"
 server:
   host: "127.0.0.1"
   port: $Port
   data_dir: "$($DataDir -replace '\\','\\')"
+database:
+  path: "$($DbPath -replace '\\','\\')"
 logging:
   level: "debug"
   format: "console"
@@ -198,10 +201,10 @@ plugins:
     Write-Host "  4. HEALTH ENDPOINTS"
     Write-Host "========================================="
 
-    foreach ($ep in @("/healthz", "/readyz", "/api/v1/health")) {
+    foreach ($ep in @("/healthz", "/readyz")) {
         try {
             $null = Invoke-WebRequest -Uri "$BaseUrl$ep" -UseBasicParsing -TimeoutSec 5
-            Log-Pass "$ep responds"
+            Log-Pass "$ep responds (public)"
         } catch { Log-Fail "$ep not responding" }
     }
 
@@ -276,6 +279,11 @@ plugins:
         } else { Log-Warn "Unexpected status: $($_.Exception.Response.StatusCode.Value__)" }
     }
 
+    # Authenticated health endpoint
+    $healthResult = Invoke-Api -Uri "$BaseUrl/api/v1/health" -Token $accessToken
+    if ($null -ne $healthResult) { Log-Pass "/api/v1/health responds (authenticated)" }
+    else { Log-Fail "/api/v1/health not responding" }
+
     Write-Host ""
 
     # ===== 8. VAULT =====
@@ -283,12 +291,12 @@ plugins:
     Write-Host "  8. CREDENTIAL VAULT"
     Write-Host "========================================="
 
-    $vaultStatus = Invoke-Api -Uri "$BaseUrl/api/v1/vault/status"
+    $vaultStatus = Invoke-Api -Uri "$BaseUrl/api/v1/vault/status" -Token $accessToken
     if ($null -ne $vaultStatus) { Log-Pass "Vault status endpoint responds" }
     else { Log-Fail "Vault status failed" }
 
     $unsealResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/unseal" `
-        -Body '{"passphrase":"TestVaultPass123!"}'
+        -Body '{"passphrase":"TestVaultPass123!"}' -Token $accessToken
     if ($unsealResult -and $unsealResult.status -eq "unsealed") { Log-Pass "Vault initialized and unsealed" }
     else { Log-Fail "Vault unseal failed" }
 
@@ -306,7 +314,7 @@ plugins:
         else { Log-Fail "Credential decryption failed" }
     }
 
-    $sealResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/seal"
+    $sealResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/seal" -Token $accessToken
     if ($sealResult -and $sealResult.status -eq "sealed") { Log-Pass "Vault sealed" }
     else { Log-Warn "Vault seal unexpected response" }
 
@@ -371,9 +379,9 @@ plugins:
     Write-Host "  11. INSIGHT ANALYTICS"
     Write-Host "========================================="
 
-    $anomalies = Invoke-Api -Uri "$BaseUrl/api/v1/analytics/anomalies" -Token $accessToken
-    if ($null -ne $anomalies) { Log-Pass "Analytics anomalies endpoint responds" }
-    else { Log-Warn "Analytics anomalies endpoint failed" }
+    $anomalies = Invoke-Api -Uri "$BaseUrl/api/v1/insight/anomalies" -Token $accessToken
+    if ($null -ne $anomalies) { Log-Pass "Insight anomalies endpoint responds" }
+    else { Log-Warn "Insight anomalies endpoint failed" }
 
     Write-Host ""
 
