@@ -25,21 +25,21 @@ Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 
 ### What Works Today
 
-- **Network Discovery**: ARP + ICMP scanning with OUI manufacturer lookup
-- **Interactive Dashboard**: Device list, detail pages, and network topology visualization
+- **Network Discovery**: ARP + ICMP scanning with OUI manufacturer lookup and reverse DNS hostname resolution
+- **Device Monitoring**: ICMP health checks with configurable intervals, alert state machine, and data retention
+- **Interactive Dashboard**: Device list, detail pages, network topology visualization, and keyboard shortcuts
+- **AI-Powered Analytics**: Statistical baselines, anomaly detection, forecasting, and natural language queries via Ollama
 - **Real-Time Updates**: WebSocket-powered scan progress with live device feed
 - **Authentication**: JWT-based auth with first-run setup wizard
 - **Backup/Restore**: CLI commands for data safety
-- **AI Integration**: Optional Ollama-powered LLM provider (query interface coming)
 - **Docker**: Multi-stage builds with health checks
 
 ### Coming Next
 
-- AI-powered network insights (query interface for the shipped Ollama integration)
-- Monitoring & alerting (Pulse module)
 - Scout agents for detailed host metrics
 - Credential vault for stored passwords
 - Remote access (SSH, RDP, HTTP proxy)
+- Cloud LLM providers (OpenAI, Anthropic) alongside local Ollama
 - Enhanced discovery (SNMP, mDNS, UPnP)
 
 See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.

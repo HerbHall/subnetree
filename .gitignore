@@ -37,6 +37,11 @@ desktop.ini
 
 # Data directory
 /data/
+*.db
+
+# Working files
+whats-next.md
+.planning/
 
 # Node.js (web frontend)
 web/node_modules/
