@@ -29,6 +29,27 @@ export interface ProblemDetail {
 }
 
 // ============================================================================
+// System Types
+// ============================================================================
+
+/** Version information map returned by the health endpoint. */
+export interface VersionInfo {
+  version: string
+  git_commit: string
+  build_date: string
+  go_version: string
+  os: string
+  arch: string
+}
+
+/** Health check response from GET /api/v1/health. */
+export interface HealthResponse {
+  status: string
+  service: string
+  version: VersionInfo
+}
+
+// ============================================================================
 // Device Types
 // ============================================================================
 
