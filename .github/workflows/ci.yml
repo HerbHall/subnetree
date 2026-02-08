@@ -218,7 +218,7 @@ jobs:
           cache: true
 
       - name: Install swag
-        run: go install github.com/swaggo/swag/cmd/swag@latest
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.4
 
       - name: Regenerate swagger spec
         run: >-

@@ -2,10 +2,14 @@ package insight
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
+	"github.com/HerbHall/subnetree/internal/insight/anomaly"
+	"github.com/HerbHall/subnetree/internal/insight/forecast"
 	"github.com/HerbHall/subnetree/pkg/analytics"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/HerbHall/subnetree/pkg/roles"
@@ -28,6 +32,7 @@ type Module struct {
 	store   *InsightStore
 	bus     plugin.EventBus
 	plugins plugin.PluginResolver
+	states  *stateManager
 
 	mu        sync.RWMutex
 	baselines map[string]struct{} // Tracked device:metric pairs
@@ -74,6 +79,7 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 	m.bus = deps.Bus
 	m.plugins = deps.Plugins
+	m.states = newStateManager(m.cfg.EWMAAlpha, m.cfg.CUSUMDrift, m.cfg.CUSUMThreshold)
 
 	m.logger.Info("insight module initialized",
 		zap.Float64("ewma_alpha", m.cfg.EWMAAlpha),
@@ -85,6 +91,7 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 func (m *Module) Start(_ context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
+	m.startMaintenance()
 	m.logger.Info("insight module started")
 	return nil
 }
@@ -102,9 +109,10 @@ func (m *Module) Stop(_ context.Context) error {
 
 // Health implements plugin.HealthChecker.
 func (m *Module) Health(_ context.Context) plugin.HealthStatus {
-	m.mu.RLock()
-	count := len(m.baselines)
-	m.mu.RUnlock()
+	count := 0
+	if m.states != nil {
+		count = m.states.count()
+	}
 
 	details := map[string]string{
 		"baselines_tracked": strconv.Itoa(count),
@@ -136,14 +144,173 @@ func (m *Module) Subscriptions() []plugin.Subscription {
 	}
 }
 
-// Event handler stubs -- algorithms wired in PR 2.
+// -- Event Handlers --
 
+// handleMetricsCollected is the main analytics pipeline entry point.
+// It processes incoming metric points through the EWMA, Z-score, and CUSUM algorithms.
 func (m *Module) handleMetricsCollected(_ context.Context, event plugin.Event) {
-	m.logger.Debug("received metrics event", zap.String("source", event.Source))
+	points, ok := event.Payload.([]analytics.MetricPoint)
+	if !ok {
+		m.logger.Debug("ignored metrics event: unexpected payload type",
+			zap.String("source", event.Source))
+		return
+	}
+
+	for i := range points {
+		m.processMetric(&points[i])
+	}
+}
+
+// processMetric runs a single metric point through the analytics pipeline.
+func (m *Module) processMetric(p *analytics.MetricPoint) {
+	// Store raw metric for regression
+	if m.store != nil {
+		ctx, cancel := context.WithTimeout(m.ctx, 5*time.Second)
+		defer cancel()
+		if err := m.store.InsertMetric(ctx, p); err != nil {
+			m.logger.Warn("failed to store metric", zap.Error(err))
+		}
+	}
+
+	// Get or create in-memory state
+	state := m.states.getOrCreate(p.DeviceID, p.MetricName)
+
+	// Track in baselines map
+	m.mu.Lock()
+	m.baselines[stateKey(p.DeviceID, p.MetricName)] = struct{}{}
+	m.mu.Unlock()
+
+	// Update EWMA baseline
+	prevMean := state.EWMA.Mean
+	prevStdDev := state.EWMA.StdDev()
+	state.EWMA.Update(p.Value)
+
+	// Skip anomaly detection during learning period
+	if state.EWMA.Samples < m.cfg.MinSamplesStable {
+		return
+	}
+
+	// Z-score check
+	zResult := anomaly.ZScoreCheck(p.Value, prevMean, prevStdDev, m.cfg.ZScoreThreshold)
+	if zResult.IsAnomaly {
+		m.recordAnomaly(p, "zscore", zResult.Severity, zResult.ZScore, prevMean)
+	}
+
+	// CUSUM check (normalized input)
+	if prevStdDev > 0 {
+		normalized := (p.Value - prevMean) / prevStdDev
+		cResult := state.CUSUM.Update(normalized)
+		if cResult.IsChangePoint {
+			severity := anomaly.SeverityWarning
+			m.recordAnomaly(p, "cusum", severity, cResult.CUSUMHigh+cResult.CUSUMLow, prevMean)
+		}
+	}
+
+	// Periodically run regression forecast (every 100 samples)
+	if state.EWMA.Samples%100 == 0 && m.store != nil {
+		m.runForecast(p.DeviceID, p.MetricName)
+	}
+}
+
+// recordAnomaly stores an anomaly and publishes an event.
+func (m *Module) recordAnomaly(p *analytics.MetricPoint, anomalyType, severity string, deviation, expected float64) {
+	a := &analytics.Anomaly{
+		ID:          fmt.Sprintf("%s:%s:%d", p.DeviceID, p.MetricName, time.Now().UnixNano()),
+		DeviceID:    p.DeviceID,
+		MetricName:  p.MetricName,
+		Severity:    severity,
+		Type:        anomalyType,
+		Value:       p.Value,
+		Expected:    expected,
+		Deviation:   deviation,
+		DetectedAt:  time.Now(),
+		Description: fmt.Sprintf("%s anomaly on %s: value=%.2f expected=%.2f deviation=%.2f", anomalyType, p.MetricName, p.Value, expected, deviation),
+	}
+
+	m.logger.Info("anomaly detected",
+		zap.String("device_id", p.DeviceID),
+		zap.String("metric", p.MetricName),
+		zap.String("type", anomalyType),
+		zap.String("severity", severity),
+		zap.Float64("value", p.Value),
+		zap.Float64("expected", expected),
+	)
+
+	if m.store != nil {
+		ctx, cancel := context.WithTimeout(m.ctx, 5*time.Second)
+		defer cancel()
+		if err := m.store.InsertAnomaly(ctx, a); err != nil {
+			m.logger.Warn("failed to store anomaly", zap.Error(err))
+		}
+	}
+
+	if m.bus != nil {
+		m.bus.PublishAsync(m.ctx, plugin.Event{
+			Topic:   TopicAnomalyDetected,
+			Source:  "insight",
+			Payload: a,
+		})
+	}
+}
+
+// runForecast performs linear regression on recent metric data and stores the forecast.
+func (m *Module) runForecast(deviceID, metricName string) {
+	ctx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
+	defer cancel()
+
+	since := time.Now().Add(-m.cfg.ForecastWindow)
+	points, err := m.store.GetMetricWindow(ctx, deviceID, metricName, since)
+	if err != nil || len(points) < 2 {
+		return
+	}
+
+	timestamps := make([]time.Time, len(points))
+	values := make([]float64, len(points))
+	for i, p := range points {
+		timestamps[i] = p.Timestamp
+		values[i] = p.Value
+	}
+
+	hours := forecast.TimeToHours(timestamps)
+	// Use a default threshold of 90% (configurable per-metric in the future)
+	result := forecast.LinearRegression(hours, values, 90.0)
+	if result == nil {
+		return
+	}
+
+	f := &analytics.Forecast{
+		DeviceID:       deviceID,
+		MetricName:     metricName,
+		CurrentValue:   values[len(values)-1],
+		PredictedValue: result.Predicted,
+		Threshold:      90.0,
+		Slope:          result.Slope,
+		Confidence:     result.RSquared,
+		GeneratedAt:    time.Now(),
+	}
+	if result.TimeToLimit != nil {
+		d := *result.TimeToLimit
+		f.TimeToThreshold = &d
+	}
+
+	if err := m.store.UpsertForecast(ctx, f); err != nil {
+		m.logger.Warn("failed to store forecast", zap.Error(err))
+	}
+
+	// Publish warning if threshold will be reached within forecast window
+	if result.TimeToLimit != nil && *result.TimeToLimit < m.cfg.ForecastWindow && m.bus != nil {
+		m.bus.PublishAsync(m.ctx, plugin.Event{
+			Topic:   TopicForecastWarning,
+			Source:  "insight",
+			Payload: f,
+		})
+	}
 }
 
 func (m *Module) handleAlertTriggered(_ context.Context, event plugin.Event) {
 	m.logger.Debug("received alert triggered event", zap.String("source", event.Source))
+	// Alert correlation will use topology data from Recon when Pulse ships.
+	// For now, store the alert context for future correlation.
 }
 
 func (m *Module) handleAlertResolved(_ context.Context, event plugin.Event) {
@@ -151,7 +318,15 @@ func (m *Module) handleAlertResolved(_ context.Context, event plugin.Event) {
 }
 
 func (m *Module) handleDeviceDiscovered(_ context.Context, event plugin.Event) {
-	m.logger.Debug("received device discovered event", zap.String("source", event.Source))
+	data, ok := event.Payload.(json.RawMessage)
+	if !ok {
+		m.logger.Debug("ignored device event: unexpected payload type",
+			zap.String("source", event.Source))
+		return
+	}
+	m.logger.Debug("device discovered, topology updated",
+		zap.String("source", event.Source),
+		zap.Int("payload_bytes", len(data)))
 }
 
 // -- roles.AnalyticsProvider --

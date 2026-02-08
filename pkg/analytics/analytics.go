@@ -25,7 +25,7 @@ type Forecast struct {
 	MetricName      string         `json:"metric_name"`
 	CurrentValue    float64        `json:"current_value"`
 	PredictedValue  float64        `json:"predicted_value"`
-	TimeToThreshold *time.Duration `json:"time_to_threshold,omitempty"`
+	TimeToThreshold *time.Duration `json:"time_to_threshold,omitempty" swaggertype:"integer"`
 	Threshold       float64        `json:"threshold"`
 	Confidence      float64        `json:"confidence"` // 0.0-1.0
 	Slope           float64        `json:"slope"`      // Rate of change per hour

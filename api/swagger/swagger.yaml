@@ -109,7 +109,7 @@ definitions:
       threshold:
         type: number
       time_to_threshold:
-        $ref: '#/definitions/time.Duration'
+        type: integer
     type: object
   github_com_HerbHall_subnetree_pkg_analytics.NLQueryRequest:
     properties:
@@ -521,43 +521,6 @@ definitions:
         example: https://subnetree.com/problems/settings-error
         type: string
     type: object
-  time.Duration:
-    enum:
-    - -9223372036854775808
-    - 9223372036854775807
-    - 1
-    - 1000
-    - 1000000
-    - 1000000000
-    - 60000000000
-    - 3600000000000
-    - -9223372036854775808
-    - 9223372036854775807
-    - 1
-    - 1000
-    - 1000000
-    - 1000000000
-    - 60000000000
-    - 3600000000000
-    format: int64
-    type: integer
-    x-enum-varnames:
-    - minDuration
-    - maxDuration
-    - Nanosecond
-    - Microsecond
-    - Millisecond
-    - Second
-    - Minute
-    - Hour
-    - minDuration
-    - maxDuration
-    - Nanosecond
-    - Microsecond
-    - Millisecond
-    - Second
-    - Minute
-    - Hour
 info:
   contact: {}
   description: Network monitoring and management platform API.
