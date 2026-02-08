@@ -49,6 +49,8 @@ func LoadConfig(configPath string) (*viper.Viper, error) {
 	v.SetDefault("plugins.pulse.maintenance_interval", "1h")
 	v.SetDefault("plugins.dispatch.enabled", true)
 	v.SetDefault("plugins.vault.enabled", true)
+	v.SetDefault("plugins.vault.audit_retention_period", "2160h")
+	v.SetDefault("plugins.vault.maintenance_interval", "1h")
 	v.SetDefault("plugins.gateway.enabled", true)
 	v.SetDefault("plugins.webhook.enabled", true)
 	v.SetDefault("plugins.webhook.url", "")
