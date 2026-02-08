@@ -100,6 +100,8 @@ func (m *Module) Start(_ context.Context) error {
 		m.scheduler.Start(m.ctx)
 	}
 
+	m.startMaintenance()
+
 	m.logger.Info("pulse module started")
 	return nil
 }
@@ -258,10 +260,4 @@ func (m *Module) Status(ctx context.Context, deviceID string) (*roles.MonitorSta
 	return status, nil
 }
 
-// -- plugin.HTTPProvider --
-
-// Routes implements plugin.HTTPProvider.
-// Stub routes for PR 1; full API wired in PR 3.
-func (m *Module) Routes() []plugin.Route {
-	return []plugin.Route{}
-}
+// Routes is implemented in handlers.go.

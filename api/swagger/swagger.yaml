@@ -304,6 +304,17 @@ definitions:
         example: 12
         type: integer
     type: object
+  github_com_HerbHall_subnetree_pkg_roles.MonitorStatus:
+    properties:
+      checked_at:
+        type: string
+      device_id:
+        type: string
+      healthy:
+        type: boolean
+      message:
+        type: string
+    type: object
   internal_auth.LoginRequest:
     properties:
       password:
@@ -403,6 +414,63 @@ definitions:
       username:
         example: admin
         type: string
+    type: object
+  internal_pulse.Alert:
+    properties:
+      check_id:
+        type: string
+      consecutive_failures:
+        type: integer
+      device_id:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      resolved_at:
+        type: string
+      severity:
+        type: string
+      triggered_at:
+        type: string
+    type: object
+  internal_pulse.Check:
+    properties:
+      check_type:
+        type: string
+      created_at:
+        type: string
+      device_id:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      interval_seconds:
+        type: integer
+      target:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_pulse.CheckResult:
+    properties:
+      check_id:
+        type: string
+      checked_at:
+        type: string
+      device_id:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: integer
+      latency_ms:
+        type: number
+      packet_loss:
+        type: number
+      success:
+        type: boolean
     type: object
   internal_recon.ScanRequest:
     properties:
@@ -898,6 +966,169 @@ paths:
       summary: List plugins
       tags:
       - system
+  /pulse/alerts:
+    get:
+      description: Returns all active (unresolved) monitoring alerts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.Alert'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List alerts
+      tags:
+      - pulse
+  /pulse/alerts/{device_id}:
+    get:
+      description: Returns active (unresolved) alerts for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.Alert'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device alerts
+      tags:
+      - pulse
+  /pulse/checks:
+    get:
+      description: Returns all enabled monitoring checks.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.Check'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List checks
+      tags:
+      - pulse
+  /pulse/checks/{device_id}:
+    get:
+      description: Returns monitoring checks for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_pulse.Check'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device checks
+      tags:
+      - pulse
+  /pulse/results/{device_id}:
+    get:
+      description: Returns recent check results for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      - default: 100
+        description: Maximum results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.CheckResult'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Device results
+      tags:
+      - pulse
+  /pulse/status/{device_id}:
+    get:
+      description: Returns composite health status for a specific device, including
+        latest check result and active alerts.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_roles.MonitorStatus'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Monitoring status
+      tags:
+      - pulse
   /recon/scan:
     post:
       consumes:
