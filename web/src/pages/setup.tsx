@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Eye, EyeOff } from 'lucide-react'
 
 type Step = 1 | 2 | 3
 
@@ -58,7 +59,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
   ]
 
   return (
-    <div className="flex items-center justify-center gap-2 mb-6">
+    <div className="flex items-center justify-center gap-1 sm:gap-2 mb-6 overflow-hidden">
       {steps.map((step, idx) => (
         <div key={step.num} className="flex items-center">
           <div
@@ -79,7 +80,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
           </span>
           {idx < steps.length - 1 && (
             <div
-              className={`mx-3 h-px w-8 sm:w-12 ${
+              className={`mx-1 sm:mx-3 h-px w-6 sm:w-12 ${
                 currentStep > step.num ? 'bg-primary' : 'bg-muted'
               }`}
             />
@@ -104,6 +105,7 @@ export function SetupPage() {
   const [loading, setLoading] = useState(false)
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
   const [interfacesLoading, setInterfacesLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const setTokens = useAuthStore((s) => s.setTokens)
   const navigate = useNavigate()
 
@@ -171,10 +173,22 @@ export function SetupPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  function handleNext() {
+  async function handleNext() {
     setApiError('')
     if (step === 1 && validateStep1()) {
-      setStep(2)
+      // Create account and log in before moving to step 2,
+      // so the auth token is available for the network interfaces API
+      setLoading(true)
+      try {
+        await setupApi(formData.username, formData.email, formData.password)
+        const tokens = await loginApi(formData.username, formData.password)
+        setTokens(tokens.access_token, tokens.refresh_token)
+        setStep(2)
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : 'Account creation failed')
+      } finally {
+        setLoading(false)
+      }
     } else if (step === 2) {
       setStep(3)
     }
@@ -190,10 +204,8 @@ export function SetupPage() {
     setApiError('')
     setLoading(true)
     try {
-      await setupApi(formData.username, formData.email, formData.password)
-      const tokens = await loginApi(formData.username, formData.password)
-      setTokens(tokens.access_token, tokens.refresh_token)
-      // Save the selected interface (empty string means auto-detect)
+      // Account was already created and logged in during step 1 -> 2 transition
+      // Just save the selected interface (empty string means auto-detect)
       await setScanInterface(formData.selectedInterface)
       navigate('/dashboard', { replace: true })
     } catch (err) {
@@ -266,13 +278,25 @@ export function SetupPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => updateField('password', e.target.value)}
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  autoComplete="new-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {formData.password && (
                 <div className="space-y-1">
                   <div className="flex gap-1">
@@ -299,20 +323,32 @@ export function SetupPage() {
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => updateField('confirmPassword', e.target.value)}
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={(e) => updateField('confirmPassword', e.target.value)}
+                  autoComplete="new-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-red-400">{errors.confirmPassword}</p>
               )}
             </div>
 
-            <Button type="submit" className="w-full">
-              Next
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Creating account...' : 'Next'}
             </Button>
           </form>
         )}
@@ -482,8 +518,7 @@ export function SetupPage() {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Click Complete to create your account and start using SubNetree.
-              You'll be automatically signed in.
+              Click Complete to save your settings and start using SubNetree.
             </p>
 
             <div className="flex gap-3">
@@ -502,7 +537,7 @@ export function SetupPage() {
                 className="flex-1"
                 disabled={loading}
               >
-                {loading ? 'Creating account...' : 'Complete Setup'}
+                {loading ? 'Saving...' : 'Complete Setup'}
               </Button>
             </div>
           </div>
