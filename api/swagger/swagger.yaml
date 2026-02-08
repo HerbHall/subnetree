@@ -571,6 +571,20 @@ definitions:
         example: 0.1.0
         type: string
     type: object
+  internal_settings.ActiveThemeRequest:
+    description: Request body for setting the active theme.
+    properties:
+      theme_id:
+        example: builtin-forest-dark
+        type: string
+    type: object
+  internal_settings.ActiveThemeResponse:
+    description: Response containing the active theme ID.
+    properties:
+      theme_id:
+        example: builtin-forest-dark
+        type: string
+    type: object
   internal_settings.ScanInterfaceRequest:
     description: Request body for setting the network scan interface.
     properties:
@@ -600,6 +614,76 @@ definitions:
       type:
         example: https://subnetree.com/problems/settings-error
         type: string
+    type: object
+  internal_settings.ThemeDefinition:
+    description: A complete theme with metadata and CSS token overrides.
+    properties:
+      base_mode:
+        type: string
+      built_in:
+        type: boolean
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      tokens:
+        $ref: '#/definitions/internal_settings.ThemeTokens'
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  internal_settings.ThemeTokens:
+    description: Customizable CSS design token overrides grouped by UI category.
+    properties:
+      backgrounds:
+        additionalProperties:
+          type: string
+        type: object
+      borders:
+        additionalProperties:
+          type: string
+        type: object
+      buttons:
+        additionalProperties:
+          type: string
+        type: object
+      charts:
+        additionalProperties:
+          type: string
+        type: object
+      effects:
+        additionalProperties:
+          type: string
+        type: object
+      inputs:
+        additionalProperties:
+          type: string
+        type: object
+      sidebar:
+        additionalProperties:
+          type: string
+        type: object
+      spacing:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        additionalProperties:
+          type: string
+        type: object
+      text:
+        additionalProperties:
+          type: string
+        type: object
+      typography:
+        additionalProperties:
+          type: string
+        type: object
     type: object
 info:
   contact: {}
@@ -1321,6 +1405,196 @@ paths:
           schema:
             $ref: '#/definitions/internal_settings.SettingsProblemDetail'
       summary: Set scan interface
+      tags:
+      - settings
+  /settings/themes:
+    get:
+      description: Get all available themes (built-in and custom).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of themes
+          schema:
+            items:
+              $ref: '#/definitions/internal_settings.ThemeDefinition'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: List themes
+      tags:
+      - settings
+    post:
+      consumes:
+      - application/json
+      description: Create a new custom theme with CSS token overrides.
+      parameters:
+      - description: Theme definition (id, created_at, updated_at, version, built_in
+          are ignored)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_settings.ThemeDefinition'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created theme
+          schema:
+            $ref: '#/definitions/internal_settings.ThemeDefinition'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Create theme
+      tags:
+      - settings
+  /settings/themes/{id}:
+    delete:
+      description: Delete a custom theme. Built-in themes cannot be deleted.
+      parameters:
+      - description: Theme ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Theme deleted
+        "403":
+          description: Cannot delete built-in theme
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "404":
+          description: Theme not found
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Delete theme
+      tags:
+      - settings
+    get:
+      description: Get a theme by its ID.
+      parameters:
+      - description: Theme ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Theme details
+          schema:
+            $ref: '#/definitions/internal_settings.ThemeDefinition'
+        "404":
+          description: Theme not found
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Get theme
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: Update a custom theme. Built-in themes cannot be modified.
+      parameters:
+      - description: Theme ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_settings.ThemeDefinition'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated theme
+          schema:
+            $ref: '#/definitions/internal_settings.ThemeDefinition'
+        "403":
+          description: Cannot modify built-in theme
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "404":
+          description: Theme not found
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Update theme
+      tags:
+      - settings
+  /settings/themes/active:
+    get:
+      description: Get the ID of the currently active theme.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active theme ID
+          schema:
+            $ref: '#/definitions/internal_settings.ActiveThemeResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Get active theme
+      tags:
+      - settings
+    put:
+      consumes:
+      - application/json
+      description: Set which theme is currently active.
+      parameters:
+      - description: Theme ID to activate
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_settings.ActiveThemeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active theme set
+          schema:
+            $ref: '#/definitions/internal_settings.ActiveThemeResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "404":
+          description: Theme not found
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/internal_settings.SettingsProblemDetail'
+      summary: Set active theme
       tags:
       - settings
   /users:

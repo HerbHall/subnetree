@@ -1127,6 +1127,292 @@ const docTemplate = `{
                 }
             }
         },
+        "/settings/themes": {
+            "get": {
+                "description": "Get all available themes (built-in and custom).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "List themes",
+                "responses": {
+                    "200": {
+                        "description": "List of themes",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new custom theme with CSS token overrides.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Create theme",
+                "parameters": [
+                    {
+                        "description": "Theme definition (id, created_at, updated_at, version, built_in are ignored)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created theme",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings/themes/active": {
+            "get": {
+                "description": "Get the ID of the currently active theme.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get active theme",
+                "responses": {
+                    "200": {
+                        "description": "Active theme ID",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ActiveThemeResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Set which theme is currently active.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Set active theme",
+                "parameters": [
+                    {
+                        "description": "Theme ID to activate",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ActiveThemeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Active theme set",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ActiveThemeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Theme not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings/themes/{id}": {
+            "get": {
+                "description": "Get a theme by its ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get theme",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Theme ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Theme details",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                        }
+                    },
+                    "404": {
+                        "description": "Theme not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update a custom theme. Built-in themes cannot be modified.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update theme",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Theme ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated theme",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ThemeDefinition"
+                        }
+                    },
+                    "403": {
+                        "description": "Cannot modify built-in theme",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Theme not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a custom theme. Built-in themes cannot be deleted.",
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Delete theme",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Theme ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Theme deleted"
+                    },
+                    "403": {
+                        "description": "Cannot delete built-in theme",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Theme not found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsProblemDetail"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -2173,6 +2459,26 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_settings.ActiveThemeRequest": {
+            "description": "Request body for setting the active theme.",
+            "type": "object",
+            "properties": {
+                "theme_id": {
+                    "type": "string",
+                    "example": "builtin-forest-dark"
+                }
+            }
+        },
+        "internal_settings.ActiveThemeResponse": {
+            "description": "Response containing the active theme ID.",
+            "type": "object",
+            "properties": {
+                "theme_id": {
+                    "type": "string",
+                    "example": "builtin-forest-dark"
+                }
+            }
+        },
         "internal_settings.ScanInterfaceRequest": {
             "description": "Request body for setting the network scan interface.",
             "type": "object",
@@ -2212,6 +2518,111 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "https://subnetree.com/problems/settings-error"
+                }
+            }
+        },
+        "internal_settings.ThemeDefinition": {
+            "description": "A complete theme with metadata and CSS token overrides.",
+            "type": "object",
+            "properties": {
+                "base_mode": {
+                    "type": "string"
+                },
+                "built_in": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tokens": {
+                    "$ref": "#/definitions/internal_settings.ThemeTokens"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_settings.ThemeTokens": {
+            "description": "Customizable CSS design token overrides grouped by UI category.",
+            "type": "object",
+            "properties": {
+                "backgrounds": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "borders": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "buttons": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "charts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "effects": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "inputs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "sidebar": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "spacing": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "text": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "typography": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 }
             }
         }
