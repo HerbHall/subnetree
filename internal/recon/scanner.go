@@ -3,12 +3,16 @@ package recon
 import (
 	"context"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/HerbHall/subnetree/pkg/models"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
+
+// dnsTimeout is the maximum time to wait for a reverse DNS lookup.
+const dnsTimeout = 500 * time.Millisecond
 
 // PingScanner probes hosts via ICMP and sends results to a channel.
 type PingScanner interface {
@@ -138,7 +142,10 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 			discoveryMethod = models.DiscoveryARP
 		}
 
+		hostname := o.resolveHostname(host.IP)
+
 		device := &models.Device{
+			Hostname:        hostname,
 			IPAddresses:     []string{host.IP},
 			MACAddress:      mac,
 			Manufacturer:    manufacturer,
@@ -186,6 +193,19 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		zap.Int("total", totalCount),
 		zap.Int("online", onlineCount),
 	)
+}
+
+// resolveHostname performs a reverse DNS lookup for the given IP address.
+// Returns an empty string if the lookup fails or times out.
+func (o *ScanOrchestrator) resolveHostname(ip string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
+	defer cancel()
+
+	names, err := net.DefaultResolver.LookupAddr(ctx, ip)
+	if err != nil || len(names) == 0 {
+		return ""
+	}
+	return strings.TrimSuffix(names[0], ".")
 }
 
 func (o *ScanOrchestrator) publishEvent(ctx context.Context, topic string, payload any) {

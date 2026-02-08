@@ -307,6 +307,24 @@ func TestScanOrchestrator_InvalidSubnet(t *testing.T) {
 	}
 }
 
+func TestScanOrchestrator_ResolveHostname(t *testing.T) {
+	orch, _, _ := setupOrchestrator(t,
+		&mockPingScanner{}, &mockARPReader{}, &mockOUI{table: map[string]string{}})
+
+	// Private IP with no reverse DNS entry returns empty string.
+	got := orch.resolveHostname("192.0.2.1") // TEST-NET-1, guaranteed no PTR record
+	if got != "" {
+		t.Errorf("resolveHostname(192.0.2.1) = %q, want empty", got)
+	}
+
+	// Localhost should resolve (platform-dependent, so just verify no panic
+	// and the trailing dot is trimmed).
+	name := orch.resolveHostname("127.0.0.1")
+	if name != "" && name[len(name)-1] == '.' {
+		t.Errorf("resolveHostname(127.0.0.1) = %q, trailing dot not trimmed", name)
+	}
+}
+
 func TestExpandSubnet(t *testing.T) {
 	tests := []struct {
 		cidr      string
