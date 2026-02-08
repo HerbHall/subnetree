@@ -3,8 +3,11 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +38,7 @@ func newTestModule(t *testing.T) *Module {
 		store:    NewGatewayStore(db.DB()),
 		cfg:      DefaultConfig(),
 		sessions: NewSessionManager(100),
+		proxies:  NewReverseProxyManager(zap.NewNop()),
 		ctx:      ctx,
 	}
 	return m
@@ -373,6 +377,307 @@ func TestHandleListAudit_NilStore(t *testing.T) {
 
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Errorf("status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	}
+}
+
+// --- Create Proxy ---
+
+func TestHandleCreateProxy_Success(t *testing.T) {
+	m := newTestModule(t)
+	bus := &testEventBus{}
+	m.bus = bus
+
+	body := `{"port": 8080, "scheme": "http", "target": "192.168.1.100"}`
+	req := httptest.NewRequest(http.MethodPost, "/proxy/dev-1", strings.NewReader(body))
+	req.SetPathValue("device_id", "dev-1")
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d; body = %s", rr.Code, http.StatusCreated, rr.Body.String())
+	}
+
+	var resp createProxyResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if resp.Session.DeviceID != "dev-1" {
+		t.Errorf("DeviceID = %q, want %q", resp.Session.DeviceID, "dev-1")
+	}
+	if resp.Session.Target.Host != "192.168.1.100" {
+		t.Errorf("Target.Host = %q, want %q", resp.Session.Target.Host, "192.168.1.100")
+	}
+	if resp.Session.Target.Port != 8080 {
+		t.Errorf("Target.Port = %d, want %d", resp.Session.Target.Port, 8080)
+	}
+	if resp.ProxyURL == "" {
+		t.Error("ProxyURL should not be empty")
+	}
+
+	// Verify session was created.
+	if m.sessions.Count() != 1 {
+		t.Errorf("session count = %d, want 1", m.sessions.Count())
+	}
+
+	// Verify event was published.
+	if e := bus.lastEvent(); e == nil || e.Topic != TopicSessionCreated {
+		t.Error("expected gateway.session.created event")
+	}
+
+	// Verify audit entry.
+	entries, err := m.store.ListAuditEntries(context.Background(), "", 100)
+	if err != nil {
+		t.Fatalf("ListAuditEntries() error = %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("audit entries = %d, want 1", len(entries))
+	}
+	if entries[0].Action != "created" {
+		t.Errorf("audit action = %q, want %q", entries[0].Action, "created")
+	}
+}
+
+func TestHandleCreateProxy_DefaultPort(t *testing.T) {
+	m := newTestModule(t)
+
+	body := `{"target": "192.168.1.100"}`
+	req := httptest.NewRequest(http.MethodPost, "/proxy/dev-1", strings.NewReader(body))
+	req.SetPathValue("device_id", "dev-1")
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d; body = %s", rr.Code, http.StatusCreated, rr.Body.String())
+	}
+
+	var resp createProxyResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Should use DefaultProxyPort from config (80).
+	if resp.Session.Target.Port != 80 {
+		t.Errorf("Target.Port = %d, want %d (default)", resp.Session.Target.Port, 80)
+	}
+}
+
+func TestHandleCreateProxy_MissingTarget(t *testing.T) {
+	m := newTestModule(t)
+
+	body := `{"port": 80}`
+	req := httptest.NewRequest(http.MethodPost, "/proxy/dev-1", strings.NewReader(body))
+	req.SetPathValue("device_id", "dev-1")
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleCreateProxy_NilSessions(t *testing.T) {
+	m := &Module{
+		logger: zap.NewNop(),
+		cfg:    DefaultConfig(),
+		ctx:    context.Background(),
+	}
+
+	body := `{"port": 80, "target": "192.168.1.1"}`
+	req := httptest.NewRequest(http.MethodPost, "/proxy/dev-1", strings.NewReader(body))
+	req.SetPathValue("device_id", "dev-1")
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestHandleCreateProxy_InvalidBody(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/proxy/dev-1", strings.NewReader("not json"))
+	req.SetPathValue("device_id", "dev-1")
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleCreateProxy_MissingDeviceID(t *testing.T) {
+	m := newTestModule(t)
+
+	body := `{"port": 80, "target": "192.168.1.1"}`
+	req := httptest.NewRequest(http.MethodPost, "/proxy/", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+
+	m.handleCreateProxy(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusBadRequest)
+	}
+}
+
+// --- Proxy Traffic ---
+
+func TestHandleProxyTraffic_Success(t *testing.T) {
+	// Start a backend that echoes path.
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "path=%s", r.URL.Path)
+	}))
+	defer backend.Close()
+
+	m := newTestModule(t)
+
+	// Parse backend address.
+	host, port := parseHostPort(t, backend.URL)
+
+	// Create a session and proxy manually.
+	session := &Session{
+		ID:          "test-session",
+		DeviceID:    "dev-1",
+		UserID:      "user-1",
+		SessionType: SessionTypeProxy,
+		Target:      ProxyTarget{Host: host, Port: port},
+		SourceIP:    "10.0.0.1",
+		CreatedAt:   time.Now().UTC(),
+		ExpiresAt:   time.Now().UTC().Add(30 * time.Minute),
+	}
+	_ = m.sessions.Create(session)
+	_ = m.proxies.CreateProxy(session, "http")
+
+	req := httptest.NewRequest(http.MethodGet, "/proxy/s/test-session/some/resource", http.NoBody)
+	req.SetPathValue("session_id", "test-session")
+	req.SetPathValue("path", "some/resource")
+	rr := httptest.NewRecorder()
+
+	m.handleProxyTraffic(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	body, _ := io.ReadAll(rr.Body)
+	want := "path=/some/resource"
+	if string(body) != want {
+		t.Errorf("body = %q, want %q", string(body), want)
+	}
+}
+
+func TestHandleProxyTraffic_NotFound(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/proxy/s/nonexistent/path", http.NoBody)
+	req.SetPathValue("session_id", "nonexistent")
+	req.SetPathValue("path", "path")
+	rr := httptest.NewRecorder()
+
+	m.handleProxyTraffic(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusNotFound)
+	}
+}
+
+func TestHandleProxyTraffic_ExpiredSession(t *testing.T) {
+	m := newTestModule(t)
+
+	// Create an already-expired session.
+	session := &Session{
+		ID:          "expired-session",
+		DeviceID:    "dev-1",
+		UserID:      "user-1",
+		SessionType: SessionTypeProxy,
+		Target:      ProxyTarget{Host: "127.0.0.1", Port: 8080},
+		SourceIP:    "10.0.0.1",
+		CreatedAt:   time.Now().UTC().Add(-1 * time.Hour),
+		ExpiresAt:   time.Now().UTC().Add(-1 * time.Minute),
+	}
+	_ = m.sessions.Create(session)
+	_ = m.proxies.CreateProxy(session, "http")
+
+	req := httptest.NewRequest(http.MethodGet, "/proxy/s/expired-session/path", http.NoBody)
+	req.SetPathValue("session_id", "expired-session")
+	req.SetPathValue("path", "path")
+	rr := httptest.NewRecorder()
+
+	m.handleProxyTraffic(rr, req)
+
+	if rr.Code != http.StatusGone {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusGone)
+	}
+
+	// Session should be cleaned up.
+	if m.sessions.Count() != 0 {
+		t.Errorf("session count = %d, want 0 after expiry", m.sessions.Count())
+	}
+}
+
+func TestHandleProxyTraffic_NilSessions(t *testing.T) {
+	m := &Module{
+		logger: zap.NewNop(),
+		cfg:    DefaultConfig(),
+		ctx:    context.Background(),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/proxy/s/s1/path", http.NoBody)
+	req.SetPathValue("session_id", "s1")
+	req.SetPathValue("path", "path")
+	rr := httptest.NewRecorder()
+
+	m.handleProxyTraffic(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestHandleProxyTraffic_RootPath(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "path=%s", r.URL.Path)
+	}))
+	defer backend.Close()
+
+	m := newTestModule(t)
+	host, port := parseHostPort(t, backend.URL)
+
+	session := &Session{
+		ID:          "test-session",
+		DeviceID:    "dev-1",
+		UserID:      "user-1",
+		SessionType: SessionTypeProxy,
+		Target:      ProxyTarget{Host: host, Port: port},
+		SourceIP:    "10.0.0.1",
+		CreatedAt:   time.Now().UTC(),
+		ExpiresAt:   time.Now().UTC().Add(30 * time.Minute),
+	}
+	_ = m.sessions.Create(session)
+	_ = m.proxies.CreateProxy(session, "http")
+
+	// Empty path should forward to "/".
+	req := httptest.NewRequest(http.MethodGet, "/proxy/s/test-session/", http.NoBody)
+	req.SetPathValue("session_id", "test-session")
+	req.SetPathValue("path", "")
+	rr := httptest.NewRecorder()
+
+	m.handleProxyTraffic(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	body, _ := io.ReadAll(rr.Body)
+	want := "path=/"
+	if string(body) != want {
+		t.Errorf("body = %q, want %q", string(body), want)
 	}
 }
 

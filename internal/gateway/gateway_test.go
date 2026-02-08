@@ -117,11 +117,17 @@ func TestRoutes(t *testing.T) {
 	routes := m.Routes()
 
 	want := map[string]string{
-		"GET /sessions":     "",
-		"GET /sessions/{id}":    "",
-		"DELETE /sessions/{id}": "",
-		"GET /status":           "",
-		"GET /audit":            "",
+		"GET /sessions":                           "",
+		"GET /sessions/{id}":                      "",
+		"DELETE /sessions/{id}":                   "",
+		"GET /status":                             "",
+		"GET /audit":                              "",
+		"POST /proxy/{device_id}":                 "",
+		"GET /proxy/s/{session_id}/{path...}":     "",
+		"POST /proxy/s/{session_id}/{path...}":    "",
+		"PUT /proxy/s/{session_id}/{path...}":     "",
+		"DELETE /proxy/s/{session_id}/{path...}":  "",
+		"PATCH /proxy/s/{session_id}/{path...}":   "",
 	}
 
 	if len(routes) != len(want) {

@@ -21,12 +21,14 @@ var (
 
 // Module implements the Gateway remote access plugin.
 type Module struct {
-	logger   *zap.Logger
-	cfg      GatewayConfig
-	store    *GatewayStore
-	bus      plugin.EventBus
-	plugins  plugin.PluginResolver
-	sessions *SessionManager
+	logger       *zap.Logger
+	cfg          GatewayConfig
+	store        *GatewayStore
+	bus          plugin.EventBus
+	plugins      plugin.PluginResolver
+	sessions     *SessionManager
+	proxies      *ReverseProxyManager
+	deviceLookup DeviceLookup
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -76,6 +78,21 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 func (m *Module) Start(_ context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 
+	// Initialize reverse proxy manager.
+	m.proxies = NewReverseProxyManager(m.logger)
+
+	// Try to resolve device lookup (optional -- proxy can work with explicit targets).
+	if m.plugins != nil {
+		dl, err := resolveDeviceLookup(m.plugins)
+		if err != nil {
+			m.logger.Debug("device lookup not available, proxy requires explicit targets",
+				zap.Error(err),
+			)
+		} else {
+			m.deviceLookup = dl
+		}
+	}
+
 	if m.store != nil {
 		m.startMaintenance()
 	}
@@ -88,6 +105,11 @@ func (m *Module) Start(_ context.Context) error {
 }
 
 func (m *Module) Stop(_ context.Context) error {
+	// Close all active proxies.
+	if m.proxies != nil {
+		m.proxies.CloseAll()
+	}
+
 	// Close all active sessions.
 	if m.sessions != nil {
 		for _, s := range m.sessions.List() {
@@ -163,10 +185,13 @@ func (m *Module) startMaintenance() {
 }
 
 func (m *Module) runMaintenance() {
-	// Close expired sessions.
+	// Close expired sessions and their proxies.
 	if m.sessions != nil {
 		expired := m.sessions.CloseExpired()
 		for _, s := range expired {
+			if m.proxies != nil {
+				m.proxies.RemoveProxy(s.ID)
+			}
 			m.logSessionClosed(s, "expired")
 		}
 		if len(expired) > 0 {
