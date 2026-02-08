@@ -155,11 +155,8 @@ release:
     ### Installation
 
     **Docker (recommended):**
-    ```bash
-    docker run -d -p 8080:8080 \
-      -v subnetree-data:/data \
-      --cap-add NET_RAW --cap-add NET_ADMIN \
-      ghcr.io/herbhall/subnetree:{{ .Tag }}
+    ```
+    docker run -d -p 8080:8080 -v subnetree-data:/data --cap-add NET_RAW --cap-add NET_ADMIN ghcr.io/herbhall/subnetree:{{ .Tag }}
     ```
 
     **Binary:** Download the appropriate archive for your platform below.

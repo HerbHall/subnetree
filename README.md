@@ -47,23 +47,16 @@ See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full pl
 
 ## Quick Start (Docker)
 
-```bash
-docker run -d --name subnetree \
-  -p 8080:8080 \
-  -v subnetree-data:/data \
-  --cap-add NET_RAW --cap-add NET_ADMIN \
-  ghcr.io/herbhall/subnetree:latest
+```console
+docker run -d --name subnetree -p 8080:8080 -v subnetree-data:/data --cap-add NET_RAW --cap-add NET_ADMIN ghcr.io/herbhall/subnetree:latest
 ```
 
 Open <http://localhost:8080> -- first-time setup will prompt you to create an admin account.
 
 For full network scanning capability on home networks:
 
-```bash
-docker run -d --name subnetree \
-  --network host \
-  -v subnetree-data:/data \
-  ghcr.io/herbhall/subnetree:latest
+```console
+docker run -d --name subnetree --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
 ```
 
 ### Docker Compose
