@@ -129,15 +129,6 @@ func (m *Module) Stop(_ context.Context) error {
 	return nil
 }
 
-// Routes implements plugin.HTTPProvider.
-// PR 2 will replace these stubs with full CRUD handlers.
-func (m *Module) Routes() []plugin.Route {
-	return []plugin.Route{
-		{Method: "GET", Path: "/credentials", Handler: m.handleListCredentials},
-		{Method: "GET", Path: "/status", Handler: m.handleVaultStatus},
-	}
-}
-
 // Health implements plugin.HealthChecker.
 func (m *Module) Health(_ context.Context) plugin.HealthStatus {
 	details := map[string]string{}

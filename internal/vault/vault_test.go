@@ -3,8 +3,6 @@ package vault
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -127,13 +125,25 @@ func TestRoutes(t *testing.T) {
 	}
 
 	routes := m.Routes()
-	if len(routes) == 0 {
-		t.Fatal("Routes() returned no routes")
-	}
 
 	want := map[string]string{
-		"GET /credentials": "",
-		"GET /status":      "",
+		"GET /credentials":                    "",
+		"POST /credentials":                   "",
+		"GET /credentials/{id}":               "",
+		"PUT /credentials/{id}":               "",
+		"DELETE /credentials/{id}":            "",
+		"GET /credentials/{id}/data":          "",
+		"GET /credentials/device/{device_id}": "",
+		"POST /rotate-keys":                   "",
+		"POST /seal":                          "",
+		"POST /unseal":                        "",
+		"GET /status":                         "",
+		"GET /audit":                          "",
+		"GET /audit/{credential_id}":          "",
+	}
+
+	if len(routes) != len(want) {
+		t.Fatalf("Routes() returned %d routes, want %d", len(routes), len(want))
 	}
 	for _, r := range routes {
 		key := r.Method + " " + r.Path
@@ -360,56 +370,3 @@ func TestCredentialProvider_NilStore(t *testing.T) {
 	}
 }
 
-// --- Handler Tests ---
-
-func TestHandleVaultStatus(t *testing.T) {
-	m := New()
-	m.readPassphrase = func() (string, error) { return "", fmt.Errorf("no terminal") }
-	m.km = NewKeyManager()
-
-	req := httptest.NewRequest("GET", "/status", nil)
-	rr := httptest.NewRecorder()
-	m.handleVaultStatus(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
-	}
-}
-
-func TestHandleListCredentials_NilStore(t *testing.T) {
-	m := New()
-	m.readPassphrase = func() (string, error) { return "", fmt.Errorf("no terminal") }
-
-	req := httptest.NewRequest("GET", "/credentials", nil)
-	rr := httptest.NewRecorder()
-	m.handleListCredentials(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
-	}
-}
-
-func TestHandleListCredentials_Empty(t *testing.T) {
-	db, err := store.New(":memory:")
-	if err != nil {
-		t.Fatalf("open test db: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-
-	m := New()
-	m.readPassphrase = func() (string, error) { return "", fmt.Errorf("no terminal") }
-
-	if err := m.Init(context.Background(), plugin.Dependencies{
-		Logger: zap.NewNop(), Store: db,
-	}); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	req := httptest.NewRequest("GET", "/credentials", nil)
-	rr := httptest.NewRecorder()
-	m.handleListCredentials(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
-	}
-}
