@@ -107,7 +107,7 @@
 - [x] ICMP ping sweep
 - [x] ARP scanning
 - [x] OUI manufacturer lookup (embedded database)
-- [ ] LLDP/CDP neighbor discovery for topology (defer to Phase 2)
+- [ ] LLDP/CDP neighbor discovery for topology (deferred to Phase 2)
 - [x] Device persistence in SQLite
 - [x] Publishes `recon.device.discovered` events
 
@@ -199,14 +199,14 @@
 - [ ] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns)
 - [ ] Evaluate Windows service management (golang.org/x/sys/windows/svc)
 
-- [ ] Scout agent binary for Windows
+- [ ] Scout agent binary for Windows (skeleton exists, not functional)
 - [ ] Internal CA for mTLS certificate management
 - [ ] Token-based enrollment with certificate signing
 - [ ] gRPC communication with mTLS
 - [ ] System metrics: CPU, memory, disk, network
 - [ ] Exponential backoff reconnection
 - [ ] Certificate auto-renewal (90-day certs, renew at day 60)
-- [ ] Dispatch module: agent list, status, check-in tracking
+- [x] Dispatch module: agent list, status, check-in tracking (stub with lifecycle tests)
 - [ ] Dashboard: agent status view, enrollment flow
 - [ ] Proto management via buf (replace protoc)
 

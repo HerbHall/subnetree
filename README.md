@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/HerbHall/subnetree/branch/main/graph/badge.svg)](https://codecov.io/gh/HerbHall/subnetree)
 [![License](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
 
-> **v0.2.0**: All core modules are functional. Discovery, monitoring, analytics, credential vault, and remote access all work. Contributions and feedback welcome!
+> **v0.2.1**: All core modules are functional. Discovery, monitoring, analytics, credential vault, and remote access all work. Contributions and feedback welcome!
 
 **Your homelab command center.** SubNetree discovers devices on your network, monitors their status, and gives you one-click access to everything -- without typing passwords a thousand times a day.
 
@@ -16,12 +16,12 @@ Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 
 - **Discovers everything** on your LAN automatically (ARP, ICMP -- with mDNS, SNMP, UPnP planned)
 - **Shows status at a glance** from multiple platforms in one place
-- **Launches anything** with one click -- web UIs, SSH, RDP -- credentials handled
+- **Launches anything** with one click -- web UIs, SSH -- credentials handled
 - **Extends via plugins** to monitor whatever you need
 
 ## Current Status
 
-> **v0.2.0** -- All core modules functional. 431+ tests across 5 new modules.
+> **v0.2.1** -- All core modules functional. 398 tests across 5 new modules.
 
 ### What Works Today
 
@@ -102,14 +102,14 @@ docker-compose up -d
 ### Monitoring
 
 - Device health and status tracking
-- Optional Scout agents for detailed host metrics
+- Scout agents for detailed host metrics (coming in v0.3.0)
 - Plugin-extensible -- monitor anything
 
 ### Quick Access
 
-- One-click launch to web UIs, SSH, RDP, VNC
+- One-click launch to web UIs and SSH sessions
 - Credential vault so you don't re-type passwords
-- Secure browser-based remote access (coming soon)
+- HTTP reverse proxy and SSH-in-browser via WebSocket
 
 ## How SubNetree Compares
 
@@ -166,7 +166,7 @@ graph TD
 | **Pulse** | Health monitoring, metrics, alerting |
 | **Dispatch** | Scout agent enrollment and management |
 | **Vault** | Encrypted credential storage |
-| **Gateway** | Browser-based remote access (SSH, RDP, HTTP proxy) |
+| **Gateway** | Browser-based remote access (SSH, HTTP proxy) |
 | **Webhook** | Event-driven webhook notifications |
 | **LLM** | AI provider integration (Ollama, optional) |
 | **Insight** | Statistical analytics, anomaly detection, NL queries |
@@ -240,7 +240,7 @@ api/
 
 ## Roadmap
 
-- **v0.2.0** (shipped): All core modules -- monitoring, analytics, vault, gateway, LLM
+- **v0.2.1** (shipped): All core modules -- monitoring, analytics, vault, gateway, LLM
 - **v0.3.0**: Windows Scout agent + gRPC mTLS + Dispatch
 - **v0.4.0**: Enhanced discovery (SNMP, mDNS, UPnP, LLDP/CDP) + alerting
 - **v0.5.0**: Multi-tenant support for MSPs
