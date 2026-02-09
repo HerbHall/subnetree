@@ -8,11 +8,11 @@
 
 > **v0.2.1**: All core modules are functional. Discovery, monitoring, analytics, credential vault, and remote access all work. Contributions and feedback welcome!
 
-**Your homelab command center.** SubNetree discovers devices on your network, monitors their status, and gives you one-click access to everything -- without typing passwords a thousand times a day.
+**Your HomeLab command center.** SubNetree discovers devices on your network, monitors their status, and gives you one-click access to everything -- without typing passwords a thousand times a day.
 
 ## Why SubNetree?
 
-Homelabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home Assistant for automation, plus routers, NAS boxes, and random IoT devices. SubNetree doesn't replace any of them -- it's your **dashboard and aggregator** that:
+HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home Assistant for automation, plus routers, NAS boxes, and random IoT devices. SubNetree doesn't replace any of them -- it's your **dashboard and aggregator** that:
 
 - **Discovers everything** on your LAN automatically (ARP, ICMP -- with mDNS, SNMP, UPnP planned)
 - **Shows status at a glance** from multiple platforms in one place
@@ -115,9 +115,9 @@ docker-compose up -d
 | **Setup Time** | ~2 min | Hours | 30+ min | ~5 min | ~10 min |
 | **Self-Hosted** | Yes | Yes | Yes | Yes | No |
 | **License** | BSL 1.1* | GPL-2.0 | GPL-3.0 | MIT | Proprietary |
-| **Target User** | Homelabbers | Enterprise | Enterprise | Uptime only | MSPs |
+| **Target User** | HomeLabbers | Enterprise | Enterprise | Uptime only | MSPs |
 
-*BSL 1.1 converts to Apache 2.0 after 4 years. Free for personal/homelab use.
+*BSL 1.1 converts to Apache 2.0 after 4 years. Free for personal/HomeLab use.
 
 ## Architecture
 
@@ -237,7 +237,7 @@ api/
 - **v0.3.0**: Windows Scout agent + gRPC mTLS + Dispatch
 - **v0.4.0**: Enhanced discovery (SNMP, mDNS, UPnP, LLDP/CDP) + alerting
 - **v0.5.0**: Multi-tenant support for MSPs
-- **v1.0.0**: PostgreSQL, MFA, OIDC, homelab integrations (Home Assistant, UnRAID, Proxmox)
+- **v1.0.0**: PostgreSQL, MFA, OIDC, HomeLab integrations (Home Assistant, UnRAID, Proxmox)
 
 ## Troubleshooting
 
@@ -279,7 +279,7 @@ New here? Check out the [Welcome thread](https://github.com/HerbHall/subnetree/d
 
 ## Support the Project
 
-SubNetree is **free for personal, homelab, and non-competing production use**. If you find it useful:
+SubNetree is **free for personal, HomeLab, and non-competing production use**. If you find it useful:
 
 - [GitHub Sponsors](https://github.com/sponsors/HerbHall)
 - [Ko-fi](https://ko-fi.com/herbhall)
@@ -291,7 +291,7 @@ You can also contribute by [reporting bugs](https://github.com/HerbHall/subnetre
 
 SubNetree uses a split licensing model:
 
-- **Core** (server, agent, built-in modules): [Business Source License 1.1](LICENSE) -- free for personal, homelab, educational, and non-competing production use. Converts to Apache 2.0 after 4 years.
+- **Core** (server, agent, built-in modules): [Business Source License 1.1](LICENSE) -- free for personal, HomeLab, educational, and non-competing production use. Converts to Apache 2.0 after 4 years.
 - **Plugin SDK** (`pkg/plugin/`, `pkg/roles/`, `pkg/models/`, `api/proto/`): [Apache License 2.0](pkg/plugin/LICENSE) -- build plugins and integrations with no restrictions.
 
 See [LICENSING.md](LICENSING.md) for full details.

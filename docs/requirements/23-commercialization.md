@@ -2,7 +2,7 @@
 
 ### Strategic Intent
 
-**Free for personal and home use forever.** This is a firm commitment, not a marketing tactic. Home lab enthusiasts, students, and hobbyists will always have full access to every feature at no cost. This community is the foundation of adoption, feedback, and evangelism.
+**Free for personal and home use forever.** This is a firm commitment, not a marketing tactic. HomeLab enthusiasts, students, and hobbyists will always have full access to every feature at no cost. This community is the foundation of adoption, feedback, and evangelism.
 
 **Built for acquisition, not subscription revenue.** The primary goal is to build an excellent product with a passionate community, then position it for acquisition by a larger platform company. The codebase, documentation, community, and clean IP chain are the product -- not just the software.
 
@@ -29,7 +29,7 @@ The founder is not planning to build or operate a subscription business. However
 
 - **Change Date:** 4 years from each release date
 - **Change License:** Apache 2.0 (code auto-converts after Change Date)
-- **Additional Use Grant:** Non-competing production use permitted. Personal, home-lab, and educational use always permitted regardless of this grant.
+- **Additional Use Grant:** Non-competing production use permitted. Personal, HomeLab, and educational use always permitted regardless of this grant.
 - **Commercial Use:** Requires a paid license from the copyright holder for:
   - Offering SubNetree as a hosted/managed service
   - Embedding SubNetree in a commercial product that competes with SubNetree offerings
@@ -90,7 +90,7 @@ The pricing structure below is maintained as a ready-to-use commercial model for
 
 | Tier | Price | Target | Features |
 |------|-------|--------|----------|
-| **Community** | Free forever | Homelabbers, personal, educational | All modules, all plugins, unlimited devices, single user, full customization, community support |
+| **Community** | Free forever | HomeLabbers, personal, educational | All modules, all plugins, unlimited devices, single user, full customization, community support |
 | **Team** | $9/month | Small business, household teams | + Multi-user (up to 5), OIDC/SSO, scheduled reports, email support |
 | **Professional** | $29/month | Small business IT, consultants | + RBAC, audit logging, API access, priority support |
 
@@ -183,7 +183,7 @@ Sequence matters. Announce only after the pre-launch checklist is complete.
 | GitHub Release (`v0.1.0-alpha`) | Day 0 | Release notes, binary downloads, Docker image |
 | Personal blog post | Day 0 | "Why I built SubNetree" -- problem statement, architecture choices, what works, what's planned |
 | r/selfhosted | Day 0–1 | Show & Tell post, link to blog, Docker quickstart |
-| r/homelab | Day 0–1 | Focus on homelab use case, hardware requirements, screenshots |
+| r/homelab | Day 0–1 | Focus on HomeLab use case, hardware requirements, screenshots |
 | Hacker News (Show HN) | Day 1–2 | Technical focus, architecture, BSL licensing rationale |
 | Discord/Matrix | Ongoing | Real-time Q&A, feedback collection, community building |
 | GitHub Discussions | Ongoing | Roadmap feedback, plugin ideas, deployment guides |

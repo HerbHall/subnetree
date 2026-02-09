@@ -1,14 +1,15 @@
 ## Phased Roadmap
 
-**Target Audience:** Homelabbers and small business IT administrators. The roadmap prioritizes features that serve single-subnet home networks (15–200 devices) while maintaining a scalable, acquisition-ready architecture.
+**Target Audience:** HomeLabbers and small business IT administrators. The roadmap prioritizes features that serve single-subnet home networks (15–200 devices) while maintaining a scalable, acquisition-ready architecture.
 
-**Key Integration Targets:** Home Assistant, UnRAID, Proxmox VE -- the homelab community staples that differentiate this project from enterprise-focused tools.
+**Key Integration Targets:** Home Assistant, UnRAID, Proxmox VE -- the HomeLab community staples that differentiate this project from enterprise-focused tools.
 
 ### Phase 0: Pre-Development Infrastructure
 
 **Goal:** Establish project infrastructure, tooling, and processes before writing product code. Everything here is a prerequisite for efficient Phase 1 development.
 
 #### Documentation Split
+
 - [x] Create `docs/requirements/` directory structure
 - [x] Split `requirements.md` into per-section files (28 files)
 - [x] Create `docs/requirements/README.md` index with section descriptions
@@ -17,6 +18,7 @@
 - [x] Verify all cross-references resolve correctly
 
 #### Architecture Decision Records
+
 - [x] Create `docs/adr/` directory with MADR template
 - [x] Write ADR-0001: Split licensing model (BSL 1.1 + Apache 2.0)
 - [x] Write ADR-0002: SQLite-first database strategy
@@ -24,6 +26,7 @@
 - [x] Write ADR-0004: Integer-based protocol versioning
 
 #### GitHub Project Setup
+
 - [x] Create GitHub Projects v2 board with Kanban, Roadmap, and Table views
 - [x] Define custom fields: Phase, Module, Priority, Effort
 - [x] Create milestone for each phase (Phase 0 through Phase 4)
@@ -32,6 +35,7 @@
 - [x] Configure issue templates: bug report, feature request, plugin idea
 
 #### CI/CD Pipeline Scaffolding
+
 - [x] GitHub Actions: Go build matrix (Linux amd64/arm64, Windows amd64, macOS amd64/arm64)
 - [x] GitHub Actions: test workflow (unit tests with race detector)
 - [x] GitHub Actions: lint workflow (golangci-lint with project config)
@@ -41,6 +45,7 @@
 - [x] Pre-commit hooks: gofmt, go vet, license header check (lefthook)
 
 #### Development Environment
+
 - [x] Document development setup in `docs/guides/development-setup.md`
 - [x] Makefile: verify all targets work on Windows (MSYS2/Git Bash), Linux, macOS
 - [x] `.editorconfig` for consistent formatting across editors
@@ -48,6 +53,7 @@
 - [x] Go workspace configuration -- not needed (single module)
 
 #### Community Health Files
+
 - [x] CONTRIBUTING.md: fork-and-PR workflow, commit conventions, code review process
 - [x] CODE_OF_CONDUCT.md: Contributor Covenant v2.1
 - [x] SECURITY.md: vulnerability reporting process
@@ -55,6 +61,7 @@
 - [x] Issue templates: bug, feature, plugin idea (`.github/ISSUE_TEMPLATE/`)
 
 #### Metrics Baseline
+
 - [x] Register repository on Go Report Card
 - [x] Configure Codecov for coverage tracking
 - [x] Document badge URLs for README (CI, coverage, Go Report Card, license, release)
@@ -66,6 +73,7 @@
 **Goal:** Functional web-based network scanner with topology visualization. Validate architecture. Time to First Value under 10 minutes.
 
 #### Pre-Phase Tooling Research
+
 - [x] Evaluate and configure golangci-lint (15+ linters, project-specific `.golangci.yml`)
 - [x] Establish test framework patterns: table-driven tests, testify assertions, testcontainers for integration
 - [x] Set up Codecov integration for coverage tracking in CI
@@ -76,6 +84,7 @@
 - [x] Evaluate and document React + TypeScript toolchain for dashboard (Vite, ESLint, Prettier)
 
 #### Architecture & Infrastructure
+
 - [x] Redesigned plugin system: `PluginInfo`, `Dependencies`, optional interfaces
 - [x] Config abstraction wrapping Viper
 - [x] Event bus (synchronous default with PublishAsync for slow consumers like analytics)
@@ -87,6 +96,7 @@
 - [x] Metrics collection format: uniform `(timestamp, device_id, metric_name, value, tags)` for analytics consumption (Pulse publishes MetricPoints consumed by Insight)
 
 #### Server & API
+
 - [x] HTTP server with core routes
 - [x] RFC 7807 error responses
 - [x] Request ID middleware
@@ -98,12 +108,14 @@
 - [x] Configurable Zap logger factory
 
 #### Authentication
+
 - [x] Local auth with bcrypt password hashing
 - [x] JWT access/refresh token flow
 - [x] First-run setup endpoint (create admin when no users exist)
 - [ ] OIDC/OAuth2 optional configuration (schema ready -- defer provider to Phase 2)
 
 #### Recon Module
+
 - [x] ICMP ping sweep
 - [x] ARP scanning
 - [x] OUI manufacturer lookup (embedded database)
@@ -112,6 +124,7 @@
 - [x] Publishes `recon.device.discovered` events
 
 #### Dashboard
+
 - [x] React + Vite + TypeScript + shadcn/ui + TanStack Query + Zustand
 - [x] First-run setup wizard
 - [x] Dashboard overview page (device counts, status summary)
@@ -124,10 +137,12 @@
 - [x] About page with version info, license, and Community Supporters section
 
 #### Documentation
+
 - [x] Tailscale deployment guide: running SubNetree + Scout over Tailscale
 - [x] Tailscale Funnel/Serve guide: exposing dashboard without port forwarding
 
 #### Operations
+
 - [x] Backup/restore CLI commands (`subnetree backup`, `subnetree restore`)
 - [x] Data retention configuration with automated purge job (Pulse and Gateway maintenance loops)
 - [x] Security headers middleware (CSP, X-Frame-Options, HSTS, etc.)
@@ -135,6 +150,7 @@
 - [x] SECURITY.md with vulnerability disclosure process
 
 #### Testing & Quality
+
 - [x] Test infrastructure: `internal/testutil/` with mocks, fixtures, helpers, mock clock
 - [ ] Test infrastructure: `testdata/` directory with SNMP fixtures, test configs, migration snapshots
 - [x] Plugin contract tests: table-driven tests for `Plugin` interface and all optional interfaces
@@ -162,6 +178,7 @@
 - [x] OpenAPI spec generation (swaggo/swag)
 
 #### Metrics & Measurement Infrastructure
+
 - [x] Codecov integration: GitHub Action uploads coverage report, badge in README, PR comments with coverage diff
 - [x] Go Report Card: register project at goreportcard.com, add badge to README
 - [x] GitHub Dependabot: enable automated dependency vulnerability alerts
@@ -171,6 +188,7 @@
 - [ ] README badges: CI build, coverage, Go Report Card, Go version, license, latest release, Docker pulls (see Success Metrics)
 
 #### Community & Launch Readiness
+
 - [x] CONTRIBUTING.md: development setup, code style, PR process, testing expectations, CLA explanation
 - [x] Pull request template (`.github/pull_request_template.md`) with checklist (tests, lint, description)
 - [x] First tagged release: `v0.1.0-alpha` with pre-built binaries (GoReleaser) and GitHub Release notes
@@ -193,11 +211,14 @@
 **Goal:** First agent reporting metrics to server.
 
 #### Pre-Phase Tooling Research
+
 - [ ] Evaluate gRPC tooling: buf vs protoc, connect-go vs grpc-go
 - [ ] Research Windows cross-compilation CI (GitHub Actions Windows runners, MSYS2 in CI)
 - [ ] Evaluate agent packaging: MSI (WiX Toolset), NSIS, or Go-native installer
 - [ ] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns)
 - [ ] Evaluate Windows service management (golang.org/x/sys/windows/svc)
+
+#### Scout Agent Implementation
 
 - [ ] Scout agent binary for Windows (skeleton exists, not functional)
 - [ ] Internal CA for mTLS certificate management
@@ -215,6 +236,7 @@
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
 #### Pre-Phase Tooling Research
+
 - [ ] Evaluate PostgreSQL + TimescaleDB: migration tooling (golang-migrate), hypertable performance, connection pooling
 - [ ] Research Docker multi-arch build pipeline (buildx, QEMU, manifest lists)
 - [ ] Scaffold Hugo + Docsy documentation site, configure GitHub Pages deployment
@@ -225,6 +247,7 @@
 - [ ] Evaluate mDNS/UPnP discovery libraries (hashicorp/mdns, huin/goupnp)
 
 #### Discovery Enhancements
+
 - [ ] SNMP v2c/v3 discovery
 - [ ] mDNS/Bonjour discovery
 - [ ] UPnP/SSDP discovery
@@ -239,6 +262,7 @@
 - [ ] Topology: custom backgrounds, saved layouts
 
 #### Monitoring (Pulse)
+
 - [x] Uptime monitoring (ICMP, TCP port, HTTP/HTTPS) (ICMP shipped in v0.2.0; TCP/HTTP deferred)
 - [x] Sensible default thresholds (avoid alert fatigue)
 - [ ] Dependency-aware alerting (router down suppresses downstream alerts)
@@ -247,6 +271,7 @@
 - [ ] Maintenance windows (suppress alerts during scheduled work)
 
 #### Multi-Tenancy
+
 - [ ] TenantID on all core entities (Device, Agent, Credential)
 - [ ] Tenant isolation in all queries (row-level filtering)
 - [ ] Tenant management API
@@ -255,6 +280,7 @@
 - [ ] Dashboard: tenant selector for MSP operators
 
 #### Analytics (Insight Module -- Tier 1)
+
 - [x] Insight plugin implementing `AnalyticsProvider` role
 - [x] EWMA adaptive baselines for all monitored metrics
 - [x] Z-score anomaly detection with configurable sensitivity (default: 3σ)
@@ -271,6 +297,7 @@
 - [ ] Performance-profile-aware: disabled on micro, basic on small, full on medium+
 
 #### Infrastructure
+
 - [ ] PostgreSQL + TimescaleDB support (with hypertables for metrics and continuous aggregates for analytics feature engineering)
 - [ ] Scout: Linux agent (x64, ARM64)
 - [ ] Agent auto-update with binary signing (Cosign) and staged rollout
@@ -300,6 +327,7 @@
 **Goal:** Browser-based remote access to any device with secure credential management.
 
 #### Pre-Phase Tooling Research
+
 - [x] Research WebSocket + xterm.js integration patterns for SSH-in-browser
 - [ ] Evaluate Apache Guacamole Docker deployment for RDP/VNC proxying
 - [x] Benchmark AES-256-GCM envelope encryption libraries in Go
@@ -307,6 +335,8 @@
 - [x] Evaluate memguard for in-memory secret protection (decided: pure Go crypto, no CGo dependency)
 - [x] Research LLM provider SDKs: OpenAI Go client, Anthropic SDK, Ollama local API (Ollama provider shipped in v0.1.0-alpha; OpenAI/Anthropic deferred)
 - [ ] Evaluate data anonymization approaches for LLM context (PII stripping, metric-only summaries)
+
+#### Remote Access & Vault Implementation
 
 - [x] Gateway: SSH-in-browser via xterm.js (WebSocket backend shipped; frontend xterm.js deferred)
 - [x] Gateway: HTTP/HTTPS reverse proxy via Go stdlib
@@ -334,6 +364,7 @@
 **Goal:** IoT awareness, ecosystem growth, acquisition readiness.
 
 #### Pre-Phase Tooling Research
+
 - [ ] Evaluate MQTT Go libraries: Eclipse Paho vs alternatives (mochi-co/server for embedded broker)
 - [ ] Research ONNX Runtime Go bindings (onnxruntime_go): platform support, model loading, inference performance
 - [ ] Evaluate HashiCorp go-plugin for process-isolated third-party plugins (gRPC transport, versioning)
@@ -341,9 +372,9 @@
 - [ ] Evaluate Home Assistant API integration patterns and authentication
 - [ ] Research RBAC frameworks for Go (Casbin vs custom implementation)
 
-#### Homelab Platform Integrations
+#### HomeLab Platform Integrations
 
-SubNetree is a dashboard and aggregator, not a replacement for homelab tools. These integrations provide status-at-a-glance and quick-launch access to other platforms:
+SubNetree is a dashboard and aggregator, not a replacement for HomeLab tools. These integrations provide status-at-a-glance and quick-launch access to other platforms:
 
 - [ ] MQTT integration (Eclipse Paho) -- subscribe to status updates from IoT devices
 - [ ] Home Assistant integration -- pull entity states, display status tiles, quick-launch to HA dashboard

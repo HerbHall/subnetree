@@ -65,7 +65,7 @@ volumes:
 # ============================================================================
 # Alternative: Host network mode for full network scanning capability
 # ============================================================================
-# If you need unrestricted network scanning (recommended for homelabs):
+# If you need unrestricted network scanning (recommended for HomeLabs):
 #
 # services:
 #   subnetree:

@@ -56,11 +56,11 @@ These estimates guide the performance profile auto-selection and prerequisite ch
 | Target | Example Hardware | Docker? | Native? | Notes |
 |--------|-----------------|---------|---------|-------|
 | Raspberry Pi 4/5 | ARM64, 4–16 GB | Yes | Yes | Micro/small profile. NVMe via HAT recommended for Pi 5. |
-| Intel N100 mini PCs | x64, 8–16 GB, 6W TDP | Yes | Yes | Ideal homelab platform. Beelink, MinisForum, CWWK, etc. |
+| Intel N100 mini PCs | x64, 8–16 GB, 6W TDP | Yes | Yes | Ideal HomeLab platform. Beelink, MinisForum, CWWK, etc. |
 | Refurb enterprise micro PCs | x64, 8–64 GB | Yes | Yes | Dell OptiPlex Micro, HP EliteDesk Mini, Lenovo ThinkCentre Tiny |
 | Synology NAS (DS920+, DS1522+) | x64, 4–32 GB | Yes (Container Manager) | No | Docker container on existing NAS. Zero additional hardware. |
 | QNAP NAS (TS-464, TS-873A) | x64, 8–16 GB | Yes (Container Station) | No | Docker container on existing NAS. |
-| Proxmox VE (VM or LXC) | x64 or ARM64 | Yes (inside VM/LXC) | Yes (inside VM/LXC) | Common homelab hypervisor. LXC is more resource-efficient than full VM. |
+| Proxmox VE (VM or LXC) | x64 or ARM64 | Yes (inside VM/LXC) | Yes (inside VM/LXC) | Common HomeLab hypervisor. LXC is more resource-efficient than full VM. |
 | Unraid | x64 | Yes (Community Apps) | No | Docker container alongside media/NAS workloads. |
 | TrueNAS SCALE | x64 | Yes | No | Docker container on ZFS-backed storage. |
 | Cloud VPS (DigitalOcean, Linode, Hetzner, Oracle Cloud) | x64 or ARM64 | Yes | Yes | Remote monitoring via Tailscale or Scout agents. Oracle Cloud free tier (ARM64, 24 GB) is popular. |

@@ -2,13 +2,13 @@
 
 ### Target Market
 
-SubNetree targets **homelabbers and small business IT administrators** managing single-subnet networks (15–200 devices). The goal is not to compete with enterprise monitoring platforms, but to be the best "single pane of glass" for users who currently cobble together multiple tools or go without visibility entirely.
+SubNetree targets **HomeLabbers and small business IT administrators** managing single-subnet networks (15–200 devices). The goal is not to compete with enterprise monitoring platforms, but to be the best "single pane of glass" for users who currently cobble together multiple tools or go without visibility entirely.
 
 The backend architecture is designed for scalability and acquisition-readiness, but the current product focus is delighting smaller-scale users with an exceptional experience.
 
 ### Market Gap
 
-No existing source-available tool combines all five capabilities in a single self-hosted application for the homelab/small business market:
+No existing source-available tool combines all five capabilities in a single self-hosted application for the HomeLab/small business market:
 
 1. Device discovery (network scanning, SNMP, mDNS, auto-topology)
 2. Monitoring (uptime, metrics, dependency-aware alerting)
@@ -32,7 +32,7 @@ No existing source-available tool combines all five capabilities in a single sel
 
 ### Positioning: Dashboard & Aggregator
 
-SubNetree is not trying to replace homelab staples like Home Assistant, UnRAID, or Proxmox. Instead, it serves as a **homelab command center** that:
+SubNetree is not trying to replace HomeLab staples like Home Assistant, UnRAID, or Proxmox. Instead, it serves as a **HomeLab command center** that:
 
 - Aggregates status from multiple platforms into a single dashboard
 - Provides quick-launch access to other tools' UIs
@@ -80,8 +80,8 @@ Time to First Value < 10 minutes     (Uptime Kuma, PRTG model)
 
 | Segment | Top Need | SubNetree Differentiator | Typical Hardware | Typical Devices |
 |---------|----------|--------------------------|-----------------|----------------|
-| **Home Lab (beginner)** | Simple visibility into all home devices | Auto-discovery + topology in 10 minutes | RPi 4/5, Docker on NAS | 15–30 (router, switch, AP, IoT, personal devices) |
-| **Home Lab (enthusiast)** | Single pane of glass replacing 3–5 separate tools | Discovery + monitoring + topology + remote access + credential vault | N100 mini PC, Proxmox VM, refurb enterprise micro | 50–200 (managed switches, VLANs, 20–50 containers, NAS, cameras, IoT) |
+| **HomeLab (beginner)** | Simple visibility into all home devices | Auto-discovery + topology in 10 minutes | RPi 4/5, Docker on NAS | 15–30 (router, switch, AP, IoT, personal devices) |
+| **HomeLab (enthusiast)** | Single pane of glass replacing 3–5 separate tools | Discovery + monitoring + topology + remote access + credential vault | N100 mini PC, Proxmox VM, refurb enterprise micro | 50–200 (managed switches, VLANs, 20–50 containers, NAS, cameras, IoT) |
 | **Prosumer / Remote Worker** | Network reliability for income-dependent connectivity | Latency monitoring, ISP vs VPN diagnostics, Tailscale integration | N100 mini PC, cloud VPS | 20–75 (work + personal + IoT, Tailscale mesh) |
 | **Small Biz IT (5–25 employees)** | Minimal maintenance + zero-config monitoring | Setup wizard + sensible defaults + auto-discovery | Existing server VM, NAS Docker, or $200 mini PC | 20–90 (router, switches, APs, endpoints, printers, VoIP phones) |
 
