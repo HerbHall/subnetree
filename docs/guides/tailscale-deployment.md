@@ -1,13 +1,13 @@
 # Running SubNetree over Tailscale
 
 This guide explains how to run SubNetree and Scout agents across a distributed
-homelab using [Tailscale](https://tailscale.com) as the overlay network.
+HomeLab using [Tailscale](https://tailscale.com) as the overlay network.
 
 ## Why Tailscale?
 
 Tailscale creates a WireGuard-based mesh VPN (called a "tailnet") between your
 devices. Each device gets a stable `100.x.y.z` address that works regardless of
-NAT, firewalls, or physical location. This makes it ideal for homelabs spread
+NAT, firewalls, or physical location. This makes it ideal for HomeLabs spread
 across multiple sites -- a NAS at home, a Pi at a parent's house, a VPS in the
 cloud -- all reachable as if they were on the same LAN.
 

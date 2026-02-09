@@ -108,7 +108,7 @@ export function AboutPage() {
                 <h4 className="text-sm font-medium">Core</h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   Business Source License 1.1 (BSL 1.1). Free for personal,
-                  homelab, educational, and non-competing production use.
+                  HomeLab, educational, and non-competing production use.
                   Converts to Apache 2.0 after 4 years.
                 </p>
               </div>
@@ -179,7 +179,7 @@ export function AboutPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              SubNetree is free for personal and homelab use. If you find it
+              SubNetree is free for personal and HomeLab use. If you find it
               useful, consider supporting development.
             </p>
             <div className="space-y-2">

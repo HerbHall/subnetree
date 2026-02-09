@@ -7,7 +7,7 @@ ecosystem openness.
 
 | What you want to do | License | Cost |
 |---------------------|---------|------|
-| Use SubNetree at home or in a home lab | BSL 1.1 (permitted) | Free |
+| Use SubNetree at home or in a HomeLab | BSL 1.1 (permitted) | Free |
 | Use SubNetree for personal/educational purposes | BSL 1.1 (permitted) | Free |
 | Use SubNetree in production (non-competing) | BSL 1.1 (permitted) | Free |
 | Build plugins using the Plugin SDK | Apache 2.0 | Free |
@@ -31,7 +31,7 @@ not covered by a more specific LICENSE file are licensed under the
 - Production use is permitted as long as it does not compete with SubNetree
   commercial offerings (e.g., offering it as a hosted service, reselling it,
   or embedding it in a competing product).
-- Personal, home-lab, and educational use is always permitted.
+- Personal, HomeLab, and educational use is always permitted.
 - On **2030-02-01** (or 4 years after each version's release, whichever comes
   first), the code automatically converts to the **Apache License 2.0**.
 

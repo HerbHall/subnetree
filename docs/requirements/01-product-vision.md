@@ -4,11 +4,11 @@ SubNetree is a modular, source-available network monitoring and management platf
 
 **Strategic Intent:** Free for personal and home use forever. Built to become a commercial product for business, MSP, and enterprise use. The codebase, documentation, community, and clean IP chain are the product -- designed from day one for acquisition readiness.
 
-**Target Users:** Home lab enthusiasts, prosumers, and small business IT administrators.
+**Target Users:** HomeLab enthusiasts, prosumers, and small business IT administrators.
 
-**Market Scope:** SubNetree targets single-subnet home and small-office networks (typically 15–200 devices). The current focus is building a product that delights homelabbers and small business users, not competing with enterprise monitoring platforms. However, the backend architecture is designed for scalability and flexibility -- modular, well-documented, and acquisition-ready. The goal is to build a passionate community around an excellent small-scale tool while maintaining the technical foundation that would allow a future owner to expand into larger markets.
+**Market Scope:** SubNetree targets single-subnet home and small-office networks (typically 15–200 devices). The current focus is building a product that delights HomeLabbers and small business users, not competing with enterprise monitoring platforms. However, the backend architecture is designed for scalability and flexibility -- modular, well-documented, and acquisition-ready. The goal is to build a passionate community around an excellent small-scale tool while maintaining the technical foundation that would allow a future owner to expand into larger markets.
 
-**Core Value Proposition:** No existing source-available tool combines device discovery, monitoring, remote access, credential management, and IoT awareness in a single product. Free for personal, home-lab, and non-competing production use. BSL 1.1 licensed core with Apache 2.0 plugin SDK for ecosystem growth.
+**Core Value Proposition:** No existing source-available tool combines device discovery, monitoring, remote access, credential management, and IoT awareness in a single product. Free for personal, HomeLab, and non-competing production use. BSL 1.1 licensed core with Apache 2.0 plugin SDK for ecosystem growth.
 
 ### What It Does
 
