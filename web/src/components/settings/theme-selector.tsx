@@ -10,6 +10,7 @@ import {
   Loader2,
   Plus,
   Copy,
+  Paintbrush,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -24,7 +25,11 @@ import {
 } from '@/api/themes'
 import { useThemeStore } from '@/stores/theme'
 
-export function ThemeSelector() {
+interface ThemeSelectorProps {
+  onCustomize?: (theme: ThemeDefinition) => void
+}
+
+export function ThemeSelector({ onCustomize }: ThemeSelectorProps) {
   const queryClient = useQueryClient()
   const activeThemeId = useThemeStore((s) => s.activeThemeId)
   const setStoreTheme = useThemeStore((s) => s.setActiveTheme)
@@ -202,6 +207,7 @@ export function ThemeSelector() {
                 theme={theme}
                 isActive={theme.id === activeThemeId}
                 onActivate={() => activateMutation.mutate(theme)}
+                onCustomize={onCustomize ? () => onCustomize(theme) : undefined}
                 onDuplicate={() => duplicateMutation.mutate(theme)}
                 onDelete={() => deleteMutation.mutate(theme.id)}
                 isActivating={activateMutation.isPending}
@@ -224,6 +230,7 @@ function ThemeCard({
   theme,
   isActive,
   onActivate,
+  onCustomize,
   onDuplicate,
   onDelete,
   isActivating,
@@ -232,6 +239,7 @@ function ThemeCard({
   theme: ThemeDefinition
   isActive: boolean
   onActivate: () => void
+  onCustomize?: () => void
   onDuplicate: () => void
   onDelete: () => void
   isActivating: boolean
@@ -304,6 +312,18 @@ function ThemeCard({
           >
             <Check className="h-3.5 w-3.5" />
             Use
+          </Button>
+        )}
+        {onCustomize && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCustomize}
+            className="h-8 gap-1.5"
+            title="Customize theme"
+          >
+            <Paintbrush className="h-3.5 w-3.5" />
+            Edit
           </Button>
         )}
         <Button

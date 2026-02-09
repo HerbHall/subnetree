@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -22,6 +22,8 @@ import {
 import type { NetworkInterface } from '@/api/settings'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ThemeImportExport } from '@/components/settings/theme-import-export'
+import { ThemeEditor } from '@/components/settings/theme-editor'
+import type { ThemeDefinition } from '@/api/themes'
 
 type SettingsTab = 'network' | 'appearance'
 
@@ -89,9 +91,24 @@ function TabButton({
 }
 
 function AppearanceTab() {
+  const [editingTheme, setEditingTheme] = useState<ThemeDefinition | null>(null)
+
+  const handleCustomize = useCallback((theme: ThemeDefinition) => {
+    setEditingTheme(theme)
+  }, [])
+
+  if (editingTheme) {
+    return (
+      <ThemeEditor
+        theme={editingTheme}
+        onClose={() => setEditingTheme(null)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <ThemeSelector />
+      <ThemeSelector onCustomize={handleCustomize} />
       <ThemeImportExport />
     </div>
   )
