@@ -3,10 +3,6 @@
 # Usage:
 #   .\verify-release.ps1 [-Version "0.2.1"] [-Subnet "192.168.1.0/24"]
 #   .\verify-release.ps1 -Version "0.2.1" -Subnet "skip"
-
-
-
-
 #
 # Prerequisites:
 #   - PowerShell 5.1+ (built into Windows)
@@ -27,10 +23,10 @@ $Warn = 0
 $Report = @()
 $ServerProcess = $null
 
-function log-Pass($msg) { $script:Pass++; $script:Report += "PASS: $msg"; Write-Host "[PASS] $msg" -ForegroundColor Green }
-function log-Fail($msg) { $script:Fail++; $script:Report += "FAIL: $msg"; Write-Host "[FAIL] $msg" -ForegroundColor Red }
-function log-Warn($msg) { $script:Warn++; $script:Report += "WARN: $msg"; Write-Host "[WARN] $msg" -ForegroundColor Yellow }
-function log-Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Cyan }
+function Write-Pass($msg) { $script:Pass++; $script:Report += "PASS: $msg"; Write-Host "[PASS] $msg" -ForegroundColor Green }
+function Write-Fail($msg) { $script:Fail++; $script:Report += "FAIL: $msg"; Write-Host "[FAIL] $msg" -ForegroundColor Red }
+function Write-Warn($msg) { $script:Warn++; $script:Report += "WARN: $msg"; Write-Host "[WARN] $msg" -ForegroundColor Yellow }
+function Write-Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Cyan }
 
 function Invoke-Api {
     param([string]$Method = "GET", [string]$Uri, [string]$Body, [string]$Token)
@@ -56,10 +52,10 @@ try {
     $Archive = "subnetree_${Version}_windows_${arch}.zip"
     $Binary = "subnetree.exe"
 
-    Log-Info "Platform: Windows $arch ($([Environment]::OSVersion.Version))"
-    Log-Info "Version: v$Version"
-    Log-Info "Working directory: $WorkDir"
-    Log-Info "Test port: $Port"
+    Write-Info "Platform: Windows $arch ($([Environment]::OSVersion.Version))"
+    Write-Info "Version: v$Version"
+    Write-Info "Working directory: $WorkDir"
+    Write-Info "Test port: $Port"
     Write-Host ""
 
     # ===== 1. DOWNLOAD & EXTRACT =====
@@ -71,43 +67,43 @@ try {
     $ChecksumUrl = "https://github.com/HerbHall/subnetree/releases/download/v${Version}/checksums.txt"
     $ArchivePath = Join-Path $WorkDir $Archive
 
-    Log-Info "Downloading $Archive ..."
+    Write-Info "Downloading $Archive ..."
     try {
         Invoke-WebRequest -Uri $DownloadUrl -OutFile $ArchivePath -UseBasicParsing
-        Log-Pass "Binary downloaded: $Archive"
+        Write-Pass "Binary downloaded: $Archive"
     } catch {
-        Log-Fail "Failed to download $Archive"
+        Write-Fail "Failed to download $Archive"
         exit 1
     }
 
     # Download checksums
     try {
         Invoke-WebRequest -Uri $ChecksumUrl -OutFile "$WorkDir\checksums.txt" -UseBasicParsing
-        Log-Pass "Checksums downloaded"
+        Write-Pass "Checksums downloaded"
 
         # Verify checksum
         $expected = (Get-Content "$WorkDir\checksums.txt" | Where-Object { $_ -match $Archive }) -replace '\s+.*$',''
         $actual = (Get-FileHash $ArchivePath -Algorithm SHA256).Hash.ToLower()
         if ($expected -eq $actual) {
-            Log-Pass "SHA-256 checksum verified"
+            Write-Pass "SHA-256 checksum verified"
         } else {
-            Log-Fail "Checksum mismatch! Expected: $expected Got: $actual"
+            Write-Fail "Checksum mismatch! Expected: $expected Got: $actual"
         }
     } catch {
-        Log-Warn "Could not verify checksums"
+        Write-Warn "Could not verify checksums"
     }
 
     # Extract
-    Log-Info "Extracting ..."
+    Write-Info "Extracting ..."
     $ExtractDir = "$WorkDir\extracted"
     Expand-Archive -Path $ArchivePath -DestinationPath $ExtractDir -Force
     $BinaryPath = Join-Path $ExtractDir $Binary
 
     if (Test-Path $BinaryPath) {
         $size = (Get-Item $BinaryPath).Length / 1MB
-        Log-Pass "Binary extracted: $([math]::Round($size, 1)) MB"
+        Write-Pass "Binary extracted: $([math]::Round($size, 1)) MB"
     } else {
-        Log-Fail "Binary not found after extraction"
+        Write-Fail "Binary not found after extraction"
         exit 1
     }
 
@@ -119,16 +115,16 @@ try {
     Write-Host "========================================="
 
     $VersionOutput = & $BinaryPath -version 2>&1 | Out-String
-    Log-Info "Version output: $($VersionOutput.Trim())"
+    Write-Info "Version output: $($VersionOutput.Trim())"
 
-    if ($VersionOutput -match "SubNetree $Version") { Log-Pass "Version string contains $Version" }
-    else { Log-Fail "Version string does not contain $Version" }
+    if ($VersionOutput -match "SubNetree $Version") { Write-Pass "Version string contains $Version" }
+    else { Write-Fail "Version string does not contain $Version" }
 
-    if ($VersionOutput -match "commit:") { Log-Pass "Commit hash present" }
-    else { Log-Fail "Commit hash missing" }
+    if ($VersionOutput -match "commit:") { Write-Pass "Commit hash present" }
+    else { Write-Fail "Commit hash missing" }
 
-    if ($VersionOutput -match "built:") { Log-Pass "Build timestamp present" }
-    else { Log-Fail "Build timestamp missing" }
+    if ($VersionOutput -match "built:") { Write-Pass "Build timestamp present" }
+    else { Write-Fail "Build timestamp missing" }
 
     Write-Host ""
 
@@ -167,7 +163,7 @@ plugins:
     enabled: true
 "@ | Set-Content $ConfigPath
 
-    Log-Info "Starting server on port $Port ..."
+    Write-Info "Starting server on port $Port ..."
     # Set vault passphrase via env var to prevent interactive prompt blocking startup.
     $env:SUBNETREE_VAULT_PASSPHRASE = "TestVaultPass123!"
     $ServerProcess = Start-Process -FilePath $BinaryPath -ArgumentList "-config",$ConfigPath `
@@ -175,7 +171,7 @@ plugins:
         -RedirectStandardError "$WorkDir\server-stderr.log" `
         -PassThru -WindowStyle Hidden
 
-    Log-Info "Server PID: $($ServerProcess.Id)"
+    Write-Info "Server PID: $($ServerProcess.Id)"
 
     # Wait for server to be ready
     $ready = $false
@@ -188,9 +184,9 @@ plugins:
         } catch { }
     }
 
-    if ($ready) { Log-Pass "Server started and healthy (${i}s)" }
+    if ($ready) { Write-Pass "Server started and healthy (${i}s)" }
     else {
-        Log-Fail "Server failed to start within 20s"
+        Write-Fail "Server failed to start within 20s"
         if (Test-Path "$WorkDir\server-stderr.log") {
             Write-Host "=== Server error log ==="
             Get-Content "$WorkDir\server-stderr.log" -Tail 30
@@ -208,15 +204,15 @@ plugins:
     foreach ($ep in @("/healthz", "/readyz")) {
         try {
             $null = Invoke-WebRequest -Uri "$BaseUrl$ep" -UseBasicParsing -TimeoutSec 5
-            Log-Pass "$ep responds (public)"
-        } catch { Log-Fail "$ep not responding" }
+            Write-Pass "$ep responds (public)"
+        } catch { Write-Fail "$ep not responding" }
     }
 
     try {
         $metricsResp = Invoke-WebRequest -Uri "$BaseUrl/metrics" -UseBasicParsing -TimeoutSec 5
-        if ($metricsResp.StatusCode -eq 200) { Log-Pass "/metrics (Prometheus) responds 200" }
-        else { Log-Warn "/metrics returned $($metricsResp.StatusCode)" }
-    } catch { Log-Warn "/metrics failed" }
+        if ($metricsResp.StatusCode -eq 200) { Write-Pass "/metrics (Prometheus) responds 200" }
+        else { Write-Warn "/metrics returned $($metricsResp.StatusCode)" }
+    } catch { Write-Warn "/metrics failed" }
 
     Write-Host ""
 
@@ -227,11 +223,11 @@ plugins:
 
     try {
         $dashResp = Invoke-WebRequest -Uri "$BaseUrl/" -UseBasicParsing -TimeoutSec 5
-        Log-Pass "Dashboard serves HTML (HTTP $($dashResp.StatusCode), $($dashResp.Content.Length) bytes)"
+        Write-Pass "Dashboard serves HTML (HTTP $($dashResp.StatusCode), $($dashResp.Content.Length) bytes)"
         if ($dashResp.Content -match "(?i)subnetree|<!DOCTYPE|<html") {
-            Log-Pass "Dashboard HTML contains expected content"
-        } else { Log-Fail "Dashboard HTML looks wrong" }
-    } catch { Log-Fail "Dashboard failed to load" }
+            Write-Pass "Dashboard HTML contains expected content"
+        } else { Write-Fail "Dashboard HTML looks wrong" }
+    } catch { Write-Fail "Dashboard failed to load" }
 
     Write-Host ""
 
@@ -243,8 +239,8 @@ plugins:
     $setupResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/auth/setup" `
         -Body '{"username":"testadmin","email":"test@subnetree.local","password":"TestPass123!"}'
 
-    if ($setupResult -and $setupResult.username -eq "testadmin") { Log-Pass "Setup wizard created admin account" }
-    else { Log-Fail "Setup wizard failed" }
+    if ($setupResult -and $setupResult.username -eq "testadmin") { Write-Pass "Setup wizard created admin account" }
+    else { Write-Fail "Setup wizard failed" }
 
     Write-Host ""
 
@@ -259,34 +255,34 @@ plugins:
     $accessToken = $loginResult.access_token
     $refreshToken = $loginResult.refresh_token
 
-    if ($accessToken) { Log-Pass "Login succeeded, got access token" }
-    else { Log-Fail "Login failed" }
+    if ($accessToken) { Write-Pass "Login succeeded, got access token" }
+    else { Write-Fail "Login failed" }
 
-    if ($refreshToken) { Log-Pass "Refresh token received" }
-    else { Log-Warn "No refresh token received" }
+    if ($refreshToken) { Write-Pass "Refresh token received" }
+    else { Write-Warn "No refresh token received" }
 
     # Token refresh
     $refreshResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/auth/refresh" `
         -Body "{`"refresh_token`":`"$refreshToken`"}"
     if ($refreshResult -and $refreshResult.access_token) {
         $accessToken = $refreshResult.access_token
-        Log-Pass "Token refresh succeeded"
-    } else { Log-Warn "Token refresh failed" }
+        Write-Pass "Token refresh succeeded"
+    } else { Write-Warn "Token refresh failed" }
 
     # Auth rejection test
     try {
         $null = Invoke-WebRequest -Uri "$BaseUrl/api/v1/recon/devices" -UseBasicParsing -TimeoutSec 5
-        Log-Warn "Unauthenticated request was NOT rejected"
+        Write-Warn "Unauthenticated request was NOT rejected"
     } catch {
         if ($_.Exception.Response.StatusCode.Value__ -eq 401) {
-            Log-Pass "Unauthenticated request correctly rejected (401)"
-        } else { Log-Warn "Unexpected status: $($_.Exception.Response.StatusCode.Value__)" }
+            Write-Pass "Unauthenticated request correctly rejected (401)"
+        } else { Write-Warn "Unexpected status: $($_.Exception.Response.StatusCode.Value__)" }
     }
 
     # Authenticated health endpoint
     $healthResult = Invoke-Api -Uri "$BaseUrl/api/v1/health" -Token $accessToken
-    if ($null -ne $healthResult) { Log-Pass "/api/v1/health responds (authenticated)" }
-    else { Log-Fail "/api/v1/health not responding" }
+    if ($null -ne $healthResult) { Write-Pass "/api/v1/health responds (authenticated)" }
+    else { Write-Fail "/api/v1/health not responding" }
 
     Write-Host ""
 
@@ -296,31 +292,31 @@ plugins:
     Write-Host "========================================="
 
     $vaultStatus = Invoke-Api -Uri "$BaseUrl/api/v1/vault/status" -Token $accessToken
-    if ($null -ne $vaultStatus) { Log-Pass "Vault status endpoint responds" }
-    else { Log-Fail "Vault status failed" }
+    if ($null -ne $vaultStatus) { Write-Pass "Vault status endpoint responds" }
+    else { Write-Fail "Vault status failed" }
 
     $unsealResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/unseal" `
         -Body '{"passphrase":"TestVaultPass123!"}' -Token $accessToken
-    if ($unsealResult -and $unsealResult.status -eq "unsealed") { Log-Pass "Vault initialized and unsealed" }
-    else { Log-Fail "Vault unseal failed" }
+    if ($unsealResult -and $unsealResult.status -eq "unsealed") { Write-Pass "Vault initialized and unsealed" }
+    else { Write-Fail "Vault unseal failed" }
 
     $credResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/credentials" `
         -Body '{"name":"test-cred","type":"ssh_password","data":{"username":"testuser","password":"testpass"}}' `
         -Token $accessToken
     $credId = $credResult.id
 
-    if ($credId) { Log-Pass "Credential created: $credId" }
-    else { Log-Fail "Credential creation failed" }
+    if ($credId) { Write-Pass "Credential created: $credId" }
+    else { Write-Fail "Credential creation failed" }
 
     if ($credId) {
         $credData = Invoke-Api -Uri "$BaseUrl/api/v1/vault/credentials/$credId/data" -Token $accessToken
-        if ($credData -and $credData.data.username -eq "testuser") { Log-Pass "Credential decrypted successfully" }
-        else { Log-Fail "Credential decryption failed" }
+        if ($credData -and $credData.data.username -eq "testuser") { Write-Pass "Credential decrypted successfully" }
+        else { Write-Fail "Credential decryption failed" }
     }
 
     $sealResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/vault/seal" -Token $accessToken
-    if ($sealResult -and $sealResult.status -eq "sealed") { Log-Pass "Vault sealed" }
-    else { Log-Warn "Vault seal unexpected response" }
+    if ($sealResult -and $sealResult.status -eq "sealed") { Write-Pass "Vault sealed" }
+    else { Write-Warn "Vault seal unexpected response" }
 
     Write-Host ""
 
@@ -330,16 +326,16 @@ plugins:
     Write-Host "========================================="
 
     if ($Subnet -eq "skip") {
-        Log-Warn "Network scan skipped"
+        Write-Warn "Network scan skipped"
     } else {
         $scanResult = Invoke-Api -Method POST -Uri "$BaseUrl/api/v1/recon/scan" `
             -Body "{`"subnet`":`"$Subnet`"}" -Token $accessToken
         $scanId = $scanResult.id
 
         if ($scanId) {
-            Log-Pass "Scan started: $scanId"
+            Write-Pass "Scan started: $scanId"
 
-            Log-Info "Waiting for scan to complete (up to 60s) ..."
+            Write-Info "Waiting for scan to complete (up to 60s) ..."
             $scanStatus = "running"
             $deviceCount = 0
             for ($i = 1; $i -le 12; $i++) {
@@ -348,17 +344,17 @@ plugins:
                 if ($scanCheck) {
                     $scanStatus = $scanCheck.status
                     $deviceCount = [int]$scanCheck.total
-                    Log-Info "  Status: $scanStatus, Devices: $deviceCount ($($i*5)s)"
+                    Write-Info "  Status: $scanStatus, Devices: $deviceCount ($($i*5)s)"
                 }
                 if ($scanStatus -eq "completed" -or $scanStatus -eq "failed") { break }
             }
 
             if ($scanStatus -eq "completed") {
-                Log-Pass "Scan completed"
-                if ($deviceCount -gt 0) { Log-Pass "Discovered $deviceCount device(s)" }
-                else { Log-Warn "Scan completed but found 0 devices (may need Administrator)" }
-            } else { Log-Warn "Scan did not complete within 60s (status: $scanStatus)" }
-        } else { Log-Fail "Failed to start scan" }
+                Write-Pass "Scan completed"
+                if ($deviceCount -gt 0) { Write-Pass "Discovered $deviceCount device(s)" }
+                else { Write-Warn "Scan completed but found 0 devices (may need Administrator)" }
+            } else { Write-Warn "Scan did not complete within 60s (status: $scanStatus)" }
+        } else { Write-Fail "Failed to start scan" }
     }
 
     Write-Host ""
@@ -373,9 +369,9 @@ plugins:
         try {
             $resp = Invoke-WebRequest -Uri "$BaseUrl/api/v1/pulse/$ep" `
                 -Headers @{ "Authorization" = "Bearer $accessToken" } -UseBasicParsing -TimeoutSec 5
-            if ($resp.StatusCode -eq 200) { Log-Pass "Pulse $ep endpoint responds (HTTP 200)" }
-            else { Log-Warn "Pulse $ep returned HTTP $($resp.StatusCode)" }
-        } catch { Log-Warn "Pulse $ep endpoint failed" }
+            if ($resp.StatusCode -eq 200) { Write-Pass "Pulse $ep endpoint responds (HTTP 200)" }
+            else { Write-Warn "Pulse $ep returned HTTP $($resp.StatusCode)" }
+        } catch { Write-Warn "Pulse $ep endpoint failed" }
     }
 
     Write-Host ""
@@ -389,9 +385,9 @@ plugins:
     try {
         $resp = Invoke-WebRequest -Uri "$BaseUrl/api/v1/insight/anomalies" `
             -Headers @{ "Authorization" = "Bearer $accessToken" } -UseBasicParsing -TimeoutSec 5
-        if ($resp.StatusCode -eq 200) { Log-Pass "Insight anomalies endpoint responds (HTTP 200)" }
-        else { Log-Warn "Insight anomalies returned HTTP $($resp.StatusCode)" }
-    } catch { Log-Warn "Insight anomalies endpoint failed" }
+        if ($resp.StatusCode -eq 200) { Write-Pass "Insight anomalies endpoint responds (HTTP 200)" }
+        else { Write-Warn "Insight anomalies returned HTTP $($resp.StatusCode)" }
+    } catch { Write-Warn "Insight anomalies endpoint failed" }
 
     Write-Host ""
 
@@ -399,7 +395,7 @@ plugins:
     # Cleanup
     if ($ServerProcess -and !$ServerProcess.HasExited) {
         Stop-Process -Id $ServerProcess.Id -Force -ErrorAction SilentlyContinue
-        Log-Info "Server stopped"
+        Write-Info "Server stopped"
     }
 }
 
