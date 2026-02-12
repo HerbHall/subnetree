@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Plus, Loader2 } from 'lucide-react'
+import { X, Plus, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,12 +43,18 @@ export function CreateDeviceDialog({ open, onOpenChange }: CreateDeviceDialogPro
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState('')
   const [validationError, setValidationError] = useState('')
+  const [showInventory, setShowInventory] = useState(false)
+  const [location, setLocation] = useState('')
+  const [category, setCategory] = useState('')
+  const [primaryRole, setPrimaryRole] = useState('')
+  const [owner, setOwner] = useState('')
 
   const createMutation = useMutation({
     mutationFn: createDevice,
     onSuccess: (device) => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['topology'] })
+      queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
       toast.success(`Device "${device.hostname}" created`)
       resetForm()
       onOpenChange(false)
@@ -66,6 +72,11 @@ export function CreateDeviceDialog({ open, onOpenChange }: CreateDeviceDialogPro
     setNotes('')
     setTags('')
     setValidationError('')
+    setShowInventory(false)
+    setLocation('')
+    setCategory('')
+    setPrimaryRole('')
+    setOwner('')
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -94,6 +105,10 @@ export function CreateDeviceDialog({ open, onOpenChange }: CreateDeviceDialogPro
       device_type: deviceType,
       notes: notes.trim() || undefined,
       tags: tagList.length > 0 ? tagList : undefined,
+      location: location.trim() || undefined,
+      category: category || undefined,
+      primary_role: primaryRole.trim() || undefined,
+      owner: owner.trim() || undefined,
     })
   }
 
@@ -256,6 +271,79 @@ export function CreateDeviceDialog({ open, onOpenChange }: CreateDeviceDialogPro
             <p className="text-xs text-muted-foreground">
               Separate tags with commas.
             </p>
+          </div>
+
+          {/* Inventory Details (collapsible) */}
+          <div className="border rounded-md">
+            <button
+              type="button"
+              onClick={() => setShowInventory(!showInventory)}
+              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>Inventory Details</span>
+              {showInventory ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+            {showInventory && (
+              <div className="px-3 pb-3 space-y-4 border-t pt-3">
+                {/* Location */}
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g., Server Room A, Office 2F"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <select
+                    id="category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full h-9 px-3 rounded-md border bg-background text-sm"
+                  >
+                    <option value="">None</option>
+                    <option value="production">Production</option>
+                    <option value="development">Development</option>
+                    <option value="network">Network</option>
+                    <option value="storage">Storage</option>
+                    <option value="iot">IoT</option>
+                    <option value="personal">Personal</option>
+                    <option value="shared">Shared</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {/* Primary Role */}
+                <div className="space-y-2">
+                  <Label htmlFor="primary-role">Primary Role</Label>
+                  <Input
+                    id="primary-role"
+                    placeholder="e.g., Web Server, DNS, File Share"
+                    value={primaryRole}
+                    onChange={(e) => setPrimaryRole(e.target.value)}
+                  />
+                </div>
+
+                {/* Owner */}
+                <div className="space-y-2">
+                  <Label htmlFor="owner">Owner</Label>
+                  <Input
+                    id="owner"
+                    placeholder="e.g., John Doe, IT Team"
+                    value={owner}
+                    onChange={(e) => setOwner(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Validation error */}

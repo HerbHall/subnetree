@@ -297,28 +297,34 @@ type CreateDeviceRequest struct {
 // handleListDevices returns a paginated list of devices with optional filters.
 //
 //	@Summary		List devices
-//	@Description	Returns a paginated list of devices with optional status and type filters.
+//	@Description	Returns a paginated list of devices with optional status, type, category, and owner filters.
 //	@Tags			recon
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			limit	query		int		false	"Max results"		default(50)
-//	@Param			offset	query		int		false	"Offset"			default(0)
-//	@Param			status	query		string	false	"Filter by status"
-//	@Param			type	query		string	false	"Filter by device type"
-//	@Success		200		{object}	DeviceListResponse
-//	@Failure		500		{object}	models.APIProblem
+//	@Param			limit		query		int		false	"Max results"			default(50)
+//	@Param			offset		query		int		false	"Offset"				default(0)
+//	@Param			status		query		string	false	"Filter by status"
+//	@Param			type		query		string	false	"Filter by device type"
+//	@Param			category	query		string	false	"Filter by category"
+//	@Param			owner		query		string	false	"Filter by owner"
+//	@Success		200			{object}	DeviceListResponse
+//	@Failure		500			{object}	models.APIProblem
 //	@Router			/recon/devices [get]
 func (m *Module) handleListDevices(w http.ResponseWriter, r *http.Request) {
 	limit := queryInt(r, "limit", 50)
 	offset := queryInt(r, "offset", 0)
 	status := r.URL.Query().Get("status")
 	deviceType := r.URL.Query().Get("type")
+	category := r.URL.Query().Get("category")
+	owner := r.URL.Query().Get("owner")
 
 	devices, total, err := m.store.ListDevices(r.Context(), ListDevicesOptions{
 		Limit:      limit,
 		Offset:     offset,
 		Status:     status,
 		DeviceType: deviceType,
+		Category:   category,
+		Owner:      owner,
 	})
 	if err != nil {
 		m.logger.Error("failed to list devices", zap.Error(err))
@@ -571,6 +577,73 @@ func (m *Module) handleDeviceScans(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, events)
+}
+
+// BulkUpdateRequest is the request body for PATCH /devices/bulk.
+type BulkUpdateRequest struct {
+	DeviceIDs []string           `json:"device_ids"`
+	Updates   UpdateDeviceParams `json:"updates"`
+}
+
+// BulkUpdateResponse is the response body for PATCH /devices/bulk.
+type BulkUpdateResponse struct {
+	Updated int `json:"updated"`
+}
+
+// handleInventorySummary returns aggregate inventory statistics.
+//
+//	@Summary		Inventory summary
+//	@Description	Returns aggregate device inventory statistics including counts by status, category, and type.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			stale_days	query		int	false	"Days since last seen to consider stale"	default(30)
+//	@Success		200			{object}	InventorySummary
+//	@Failure		500			{object}	models.APIProblem
+//	@Router			/recon/inventory/summary [get]
+func (m *Module) handleInventorySummary(w http.ResponseWriter, r *http.Request) {
+	staleDays := queryInt(r, "stale_days", 30)
+
+	summary, err := m.store.GetInventorySummary(r.Context(), staleDays)
+	if err != nil {
+		m.logger.Error("failed to get inventory summary", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to get inventory summary")
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
+// handleBulkUpdateDevices applies the same update to multiple devices.
+//
+//	@Summary		Bulk update devices
+//	@Description	Applies the same partial update to multiple devices by ID.
+//	@Tags			recon
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		BulkUpdateRequest	true	"Device IDs and fields to update"
+//	@Success		200		{object}	BulkUpdateResponse
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/devices/bulk [patch]
+func (m *Module) handleBulkUpdateDevices(w http.ResponseWriter, r *http.Request) {
+	var req BulkUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if len(req.DeviceIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "device_ids is required")
+		return
+	}
+
+	updated, err := m.store.BulkUpdateDevices(r.Context(), req.DeviceIDs, req.Updates)
+	if err != nil {
+		m.logger.Error("failed to bulk update devices", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to bulk update devices")
+		return
+	}
+	writeJSON(w, http.StatusOK, BulkUpdateResponse{Updated: updated})
 }
 
 // queryInt extracts an integer query parameter with a default value.

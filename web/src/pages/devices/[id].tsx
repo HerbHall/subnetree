@@ -32,6 +32,10 @@ import {
   X,
   Radar,
   Trash2,
+  Package,
+  MapPin,
+  User,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -105,6 +109,14 @@ export function DeviceDetailPage() {
   const [editedTags, setEditedTags] = useState('')
   const [editedType, setEditedType] = useState<DeviceType>('unknown')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isEditingLocation, setIsEditingLocation] = useState(false)
+  const [isEditingCategory, setIsEditingCategory] = useState(false)
+  const [isEditingRole, setIsEditingRole] = useState(false)
+  const [isEditingOwner, setIsEditingOwner] = useState(false)
+  const [editedLocation, setEditedLocation] = useState('')
+  const [editedCategory, setEditedCategory] = useState('')
+  const [editedRole, setEditedRole] = useState('')
+  const [editedOwner, setEditedOwner] = useState('')
 
   // Fetch device details
   const {
@@ -133,14 +145,26 @@ export function DeviceDetailPage() {
 
   // Update device mutation
   const updateMutation = useMutation({
-    mutationFn: (data: { notes?: string; tags?: string[]; device_type?: DeviceType }) =>
-      updateDevice(id!, data),
+    mutationFn: (data: {
+      notes?: string
+      tags?: string[]
+      device_type?: DeviceType
+      location?: string
+      category?: string
+      primary_role?: string
+      owner?: string
+    }) => updateDevice(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device', id] })
       queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
       setIsEditingNotes(false)
       setIsEditingTags(false)
       setIsEditingType(false)
+      setIsEditingLocation(false)
+      setIsEditingCategory(false)
+      setIsEditingRole(false)
+      setIsEditingOwner(false)
       toast.success('Device updated')
     },
     onError: (err) => {
@@ -212,6 +236,62 @@ export function DeviceDetailPage() {
 
   function cancelEditType() {
     setIsEditingType(false)
+  }
+
+  function startEditLocation() {
+    setEditedLocation(device?.location || '')
+    setIsEditingLocation(true)
+  }
+
+  function saveLocation() {
+    updateMutation.mutate({ location: editedLocation })
+  }
+
+  function cancelEditLocation() {
+    setIsEditingLocation(false)
+    setEditedLocation('')
+  }
+
+  function startEditCategory() {
+    setEditedCategory(device?.category || '')
+    setIsEditingCategory(true)
+  }
+
+  function saveCategory() {
+    updateMutation.mutate({ category: editedCategory })
+  }
+
+  function cancelEditCategory() {
+    setIsEditingCategory(false)
+    setEditedCategory('')
+  }
+
+  function startEditRole() {
+    setEditedRole(device?.primary_role || '')
+    setIsEditingRole(true)
+  }
+
+  function saveRole() {
+    updateMutation.mutate({ primary_role: editedRole })
+  }
+
+  function cancelEditRole() {
+    setIsEditingRole(false)
+    setEditedRole('')
+  }
+
+  function startEditOwner() {
+    setEditedOwner(device?.owner || '')
+    setIsEditingOwner(true)
+  }
+
+  function saveOwner() {
+    updateMutation.mutate({ owner: editedOwner })
+  }
+
+  function cancelEditOwner() {
+    setIsEditingOwner(false)
+    setEditedOwner('')
   }
 
   function formatTimestamp(timestamp: string) {
@@ -501,6 +581,223 @@ export function DeviceDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Inventory Details */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            Inventory Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Location */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Location
+              </p>
+              {isEditingLocation ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editedLocation}
+                    onChange={(e) => setEditedLocation(e.target.value)}
+                    placeholder="e.g., Server Room A, Office 2F"
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={saveLocation}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={cancelEditLocation}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm">
+                    {device.location || <span className="text-muted-foreground">Not set</span>}
+                  </p>
+                  <button
+                    onClick={startEditLocation}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit location"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Category */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                Category
+              </p>
+              {isEditingCategory ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={editedCategory}
+                    onChange={(e) => setEditedCategory(e.target.value)}
+                    className="h-8 px-2 rounded-md border bg-background text-sm"
+                  >
+                    <option value="">None</option>
+                    <option value="production">Production</option>
+                    <option value="development">Development</option>
+                    <option value="network">Network</option>
+                    <option value="storage">Storage</option>
+                    <option value="iot">IoT</option>
+                    <option value="personal">Personal</option>
+                    <option value="shared">Shared</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <Button
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={saveCategory}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={cancelEditCategory}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm capitalize">
+                    {device.category || <span className="text-muted-foreground normal-case">Not set</span>}
+                  </p>
+                  <button
+                    onClick={startEditCategory}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit category"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Primary Role */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Briefcase className="h-3 w-3" />
+                Primary Role
+              </p>
+              {isEditingRole ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editedRole}
+                    onChange={(e) => setEditedRole(e.target.value)}
+                    placeholder="e.g., Web Server, DNS, File Share"
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={saveRole}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={cancelEditRole}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm">
+                    {device.primary_role || <span className="text-muted-foreground">Not set</span>}
+                  </p>
+                  <button
+                    onClick={startEditRole}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit primary role"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Owner */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <User className="h-3 w-3" />
+                Owner
+              </p>
+              {isEditingOwner ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editedOwner}
+                    onChange={(e) => setEditedOwner(e.target.value)}
+                    placeholder="e.g., John Doe, IT Team"
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={saveOwner}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={cancelEditOwner}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm">
+                    {device.owner || <span className="text-muted-foreground">Not set</span>}
+                  </p>
+                  <button
+                    onClick={startEditOwner}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit owner"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Notes Section */}
       <Card>

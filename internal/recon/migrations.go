@@ -95,5 +95,24 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     3,
+			Description: "add inventory fields (location, category, primary_role, owner) to recon_devices",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`ALTER TABLE recon_devices ADD COLUMN location TEXT NOT NULL DEFAULT ''`,
+					`ALTER TABLE recon_devices ADD COLUMN category TEXT NOT NULL DEFAULT ''`,
+					`ALTER TABLE recon_devices ADD COLUMN primary_role TEXT NOT NULL DEFAULT ''`,
+					`ALTER TABLE recon_devices ADD COLUMN owner TEXT NOT NULL DEFAULT ''`,
+					`CREATE INDEX idx_recon_devices_category ON recon_devices(category)`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

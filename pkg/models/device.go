@@ -64,4 +64,8 @@ type Device struct {
 	Notes           string            `json:"notes,omitempty" example:"Production web server"`
 	Tags            []string          `json:"tags,omitempty"`
 	CustomFields    map[string]string `json:"custom_fields,omitempty"`
+	Location        string            `json:"location,omitempty" example:"Rack A3, U12"`
+	Category        string            `json:"category,omitempty" example:"production"`
+	PrimaryRole     string            `json:"primary_role,omitempty" example:"web-server"`
+	Owner           string            `json:"owner,omitempty" example:"platform-team"`
 }

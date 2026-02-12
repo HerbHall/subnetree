@@ -136,6 +136,8 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "DELETE", Path: "/devices/{id}", Handler: m.handleDeleteDevice},
 		{Method: "GET", Path: "/devices/{id}/history", Handler: m.handleDeviceHistory},
 		{Method: "GET", Path: "/devices/{id}/scans", Handler: m.handleDeviceScans},
+		{Method: "GET", Path: "/inventory/summary", Handler: m.handleInventorySummary},
+		{Method: "PATCH", Path: "/devices/bulk", Handler: m.handleBulkUpdateDevices},
 	}
 }
 

@@ -16,11 +16,20 @@ export async function getDevice(id: string): Promise<Device> {
 }
 
 /**
- * Update device fields (notes, tags, custom_fields, device_type).
+ * Update device fields (notes, tags, custom_fields, device_type, inventory fields).
  */
 export async function updateDevice(
   id: string,
-  data: { notes?: string; tags?: string[]; custom_fields?: Record<string, string>; device_type?: DeviceType }
+  data: {
+    notes?: string
+    tags?: string[]
+    custom_fields?: Record<string, string>
+    device_type?: DeviceType
+    location?: string
+    category?: string
+    primary_role?: string
+    owner?: string
+  }
 ): Promise<Device> {
   return api.put<Device>(`/recon/devices/${id}`, data)
 }
@@ -35,6 +44,10 @@ export interface CreateDeviceRequest {
   device_type?: DeviceType
   notes?: string
   tags?: string[]
+  location?: string
+  category?: string
+  primary_role?: string
+  owner?: string
 }
 
 /**
@@ -55,6 +68,8 @@ export interface ListDevicesParams {
   offset?: number
   status?: string
   type?: string
+  category?: string
+  owner?: string
 }
 
 /**
@@ -66,6 +81,8 @@ export async function listDevices(params: ListDevicesParams = {}): Promise<Devic
   if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
   if (params.status && params.status !== 'all') searchParams.set('status', params.status)
   if (params.type && params.type !== 'all') searchParams.set('type', params.type)
+  if (params.category && params.category !== 'all') searchParams.set('category', params.category)
+  if (params.owner && params.owner !== 'all') searchParams.set('owner', params.owner)
   const query = searchParams.toString()
   return api.get<DeviceListResponse>(`/recon/devices${query ? `?${query}` : ''}`)
 }
@@ -130,4 +147,42 @@ export async function listScans(limit = 20, offset = 0): Promise<Scan[]> {
  */
 export async function getScan(id: string): Promise<Scan> {
   return api.get<Scan>(`/recon/scans/${id}`)
+}
+
+// ============================================================================
+// Inventory Management
+// ============================================================================
+
+/**
+ * Summary of device inventory for dashboard cards.
+ */
+export interface InventorySummary {
+  total_devices: number
+  online_count: number
+  offline_count: number
+  stale_count: number
+  by_category: Record<string, number>
+  by_type: Record<string, number>
+}
+
+/**
+ * Fetch the inventory summary with stale device threshold.
+ */
+export async function getInventorySummary(staleDays = 30): Promise<InventorySummary> {
+  return api.get<InventorySummary>(`/recon/inventory/summary?stale_days=${staleDays}`)
+}
+
+/**
+ * Request body for bulk updating devices.
+ */
+export interface BulkUpdateRequest {
+  device_ids: string[]
+  updates: Partial<Pick<Device, 'location' | 'category' | 'primary_role' | 'owner' | 'notes' | 'tags'>>
+}
+
+/**
+ * Bulk update inventory fields on multiple devices.
+ */
+export async function bulkUpdateDevices(req: BulkUpdateRequest): Promise<{ updated: number }> {
+  return api.patch<{ updated: number }>('/recon/devices/bulk', req)
 }
