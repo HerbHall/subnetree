@@ -129,6 +129,13 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/scans", Handler: m.handleListScans},
 		{Method: "GET", Path: "/scans/{id}", Handler: m.handleGetScan},
 		{Method: "GET", Path: "/topology", Handler: m.handleTopology},
+		{Method: "GET", Path: "/devices", Handler: m.handleListDevices},
+		{Method: "POST", Path: "/devices", Handler: m.handleCreateDevice},
+		{Method: "GET", Path: "/devices/{id}", Handler: m.handleGetDevice},
+		{Method: "PUT", Path: "/devices/{id}", Handler: m.handleUpdateDevice},
+		{Method: "DELETE", Path: "/devices/{id}", Handler: m.handleDeleteDevice},
+		{Method: "GET", Path: "/devices/{id}/history", Handler: m.handleDeviceHistory},
+		{Method: "GET", Path: "/devices/{id}/scans", Handler: m.handleDeviceScans},
 	}
 }
 
