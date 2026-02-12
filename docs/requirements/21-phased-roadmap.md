@@ -68,7 +68,7 @@
 
 ### Phase 1: Foundation (Server + Dashboard + Discovery + Topology)
 
-**Status:** v0.2.0 shipped 2026-02-08. All core modules implemented: Recon, Pulse, Insight, LLM, Vault, Gateway. Dashboard polish and Tailscale guides complete.
+**Status:** v0.2.0 shipped 2026-02-08. All core modules implemented: Recon, Pulse, Insight, LLM, Vault, Gateway. Dashboard polish and Tailscale guides complete. Post-release: Docs module (#132), Device CRUD (#162), modular themes (#158).
 
 **Goal:** Functional web-based network scanner with topology visualization. Validate architecture. Time to First Value under 10 minutes.
 
@@ -234,10 +234,19 @@
 
 #### Device Management API (#162)
 
-- [ ] Device CRUD endpoints: GET/PUT/DELETE `/devices/{id}`, POST `/devices`
-- [ ] Manual device creation (`discovery_method = "manual"`)
+- [x] Device CRUD endpoints: GET/PUT/DELETE `/devices/{id}`, POST `/devices`
+- [x] Manual device creation (`discovery_method = "manual"`)
 - [ ] Device status history table and endpoint
 - [ ] Wire frontend device pages to backend (list, detail, edit, delete)
+
+#### Infrastructure Documentation (#132)
+
+- [x] Docs plugin module with application + snapshot CRUD (`internal/docs/`)
+- [x] Docker collector: container discovery and config capture (cross-platform)
+- [x] Snapshot history browsing and LCS-based config diffing
+- [x] Background retention maintenance worker
+- [x] Dashboard Documentation tab with timeline, diff viewer, collector controls
+- [ ] Additional collectors: systemd, Home Assistant, Plex (future)
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
