@@ -225,11 +225,19 @@
 - [ ] Token-based enrollment with certificate signing
 - [ ] gRPC communication with mTLS
 - [ ] System metrics: CPU, memory, disk, network
+- [ ] System profiling: hardware specs, installed software, running services (#164)
 - [ ] Exponential backoff reconnection
 - [ ] Certificate auto-renewal (90-day certs, renew at day 60)
 - [x] Dispatch module: agent list, status, check-in tracking (stub with lifecycle tests)
 - [ ] Dashboard: agent status view, enrollment flow
 - [ ] Proto management via buf (replace protoc)
+
+#### Device Management API (#162)
+
+- [ ] Device CRUD endpoints: GET/PUT/DELETE `/devices/{id}`, POST `/devices`
+- [ ] Manual device creation (`discovery_method = "manual"`)
+- [ ] Device status history table and endpoint
+- [ ] Wire frontend device pages to backend (list, detail, edit, delete)
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
@@ -296,6 +304,25 @@
 - [x] API: `/api/v1/analytics/anomalies` and `/api/v1/analytics/forecasts/{device_id}` endpoints
 - [ ] Performance-profile-aware: disabled on micro, basic on small, full on medium+
 
+#### Device Inventory Management (#163)
+
+- [ ] Structured inventory fields on Device model: location, category, primary_role, justification, device_policy, owner
+- [ ] Stale device detection (configurable threshold, default 30 days inactive)
+- [ ] Dashboard: inventory view with category filter, sort by last seen
+- [ ] Dashboard: inventory summary widget (counts by category, stale count)
+- [ ] Bulk categorization endpoint (PATCH multiple devices)
+- [ ] Policy recommendations: thin-client for portables, full-workstation for desktops
+
+#### Service-to-Device Mapping (#165)
+
+- [ ] Service entity: maps discovered services (Docker, systemd, Windows) to host devices
+- [ ] Auto-populate from Docs module collectors + Scout system profiling
+- [ ] Correlate service resource usage with Pulse device metrics
+- [ ] Utilization grading per device (A-F rating based on efficiency)
+- [ ] Dashboard: service map view (device -> services -> utilization)
+- [ ] Dashboard: underutilized/overloaded device lists
+- [ ] Service movement detection (service appears on new device)
+
 #### Infrastructure
 
 - [ ] PostgreSQL + TimescaleDB support (with hypertables for metrics and continuous aggregates for analytics feature engineering)
@@ -358,6 +385,16 @@
 - [x] Dashboard: natural language query bar (optional, appears when LLM configured) (API endpoint shipped; dashboard UI deferred)
 - [ ] Dashboard: AI-generated incident summaries on alert detail pages
 - [ ] Vault: anomalous credential access detection (analytics-powered, from audit log events)
+
+#### AI Infrastructure Optimization (#166)
+
+- [ ] Tier 1 rule-based recommendations (underutilized, overloaded, idle, upgrade needed)
+- [ ] User-configurable optimization goals (utilization, responsiveness, power, balance)
+- [ ] Recommendations API with accept/dismiss/snooze workflow
+- [ ] Infrastructure Health Score (0-100) with category breakdown
+- [ ] Dashboard: recommendations panel with severity and suggested actions
+- [ ] Tier 2 statistical recommendations (growth forecast, seasonal patterns, anomaly attribution)
+- [ ] Tier 3 AI-assisted: migration planning, hardware advisor, what-if simulator (requires LLM)
 
 ### Phase 4: Extended Platform
 

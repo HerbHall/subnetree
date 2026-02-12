@@ -21,6 +21,44 @@
 | Notes | string | User-provided notes |
 | Tags | []string | User-defined tags |
 | CustomFields | map | User-defined key-value pairs |
+| Location | string? | Physical location (Phase 2, #163) |
+| Category | enum? | keep, sell, repurpose, undecided (Phase 2, #163) |
+| PrimaryRole | string? | Intended purpose (Phase 2, #163) |
+| Justification | string? | Why this device is needed (Phase 2, #163) |
+| DevicePolicy | enum? | full-workstation, thin-client, server, appliance (Phase 2, #163) |
+| Owner | string? | Responsible person (Phase 2, #163) |
+| AcquiredDate | timestamp? | When acquired (Phase 2, #163) |
+
+### Service (Phase 2, #165)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Name | string | Human-readable service name |
+| ServiceType | enum | docker-container, systemd-service, windows-service, application |
+| DeviceID | UUID | Host device |
+| ApplicationID | UUID? | Link to Docs module application (if matched) |
+| Status | enum | running, stopped, failed, unknown |
+| Ports | []int | Listening ports |
+| ResourceUsage | object | Latest CPU%, memory, disk I/O |
+| DesiredState | enum? | should-run, should-stop, monitoring-only (user-annotated) |
+| FirstSeen | timestamp | |
+| LastSeen | timestamp | |
+
+### Hardware Profile (Phase 1b, #164)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| DeviceID | UUID | Parent device |
+| CPUModel | string | Processor model |
+| CPUCores | int | Physical cores |
+| CPUThreads | int | Logical threads |
+| TotalRAM | int64 | Total RAM in bytes |
+| Disks | []object | Model, size, type (SSD/HDD) |
+| GPUs | []object | Model, VRAM (if present) |
+| NICs | []object | Name, speed, type |
+| BIOSVersion | string | Firmware version |
+| CollectedAt | timestamp | Last profile collection |
 
 ### Agent (Scout)
 
