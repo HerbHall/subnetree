@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Monitor, Network, Settings, Info, LogOut } from 'lucide-react'
+import { LayoutDashboard, Monitor, Network, FileText, Settings, Info, LogOut } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/devices', label: 'Devices', icon: Monitor },
   { to: '/topology', label: 'Topology', icon: Network },
+  { to: '/documentation', label: 'Docs', icon: FileText },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/about', label: 'About', icon: Info },
 ]
@@ -24,6 +25,7 @@ export function AppLayout() {
   const goToDashboard = useCallback(() => navigate('/dashboard'), [navigate])
   const goToDevices = useCallback(() => navigate('/devices'), [navigate])
   const goToTopology = useCallback(() => navigate('/topology'), [navigate])
+  const goToDocs = useCallback(() => navigate('/documentation'), [navigate])
   const goToSettings = useCallback(() => navigate('/settings'), [navigate])
 
   const shortcuts = useMemo(
@@ -32,9 +34,10 @@ export function AppLayout() {
       { key: '1', handler: goToDashboard, description: 'Go to Dashboard' },
       { key: '2', handler: goToDevices, description: 'Go to Devices' },
       { key: '3', handler: goToTopology, description: 'Go to Topology' },
-      { key: '4', handler: goToSettings, description: 'Go to Settings' },
+      { key: '4', handler: goToDocs, description: 'Go to Docs' },
+      { key: '5', handler: goToSettings, description: 'Go to Settings' },
     ],
-    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToSettings]
+    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToDocs, goToSettings]
   )
 
   useKeyboardShortcuts(shortcuts)

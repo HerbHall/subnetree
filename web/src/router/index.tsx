@@ -10,6 +10,7 @@ import { DeviceDetailPage } from '@/pages/devices/[id]'
 import { SettingsPage } from '@/pages/settings'
 import { AboutPage } from '@/pages/about'
 import { TopologyPage } from '@/pages/topology'
+import { DocumentationPage } from '@/pages/documentation'
 import { NotFoundPage } from '@/pages/not-found'
 
 export const router = createBrowserRouter([
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           { path: '/devices', element: <DevicesPage /> },
           { path: '/devices/:id', element: <DeviceDetailPage /> },
           { path: '/topology', element: <TopologyPage /> },
+          { path: '/documentation', element: <DocumentationPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/about', element: <AboutPage /> },
         ],

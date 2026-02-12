@@ -25,6 +25,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/config"
 	"github.com/HerbHall/subnetree/internal/dashboard"
 	"github.com/HerbHall/subnetree/internal/dispatch"
+	"github.com/HerbHall/subnetree/internal/docs"
 	"github.com/HerbHall/subnetree/internal/event"
 	"github.com/HerbHall/subnetree/internal/gateway"
 	"github.com/HerbHall/subnetree/internal/insight"
@@ -132,6 +133,7 @@ func main() {
 		webhook.New(),
 		llm.New(),
 		insight.New(),
+		docs.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
