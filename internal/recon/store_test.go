@@ -754,3 +754,273 @@ func TestListDevices_FilterByType(t *testing.T) {
 		t.Errorf("DeviceType = %q, want server", devices[0].DeviceType)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Inventory management store tests
+// ---------------------------------------------------------------------------
+
+func TestUpdateDevice_InventoryFields(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "inv-test",
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:10",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	location := "Rack A3, U12"
+	category := "production"
+	role := "web-server"
+	owner := "platform-team"
+	err := s.UpdateDevice(ctx, d.ID, UpdateDeviceParams{
+		Location:    &location,
+		Category:    &category,
+		PrimaryRole: &role,
+		Owner:       &owner,
+	})
+	if err != nil {
+		t.Fatalf("UpdateDevice: %v", err)
+	}
+
+	got, _ := s.GetDevice(ctx, d.ID)
+	if got.Location != "Rack A3, U12" {
+		t.Errorf("Location = %q, want %q", got.Location, "Rack A3, U12")
+	}
+	if got.Category != "production" {
+		t.Errorf("Category = %q, want %q", got.Category, "production")
+	}
+	if got.PrimaryRole != "web-server" {
+		t.Errorf("PrimaryRole = %q, want %q", got.PrimaryRole, "web-server")
+	}
+	if got.Owner != "platform-team" {
+		t.Errorf("Owner = %q, want %q", got.Owner, "platform-team")
+	}
+}
+
+func TestListDevices_FilterByCategory(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	prod := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	dev := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, prod)
+	_, _ = s.UpsertDevice(ctx, dev)
+
+	cat1 := "production"
+	cat2 := "development"
+	_ = s.UpdateDevice(ctx, prod.ID, UpdateDeviceParams{Category: &cat1})
+	_ = s.UpdateDevice(ctx, dev.ID, UpdateDeviceParams{Category: &cat2})
+
+	devices, total, err := s.ListDevices(ctx, ListDevicesOptions{Category: "production"})
+	if err != nil {
+		t.Fatalf("ListDevices: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if len(devices) != 1 {
+		t.Fatalf("count = %d, want 1", len(devices))
+	}
+	if devices[0].Category != "production" {
+		t.Errorf("Category = %q, want production", devices[0].Category)
+	}
+}
+
+func TestListDevices_FilterByOwner(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d1 := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	d2 := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d1)
+	_, _ = s.UpsertDevice(ctx, d2)
+
+	owner1 := "team-a"
+	owner2 := "team-b"
+	_ = s.UpdateDevice(ctx, d1.ID, UpdateDeviceParams{Owner: &owner1})
+	_ = s.UpdateDevice(ctx, d2.ID, UpdateDeviceParams{Owner: &owner2})
+
+	devices, total, err := s.ListDevices(ctx, ListDevicesOptions{Owner: "team-a"})
+	if err != nil {
+		t.Fatalf("ListDevices: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if len(devices) != 1 {
+		t.Fatalf("count = %d, want 1", len(devices))
+	}
+	if devices[0].Owner != "team-a" {
+		t.Errorf("Owner = %q, want team-a", devices[0].Owner)
+	}
+}
+
+func TestGetInventorySummary(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create devices with different statuses and categories.
+	online1 := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		DeviceType: models.DeviceTypeServer, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	online2 := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		DeviceType: models.DeviceTypeRouter, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, online1)
+	_, _ = s.UpsertDevice(ctx, online2)
+
+	// Set one device offline.
+	_, _ = s.db.ExecContext(ctx, "UPDATE recon_devices SET status = 'offline' WHERE id = ?", online2.ID)
+
+	// Set categories.
+	cat := "production"
+	_ = s.UpdateDevice(ctx, online1.ID, UpdateDeviceParams{Category: &cat})
+
+	// Backdate one device to make it stale.
+	oldTime := time.Now().Add(-48 * time.Hour)
+	_, _ = s.db.ExecContext(ctx, "UPDATE recon_devices SET last_seen = ? WHERE id = ?", oldTime, online1.ID)
+
+	summary, err := s.GetInventorySummary(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetInventorySummary: %v", err)
+	}
+	if summary.TotalDevices != 2 {
+		t.Errorf("TotalDevices = %d, want 2", summary.TotalDevices)
+	}
+	if summary.OnlineCount != 1 {
+		t.Errorf("OnlineCount = %d, want 1", summary.OnlineCount)
+	}
+	if summary.OfflineCount != 1 {
+		t.Errorf("OfflineCount = %d, want 1", summary.OfflineCount)
+	}
+	if summary.StaleCount != 1 {
+		t.Errorf("StaleCount = %d, want 1", summary.StaleCount)
+	}
+	if summary.ByCategory["production"] != 1 {
+		t.Errorf("ByCategory[production] = %d, want 1", summary.ByCategory["production"])
+	}
+	if summary.ByType["server"] != 1 {
+		t.Errorf("ByType[server] = %d, want 1", summary.ByType["server"])
+	}
+	if summary.ByType["router"] != 1 {
+		t.Errorf("ByType[router] = %d, want 1", summary.ByType["router"])
+	}
+}
+
+func TestGetInventorySummary_Empty(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	summary, err := s.GetInventorySummary(ctx, 30)
+	if err != nil {
+		t.Fatalf("GetInventorySummary: %v", err)
+	}
+	if summary.TotalDevices != 0 {
+		t.Errorf("TotalDevices = %d, want 0", summary.TotalDevices)
+	}
+	if summary.OnlineCount != 0 {
+		t.Errorf("OnlineCount = %d, want 0", summary.OnlineCount)
+	}
+}
+
+func TestBulkUpdateDevices(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create 3 devices.
+	ids := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		d := &models.Device{
+			IPAddresses:     []string{fmt.Sprintf("10.0.0.%d", i+1)},
+			MACAddress:      fmt.Sprintf("AA:BB:CC:DD:EE:%02X", i+10),
+			Status:          models.DeviceStatusOnline,
+			DiscoveryMethod: models.DiscoveryICMP,
+		}
+		_, _ = s.UpsertDevice(ctx, d)
+		ids[i] = d.ID
+	}
+
+	// Bulk update category for first 2.
+	cat := "production"
+	owner := "ops-team"
+	updated, err := s.BulkUpdateDevices(ctx, ids[:2], UpdateDeviceParams{
+		Category: &cat,
+		Owner:    &owner,
+	})
+	if err != nil {
+		t.Fatalf("BulkUpdateDevices: %v", err)
+	}
+	if updated != 2 {
+		t.Errorf("updated = %d, want 2", updated)
+	}
+
+	// Verify first two were updated.
+	for _, id := range ids[:2] {
+		got, _ := s.GetDevice(ctx, id)
+		if got.Category != "production" {
+			t.Errorf("device %s: Category = %q, want production", id, got.Category)
+		}
+		if got.Owner != "ops-team" {
+			t.Errorf("device %s: Owner = %q, want ops-team", id, got.Owner)
+		}
+	}
+
+	// Verify third was NOT updated.
+	got, _ := s.GetDevice(ctx, ids[2])
+	if got.Category != "" {
+		t.Errorf("device %s: Category = %q, want empty", ids[2], got.Category)
+	}
+}
+
+func TestBulkUpdateDevices_EmptyIDs(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	cat := "test"
+	updated, err := s.BulkUpdateDevices(ctx, []string{}, UpdateDeviceParams{Category: &cat})
+	if err != nil {
+		t.Fatalf("BulkUpdateDevices: %v", err)
+	}
+	if updated != 0 {
+		t.Errorf("updated = %d, want 0", updated)
+	}
+}
+
+func TestBulkUpdateDevices_NoFields(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:DD:EE:20",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	updated, err := s.BulkUpdateDevices(ctx, []string{d.ID}, UpdateDeviceParams{})
+	if err != nil {
+		t.Fatalf("BulkUpdateDevices: %v", err)
+	}
+	if updated != 0 {
+		t.Errorf("updated = %d, want 0 (no fields to update)", updated)
+	}
+}

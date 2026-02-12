@@ -313,11 +313,13 @@ func deviceMux(m *Module) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /devices", m.handleListDevices)
 	mux.HandleFunc("POST /devices", m.handleCreateDevice)
+	mux.HandleFunc("PATCH /devices/bulk", m.handleBulkUpdateDevices)
 	mux.HandleFunc("GET /devices/{id}", m.handleGetDevice)
 	mux.HandleFunc("PUT /devices/{id}", m.handleUpdateDevice)
 	mux.HandleFunc("DELETE /devices/{id}", m.handleDeleteDevice)
 	mux.HandleFunc("GET /devices/{id}/history", m.handleDeviceHistory)
 	mux.HandleFunc("GET /devices/{id}/scans", m.handleDeviceScans)
+	mux.HandleFunc("GET /inventory/summary", m.handleInventorySummary)
 	return mux
 }
 
@@ -703,5 +705,170 @@ func TestHandleDeviceHistory_WithData(t *testing.T) {
 	}
 	if events[0].Timestamp == "" {
 		t.Error("expected non-empty Timestamp")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Inventory management handler tests
+// ---------------------------------------------------------------------------
+
+func TestHandleInventorySummary_Empty(t *testing.T) {
+	m := newTestModule(t)
+	mux := deviceMux(m)
+
+	req := httptest.NewRequest("GET", "/inventory/summary", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var summary InventorySummary
+	if err := json.NewDecoder(w.Body).Decode(&summary); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if summary.TotalDevices != 0 {
+		t.Errorf("TotalDevices = %d, want 0", summary.TotalDevices)
+	}
+}
+
+func TestHandleInventorySummary_WithData(t *testing.T) {
+	m := newTestModule(t)
+	ctx := context.Background()
+	mux := deviceMux(m)
+
+	d1 := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		DeviceType: models.DeviceTypeServer, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	d2 := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		DeviceType: models.DeviceTypeRouter, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = m.store.UpsertDevice(ctx, d1)
+	_, _ = m.store.UpsertDevice(ctx, d2)
+
+	req := httptest.NewRequest("GET", "/inventory/summary?stale_days=30", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var summary InventorySummary
+	_ = json.NewDecoder(w.Body).Decode(&summary)
+	if summary.TotalDevices != 2 {
+		t.Errorf("TotalDevices = %d, want 2", summary.TotalDevices)
+	}
+	if summary.OnlineCount != 2 {
+		t.Errorf("OnlineCount = %d, want 2", summary.OnlineCount)
+	}
+}
+
+func TestHandleBulkUpdateDevices_Success(t *testing.T) {
+	m := newTestModule(t)
+	ctx := context.Background()
+	mux := deviceMux(m)
+
+	// Create 2 devices.
+	d1 := &models.Device{
+		Hostname: "bulk-1", IPAddresses: []string{"10.0.0.1"},
+		MACAddress: "AA:BB:CC:DD:EE:01", Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	d2 := &models.Device{
+		Hostname: "bulk-2", IPAddresses: []string{"10.0.0.2"},
+		MACAddress: "AA:BB:CC:DD:EE:02", Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = m.store.UpsertDevice(ctx, d1)
+	_, _ = m.store.UpsertDevice(ctx, d2)
+
+	body := `{"device_ids":["` + d1.ID + `","` + d2.ID + `"],"updates":{"category":"production","owner":"ops"}}`
+	req := httptest.NewRequest("PATCH", "/devices/bulk", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp BulkUpdateResponse
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Updated != 2 {
+		t.Errorf("updated = %d, want 2", resp.Updated)
+	}
+
+	// Verify updates persisted.
+	got, _ := m.store.GetDevice(ctx, d1.ID)
+	if got.Category != "production" {
+		t.Errorf("d1 Category = %q, want production", got.Category)
+	}
+	if got.Owner != "ops" {
+		t.Errorf("d1 Owner = %q, want ops", got.Owner)
+	}
+}
+
+func TestHandleBulkUpdateDevices_InvalidJSON(t *testing.T) {
+	m := newTestModule(t)
+	mux := deviceMux(m)
+
+	req := httptest.NewRequest("PATCH", "/devices/bulk", strings.NewReader(`not json`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleBulkUpdateDevices_EmptyIDs(t *testing.T) {
+	m := newTestModule(t)
+	mux := deviceMux(m)
+
+	body := `{"device_ids":[],"updates":{"category":"test"}}`
+	req := httptest.NewRequest("PATCH", "/devices/bulk", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandleListDevices_FilterByCategory(t *testing.T) {
+	m := newTestModule(t)
+	ctx := context.Background()
+	mux := deviceMux(m)
+
+	d1 := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	d2 := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		Status: models.DeviceStatusOnline, DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = m.store.UpsertDevice(ctx, d1)
+	_, _ = m.store.UpsertDevice(ctx, d2)
+
+	cat := "production"
+	_ = m.store.UpdateDevice(ctx, d1.ID, UpdateDeviceParams{Category: &cat})
+
+	req := httptest.NewRequest("GET", "/devices?category=production", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	var resp DeviceListResponse
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Total != 1 {
+		t.Errorf("total = %d, want 1", resp.Total)
 	}
 }

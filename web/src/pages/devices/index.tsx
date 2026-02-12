@@ -15,13 +15,26 @@ import {
   ChevronRight,
   Plus,
   Trash2,
+  Monitor,
+  Wifi,
+  AlertTriangle,
+  MapPin,
+  Tag,
+  User,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DeviceCard, DeviceCardCompact } from '@/components/device-card'
 import { CreateDeviceDialog } from '@/components/create-device-dialog'
-import { listDevices, deleteDevice, triggerScan } from '@/api/devices'
+import {
+  listDevices,
+  deleteDevice,
+  triggerScan,
+  getInventorySummary,
+  bulkUpdateDevices,
+} from '@/api/devices'
 import { useScanStore } from '@/stores/scan'
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
@@ -51,6 +64,17 @@ const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   unknown: 'Unknown',
 }
 
+const CATEGORY_OPTIONS = [
+  'production',
+  'development',
+  'network',
+  'storage',
+  'iot',
+  'personal',
+  'shared',
+  'other',
+]
+
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
@@ -59,6 +83,8 @@ export function DevicesPage() {
   // State from URL params or defaults
   const statusFilter = (searchParams.get('status') as DeviceStatus | 'all') || 'all'
   const typeFilter = (searchParams.get('type') as DeviceType | 'all') || 'all'
+  const categoryFilter = searchParams.get('category') || 'all'
+  const ownerFilter = searchParams.get('owner') || 'all'
 
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('table')
@@ -69,6 +95,19 @@ export function DevicesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkCategory, setBulkCategory] = useState('')
+  const [bulkOwner, setBulkOwner] = useState('')
+  const [bulkLocation, setBulkLocation] = useState('')
+  const [showBulkCategory, setShowBulkCategory] = useState(false)
+  const [showBulkOwner, setShowBulkOwner] = useState(false)
+  const [showBulkLocation, setShowBulkLocation] = useState(false)
+
+  // Fetch inventory summary
+  const { data: inventorySummary } = useQuery({
+    queryKey: ['inventorySummary'],
+    queryFn: () => getInventorySummary(),
+  })
 
   // Fetch devices with server-side pagination and filtering
   const {
@@ -77,13 +116,15 @@ export function DevicesPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['devices', pageSize, currentPage, statusFilter, typeFilter],
+    queryKey: ['devices', pageSize, currentPage, statusFilter, typeFilter, categoryFilter, ownerFilter],
     queryFn: () =>
       listDevices({
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        owner: ownerFilter !== 'all' ? ownerFilter : undefined,
       }),
   })
 
@@ -109,6 +150,7 @@ export function DevicesPage() {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['devices'] })
         queryClient.invalidateQueries({ queryKey: ['topology'] })
+        queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
       }, 2000)
     },
   })
@@ -119,6 +161,7 @@ export function DevicesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['topology'] })
+      queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
       toast.success('Device deleted')
       setDeletingId(null)
     },
@@ -127,6 +170,54 @@ export function DevicesPage() {
       setDeletingId(null)
     },
   })
+
+  // Bulk update mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: bulkUpdateDevices,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
+      toast.success(`Updated ${result.updated} device${result.updated !== 1 ? 's' : ''}`)
+      setSelectedIds(new Set())
+      closeBulkInputs()
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update devices')
+    },
+  })
+
+  function closeBulkInputs() {
+    setShowBulkCategory(false)
+    setShowBulkOwner(false)
+    setShowBulkLocation(false)
+    setBulkCategory('')
+    setBulkOwner('')
+    setBulkLocation('')
+  }
+
+  function handleBulkSetCategory() {
+    if (!bulkCategory) return
+    bulkUpdateMutation.mutate({
+      device_ids: Array.from(selectedIds),
+      updates: { category: bulkCategory },
+    })
+  }
+
+  function handleBulkSetOwner() {
+    if (!bulkOwner.trim()) return
+    bulkUpdateMutation.mutate({
+      device_ids: Array.from(selectedIds),
+      updates: { owner: bulkOwner.trim() },
+    })
+  }
+
+  function handleBulkSetLocation() {
+    if (!bulkLocation.trim()) return
+    bulkUpdateMutation.mutate({
+      device_ids: Array.from(selectedIds),
+      updates: { location: bulkLocation.trim() },
+    })
+  }
 
   function handleDeleteClick(e: React.MouseEvent, deviceId: string) {
     e.preventDefault()
@@ -144,6 +235,18 @@ export function DevicesPage() {
     setDeletingId(null)
   }
 
+  function toggleSelect(deviceId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(deviceId)) {
+        next.delete(deviceId)
+      } else {
+        next.add(deviceId)
+      }
+      return next
+    })
+  }
+
   const devices = useMemo(() => deviceList?.devices || [], [deviceList?.devices])
   const totalDevices = deviceList?.total || 0
 
@@ -157,7 +260,9 @@ export function DevicesPage() {
         d.hostname?.toLowerCase().includes(query) ||
         d.ip_addresses?.some((ip) => ip.includes(query)) ||
         d.manufacturer?.toLowerCase().includes(query) ||
-        d.mac_address?.toLowerCase().includes(query)
+        d.mac_address?.toLowerCase().includes(query) ||
+        d.owner?.toLowerCase().includes(query) ||
+        d.location?.toLowerCase().includes(query)
     )
   }, [devices, searchQuery])
 
@@ -204,12 +309,21 @@ export function DevicesPage() {
     return result
   }, [filteredDevices, sortField, sortDirection])
 
+  function toggleSelectAll() {
+    if (selectedIds.size === sortedDevices.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(sortedDevices.map((d) => d.id)))
+    }
+  }
+
   // Server-side pagination totals
   const totalPages = Math.ceil(totalDevices / pageSize)
 
   // Reset to page 1 when filters change
   const updateFilter = (key: string, value: string) => {
     setCurrentPage(1)
+    setSelectedIds(new Set())
     if (value === 'all') {
       searchParams.delete(key)
     } else {
@@ -234,6 +348,15 @@ export function DevicesPage() {
     },
     {} as Record<string, number>
   )
+
+  // Collect unique owners from devices in view for the filter dropdown
+  const ownerOptions = useMemo(() => {
+    const owners = new Set<string>()
+    devices.forEach((d) => {
+      if (d.owner) owners.add(d.owner)
+    })
+    return Array.from(owners).sort()
+  }, [devices])
 
   // Handle sort click
   const handleSort = (field: SortField) => {
@@ -296,6 +419,36 @@ export function DevicesPage() {
         </div>
       </div>
 
+      {/* Inventory Summary Cards */}
+      {inventorySummary && (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <SummaryCard
+            label="Total Devices"
+            value={inventorySummary.total_devices}
+            icon={<Monitor className="h-4 w-4" />}
+          />
+          <SummaryCard
+            label="Online"
+            value={inventorySummary.online_count}
+            icon={<Wifi className="h-4 w-4" />}
+            className="text-green-600 dark:text-green-400"
+          />
+          <SummaryCard
+            label="Offline"
+            value={inventorySummary.offline_count}
+            icon={<Wifi className="h-4 w-4" />}
+            className="text-red-600 dark:text-red-400"
+          />
+          <SummaryCard
+            label="Stale"
+            value={inventorySummary.stale_count}
+            icon={<AlertTriangle className="h-4 w-4" />}
+            className={inventorySummary.stale_count > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+            warning={inventorySummary.stale_count > 0}
+          />
+        </div>
+      )}
+
       {/* Filters Row */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Search */}
@@ -347,6 +500,37 @@ export function DevicesPage() {
             {Object.entries(typeCounts).map(([type, count]) => (
               <option key={type} value={type}>
                 {DEVICE_TYPE_LABELS[type as DeviceType] || type} ({count})
+              </option>
+            ))}
+          </select>
+
+          {/* Category filter */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => updateFilter('category', e.target.value)}
+            className="h-8 px-2 rounded-md border bg-background text-sm"
+          >
+            <option value="all">All Categories</option>
+            {CATEGORY_OPTIONS.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                {inventorySummary?.by_category[cat] !== undefined
+                  ? ` (${inventorySummary.by_category[cat]})`
+                  : ''}
+              </option>
+            ))}
+          </select>
+
+          {/* Owner filter */}
+          <select
+            value={ownerFilter}
+            onChange={(e) => updateFilter('owner', e.target.value)}
+            className="h-8 px-2 rounded-md border bg-background text-sm"
+          >
+            <option value="all">All Owners</option>
+            {ownerOptions.map((owner) => (
+              <option key={owner} value={owner}>
+                {owner}
               </option>
             ))}
           </select>
@@ -443,14 +627,19 @@ export function DevicesPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="px-4 py-3 text-left font-medium w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === sortedDevices.length && sortedDevices.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-muted-foreground/50"
+                    />
+                  </th>
                   <SortableHeader field="hostname" current={sortField} onClick={handleSort}>
                     Hostname {getSortIcon('hostname')}
                   </SortableHeader>
                   <SortableHeader field="ip" current={sortField} onClick={handleSort}>
                     IP Address {getSortIcon('ip')}
-                  </SortableHeader>
-                  <SortableHeader field="mac" current={sortField} onClick={handleSort}>
-                    MAC Address {getSortIcon('mac')}
                   </SortableHeader>
                   <SortableHeader field="manufacturer" current={sortField} onClick={handleSort}>
                     Manufacturer {getSortIcon('manufacturer')}
@@ -458,6 +647,8 @@ export function DevicesPage() {
                   <SortableHeader field="device_type" current={sortField} onClick={handleSort}>
                     Type {getSortIcon('device_type')}
                   </SortableHeader>
+                  <th className="px-4 py-3 text-left font-medium">Category</th>
+                  <th className="px-4 py-3 text-left font-medium">Owner</th>
                   <SortableHeader field="status" current={sortField} onClick={handleSort}>
                     Status {getSortIcon('status')}
                   </SortableHeader>
@@ -470,8 +661,20 @@ export function DevicesPage() {
                 {sortedDevices.map((device) => (
                   <tr
                     key={device.id}
-                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    className={cn(
+                      'hover:bg-muted/30 transition-colors cursor-pointer',
+                      selectedIds.has(device.id) && 'bg-primary/5'
+                    )}
                   >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(device.id)}
+                        onChange={() => toggleSelect(device.id)}
+                        className="rounded border-muted-foreground/50"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         to={`/devices/${device.id}`}
@@ -483,14 +686,25 @@ export function DevicesPage() {
                     <td className="px-4 py-3 font-mono text-xs">
                       {device.ip_addresses?.[0] || '-'}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {device.mac_address || '-'}
-                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {device.manufacturer || '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span className="capitalize">{device.device_type}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {device.category ? (
+                        <span className="capitalize text-sm">{device.category}</span>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-sm">--</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {device.owner ? (
+                        <span className="text-sm">{device.owner}</span>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-sm">--</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={device.status} />
@@ -608,6 +822,148 @@ export function DevicesPage() {
         </div>
       )}
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+          <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 shadow-lg">
+            <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+              {selectedIds.size}
+            </span>
+            <span className="text-sm text-muted-foreground">selected</span>
+
+            <div className="h-4 w-px bg-border" />
+
+            {/* Set Category */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setShowBulkCategory(!showBulkCategory)
+                  setShowBulkOwner(false)
+                  setShowBulkLocation(false)
+                }}
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Set Category
+              </Button>
+              {showBulkCategory && (
+                <div className="absolute bottom-full mb-2 left-0 rounded-lg border bg-card p-3 shadow-lg min-w-[200px]">
+                  <select
+                    value={bulkCategory}
+                    onChange={(e) => setBulkCategory(e.target.value)}
+                    className="w-full h-8 px-2 rounded-md border bg-background text-sm mb-2"
+                  >
+                    <option value="">Select category...</option>
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={handleBulkSetCategory}
+                    disabled={!bulkCategory || bulkUpdateMutation.isPending}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Set Owner */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setShowBulkOwner(!showBulkOwner)
+                  setShowBulkCategory(false)
+                  setShowBulkLocation(false)
+                }}
+              >
+                <User className="h-3.5 w-3.5" />
+                Set Owner
+              </Button>
+              {showBulkOwner && (
+                <div className="absolute bottom-full mb-2 left-0 rounded-lg border bg-card p-3 shadow-lg min-w-[200px]">
+                  <Input
+                    placeholder="Owner name..."
+                    value={bulkOwner}
+                    onChange={(e) => setBulkOwner(e.target.value)}
+                    className="mb-2"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={handleBulkSetOwner}
+                    disabled={!bulkOwner.trim() || bulkUpdateMutation.isPending}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Set Location */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setShowBulkLocation(!showBulkLocation)
+                  setShowBulkCategory(false)
+                  setShowBulkOwner(false)
+                }}
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Set Location
+              </Button>
+              {showBulkLocation && (
+                <div className="absolute bottom-full mb-2 left-0 rounded-lg border bg-card p-3 shadow-lg min-w-[200px]">
+                  <Input
+                    placeholder="Location..."
+                    value={bulkLocation}
+                    onChange={(e) => setBulkLocation(e.target.value)}
+                    className="mb-2"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={handleBulkSetLocation}
+                    disabled={!bulkLocation.trim() || bulkUpdateMutation.isPending}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="h-4 w-px bg-border" />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {
+                setSelectedIds(new Set())
+                closeBulkInputs()
+              }}
+              title="Clear selection"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Create Device Dialog */}
       <CreateDeviceDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
@@ -618,6 +974,34 @@ export function DevicesPage() {
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
+    </div>
+  )
+}
+
+// Inventory summary card
+function SummaryCard({
+  label,
+  value,
+  icon,
+  className,
+  warning,
+}: {
+  label: string
+  value: number
+  icon: React.ReactNode
+  className?: string
+  warning?: boolean
+}) {
+  return (
+    <div className={cn(
+      'rounded-lg border bg-card p-4',
+      warning && 'border-amber-500/50'
+    )}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className={cn('text-muted-foreground', className)}>{icon}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <p className={cn('text-2xl font-semibold', className)}>{value}</p>
     </div>
   )
 }

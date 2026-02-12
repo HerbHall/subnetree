@@ -94,6 +94,10 @@ export interface Device {
   notes?: string
   tags?: string[]
   custom_fields?: Record<string, string>
+  location?: string
+  category?: string
+  primary_role?: string
+  owner?: string
 }
 
 /** Topology node (simplified device for graph display). */

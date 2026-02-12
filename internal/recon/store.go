@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/HerbHall/subnetree/pkg/models"
@@ -41,6 +42,8 @@ type ListDevicesOptions struct {
 	Status     string
 	DeviceType string
 	ScanID     string
+	Category   string
+	Owner      string
 }
 
 // UpdateDeviceParams holds partial update fields for a device.
@@ -49,6 +52,20 @@ type UpdateDeviceParams struct {
 	Tags         *[]string          `json:"tags,omitempty"`
 	CustomFields *map[string]string `json:"custom_fields,omitempty"`
 	DeviceType   *string            `json:"device_type,omitempty"`
+	Location     *string            `json:"location,omitempty"`
+	Category     *string            `json:"category,omitempty"`
+	PrimaryRole  *string            `json:"primary_role,omitempty"`
+	Owner        *string            `json:"owner,omitempty"`
+}
+
+// InventorySummary provides aggregate statistics about the device inventory.
+type InventorySummary struct {
+	TotalDevices int            `json:"total_devices"`
+	OnlineCount  int            `json:"online_count"`
+	OfflineCount int            `json:"offline_count"`
+	StaleCount   int            `json:"stale_count"`
+	ByCategory   map[string]int `json:"by_category"`
+	ByType       map[string]int `json:"by_type"`
 }
 
 // DeviceStatusChange records a status transition for a device.
@@ -155,11 +172,13 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 		INSERT INTO recon_devices (
 			id, hostname, ip_addresses, mac_address, manufacturer,
 			device_type, os, status, discovery_method, agent_id,
-			first_seen, last_seen, notes, tags, custom_fields
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			first_seen, last_seen, notes, tags, custom_fields,
+			location, category, primary_role, owner
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
+		device.Location, device.Category, device.PrimaryRole, device.Owner,
 	)
 	if err != nil {
 		return false, fmt.Errorf("insert device: %w", err)
@@ -174,7 +193,8 @@ func (s *ReconStore) GetDevice(ctx context.Context, id string) (*models.Device, 
 	return s.scanDevice(s.db.QueryRowContext(ctx, `SELECT
 		id, hostname, ip_addresses, mac_address, manufacturer,
 		device_type, os, status, discovery_method, agent_id,
-		first_seen, last_seen, notes, tags, custom_fields
+		first_seen, last_seen, notes, tags, custom_fields,
+		location, category, primary_role, owner
 		FROM recon_devices WHERE id = ?`, id))
 }
 
@@ -183,7 +203,8 @@ func (s *ReconStore) GetDeviceByMAC(ctx context.Context, mac string) (*models.De
 	return s.scanDevice(s.db.QueryRowContext(ctx, `SELECT
 		id, hostname, ip_addresses, mac_address, manufacturer,
 		device_type, os, status, discovery_method, agent_id,
-		first_seen, last_seen, notes, tags, custom_fields
+		first_seen, last_seen, notes, tags, custom_fields,
+		location, category, primary_role, owner
 		FROM recon_devices WHERE mac_address = ?`, mac))
 }
 
@@ -193,7 +214,8 @@ func (s *ReconStore) GetDeviceByIP(ctx context.Context, ip string) (*models.Devi
 	return s.scanDevice(s.db.QueryRowContext(ctx, `SELECT
 		id, hostname, ip_addresses, mac_address, manufacturer,
 		device_type, os, status, discovery_method, agent_id,
-		first_seen, last_seen, notes, tags, custom_fields
+		first_seen, last_seen, notes, tags, custom_fields,
+		location, category, primary_role, owner
 		FROM recon_devices WHERE ip_addresses LIKE ?`, "%\""+ip+"\"%"))
 }
 
@@ -218,6 +240,14 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 		where += " AND id IN (SELECT device_id FROM recon_scan_devices WHERE scan_id = ?)"
 		args = append(args, opts.ScanID)
 	}
+	if opts.Category != "" {
+		where += " AND category = ?"
+		args = append(args, opts.Category)
+	}
+	if opts.Owner != "" {
+		where += " AND owner = ?"
+		args = append(args, opts.Owner)
+	}
 
 	// Count total.
 	// The where clause is built above using only ? placeholders; no user input is concatenated.
@@ -237,7 +267,8 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 	rows, err := s.db.QueryContext(ctx, "SELECT "+
 		"id, hostname, ip_addresses, mac_address, manufacturer, "+
 		"device_type, os, status, discovery_method, agent_id, "+
-		"first_seen, last_seen, notes, tags, custom_fields "+
+		"first_seen, last_seen, notes, tags, custom_fields, "+
+		"location, category, primary_role, owner "+
 		"FROM recon_devices WHERE "+where+" ORDER BY last_seen DESC LIMIT ? OFFSET ?",
 		queryArgs...)
 	if err != nil {
@@ -412,7 +443,8 @@ func (s *ReconStore) FindStaleDevices(ctx context.Context, threshold time.Time) 
 	rows, err := s.db.QueryContext(ctx, `SELECT
 		id, hostname, ip_addresses, mac_address, manufacturer,
 		device_type, os, status, discovery_method, agent_id,
-		first_seen, last_seen, notes, tags, custom_fields
+		first_seen, last_seen, notes, tags, custom_fields,
+		location, category, primary_role, owner
 		FROM recon_devices WHERE status = ? AND last_seen < ?`,
 		string(models.DeviceStatusOnline), threshold,
 	)
@@ -467,6 +499,7 @@ func (s *ReconStore) scanDevice(row *sql.Row) (*models.Device, error) {
 		&d.ID, &d.Hostname, &ipsJSON, &d.MACAddress, &d.Manufacturer,
 		&dt, &d.OS, &status, &method, &d.AgentID,
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
+		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 	)
 	if err != nil {
 		return nil, err
@@ -489,6 +522,7 @@ func (s *ReconStore) scanDeviceRow(rows *sql.Rows) (*models.Device, error) {
 		&d.ID, &d.Hostname, &ipsJSON, &d.MACAddress, &d.Manufacturer,
 		&dt, &d.OS, &status, &method, &d.AgentID,
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
+		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 	)
 	if err != nil {
 		return nil, err
@@ -549,6 +583,30 @@ func (s *ReconStore) UpdateDevice(ctx context.Context, id string, params UpdateD
 			}
 		}
 	}
+	if params.Location != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET location = ? WHERE id = ?`, *params.Location, id)
+		if err != nil {
+			return fmt.Errorf("update location: %w", err)
+		}
+	}
+	if params.Category != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET category = ? WHERE id = ?`, *params.Category, id)
+		if err != nil {
+			return fmt.Errorf("update category: %w", err)
+		}
+	}
+	if params.PrimaryRole != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET primary_role = ? WHERE id = ?`, *params.PrimaryRole, id)
+		if err != nil {
+			return fmt.Errorf("update primary_role: %w", err)
+		}
+	}
+	if params.Owner != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET owner = ? WHERE id = ?`, *params.Owner, id)
+		if err != nil {
+			return fmt.Errorf("update owner: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -595,11 +653,13 @@ func (s *ReconStore) InsertManualDevice(ctx context.Context, device *models.Devi
 		INSERT INTO recon_devices (
 			id, hostname, ip_addresses, mac_address, manufacturer,
 			device_type, os, status, discovery_method, agent_id,
-			first_seen, last_seen, notes, tags, custom_fields
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			first_seen, last_seen, notes, tags, custom_fields,
+			location, category, primary_role, owner
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
+		device.Location, device.Category, device.PrimaryRole, device.Owner,
 	)
 	if err != nil {
 		return fmt.Errorf("insert manual device: %w", err)
@@ -684,4 +744,157 @@ func (s *ReconStore) GetDeviceScans(ctx context.Context, deviceID string, limit,
 		scans = append(scans, sc)
 	}
 	return scans, total, rows.Err()
+}
+
+// GetInventorySummary returns aggregate statistics about the device inventory.
+// staleDays controls how many days since last_seen a device is considered stale.
+func (s *ReconStore) GetInventorySummary(ctx context.Context, staleDays int) (*InventorySummary, error) {
+	summary := &InventorySummary{
+		ByCategory: make(map[string]int),
+		ByType:     make(map[string]int),
+	}
+
+	// Total, online, offline counts.
+	err := s.db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*),
+			COALESCE(SUM(CASE WHEN status = 'online' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status = 'offline' THEN 1 ELSE 0 END), 0)
+		FROM recon_devices`,
+	).Scan(&summary.TotalDevices, &summary.OnlineCount, &summary.OfflineCount)
+	if err != nil {
+		return nil, fmt.Errorf("inventory counts: %w", err)
+	}
+
+	// Stale count: online devices not seen in staleDays.
+	threshold := time.Now().UTC().Add(-time.Duration(staleDays) * 24 * time.Hour)
+	err = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM recon_devices WHERE status = 'online' AND last_seen < ?`,
+		threshold,
+	).Scan(&summary.StaleCount)
+	if err != nil {
+		return nil, fmt.Errorf("stale count: %w", err)
+	}
+
+	// Group by category.
+	catRows, err := s.db.QueryContext(ctx,
+		`SELECT category, COUNT(*) FROM recon_devices WHERE category != '' GROUP BY category`)
+	if err != nil {
+		return nil, fmt.Errorf("by category: %w", err)
+	}
+	defer catRows.Close()
+	for catRows.Next() {
+		var cat string
+		var cnt int
+		if err := catRows.Scan(&cat, &cnt); err != nil {
+			return nil, fmt.Errorf("scan category row: %w", err)
+		}
+		summary.ByCategory[cat] = cnt
+	}
+	if err := catRows.Err(); err != nil {
+		return nil, fmt.Errorf("category rows: %w", err)
+	}
+
+	// Group by device_type.
+	typeRows, err := s.db.QueryContext(ctx,
+		`SELECT device_type, COUNT(*) FROM recon_devices GROUP BY device_type`)
+	if err != nil {
+		return nil, fmt.Errorf("by type: %w", err)
+	}
+	defer typeRows.Close()
+	for typeRows.Next() {
+		var dt string
+		var cnt int
+		if err := typeRows.Scan(&dt, &cnt); err != nil {
+			return nil, fmt.Errorf("scan type row: %w", err)
+		}
+		summary.ByType[dt] = cnt
+	}
+	if err := typeRows.Err(); err != nil {
+		return nil, fmt.Errorf("type rows: %w", err)
+	}
+
+	return summary, nil
+}
+
+// BulkUpdateDevices applies the same partial update to all devices matching the given IDs.
+// Returns the number of updated rows.
+func (s *ReconStore) BulkUpdateDevices(ctx context.Context, ids []string, params UpdateDeviceParams) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // rollback on commit is a no-op
+
+	// Build SET clause dynamically.
+	setClauses := []string{}
+	setArgs := []any{}
+
+	if params.Notes != nil {
+		setClauses = append(setClauses, "notes = ?")
+		setArgs = append(setArgs, *params.Notes)
+	}
+	if params.Tags != nil {
+		tagsJSON, _ := json.Marshal(*params.Tags)
+		setClauses = append(setClauses, "tags = ?")
+		setArgs = append(setArgs, string(tagsJSON))
+	}
+	if params.CustomFields != nil {
+		cfJSON, _ := json.Marshal(*params.CustomFields)
+		setClauses = append(setClauses, "custom_fields = ?")
+		setArgs = append(setArgs, string(cfJSON))
+	}
+	if params.DeviceType != nil {
+		setClauses = append(setClauses, "device_type = ?")
+		setArgs = append(setArgs, *params.DeviceType)
+	}
+	if params.Location != nil {
+		setClauses = append(setClauses, "location = ?")
+		setArgs = append(setArgs, *params.Location)
+	}
+	if params.Category != nil {
+		setClauses = append(setClauses, "category = ?")
+		setArgs = append(setArgs, *params.Category)
+	}
+	if params.PrimaryRole != nil {
+		setClauses = append(setClauses, "primary_role = ?")
+		setArgs = append(setArgs, *params.PrimaryRole)
+	}
+	if params.Owner != nil {
+		setClauses = append(setClauses, "owner = ?")
+		setArgs = append(setArgs, *params.Owner)
+	}
+
+	if len(setClauses) == 0 {
+		return 0, nil
+	}
+
+	// Build WHERE IN clause with placeholders.
+	placeholders := make([]string, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		setArgs = append(setArgs, id)
+	}
+
+	query := "UPDATE recon_devices SET " +
+		strings.Join(setClauses, ", ") +
+		" WHERE id IN (" + strings.Join(placeholders, ", ") + ")"
+
+	//nolint:gosec // query uses parameterized placeholders only
+	res, err := tx.ExecContext(ctx, query, setArgs...)
+	if err != nil {
+		return 0, fmt.Errorf("bulk update: %w", err)
+	}
+
+	n, _ := res.RowsAffected()
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+
+	return int(n), nil
 }
