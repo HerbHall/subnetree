@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { TopologyNode, DeviceType, DeviceStatus } from '@/api/types'
+import type { TopologyNode, Device, DeviceType, DeviceStatus } from '@/api/types'
 
 // Map device types to icons
 const deviceTypeIcons: Record<DeviceType, LucideIcon> = {
@@ -83,9 +83,19 @@ const statusColors: Record<DeviceStatus, { bg: string; text: string; dot: string
   },
 }
 
+/** Common device shape accepted by card components. Works with both TopologyNode and Device. */
+type DeviceCardDevice = TopologyNode | Device
+
 interface DeviceCardProps {
-  device: TopologyNode
+  device: DeviceCardDevice
   className?: string
+}
+
+/** Get display name from either TopologyNode.label or Device.hostname. */
+function getDeviceName(device: DeviceCardDevice): string {
+  if ('label' in device && device.label) return device.label
+  if ('hostname' in device && device.hostname) return device.hostname
+  return 'Unnamed Device'
 }
 
 export function DeviceCard({ device, className }: DeviceCardProps) {
@@ -126,8 +136,8 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
           </div>
 
           {/* Device name */}
-          <h3 className="font-semibold text-sm truncate mb-1" title={device.label}>
-            {device.label || 'Unnamed Device'}
+          <h3 className="font-semibold text-sm truncate mb-1" title={getDeviceName(device)}>
+            {getDeviceName(device)}
           </h3>
 
           {/* IP Address */}
@@ -173,7 +183,7 @@ export function DeviceCardCompact({ device, className }: DeviceCardProps) {
 
           {/* Name + IP */}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{device.label || 'Unnamed'}</p>
+            <p className="text-sm font-medium truncate">{getDeviceName(device)}</p>
             <p className="text-xs text-muted-foreground font-mono truncate">{primaryIp}</p>
           </div>
 

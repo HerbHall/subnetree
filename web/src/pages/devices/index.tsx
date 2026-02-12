@@ -13,18 +13,22 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DeviceCard, DeviceCardCompact } from '@/components/device-card'
-import { getTopology, triggerScan } from '@/api/devices'
+import { CreateDeviceDialog } from '@/components/create-device-dialog'
+import { listDevices, deleteDevice, triggerScan } from '@/api/devices'
 import { useScanStore } from '@/stores/scan'
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 
 type ViewMode = 'grid' | 'list' | 'table'
-type SortField = 'label' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
+type SortField = 'hostname' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
 type SortDirection = 'asc' | 'desc'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
@@ -59,20 +63,28 @@ export function DevicesPage() {
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortField, setSortField] = useState<SortField>('label')
+  const [sortField, setSortField] = useState<SortField>('hostname')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [pageSize, setPageSize] = useState(25)
   const [currentPage, setCurrentPage] = useState(1)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Fetch devices with TanStack Query
+  // Fetch devices with server-side pagination and filtering
   const {
-    data: topology,
+    data: deviceList,
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['topology'],
-    queryFn: getTopology,
+    queryKey: ['devices', pageSize, currentPage, statusFilter, typeFilter],
+    queryFn: () =>
+      listDevices({
+        limit: pageSize,
+        offset: (currentPage - 1) * pageSize,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+      }),
   })
 
   // Keyboard shortcuts
@@ -95,48 +107,72 @@ export function DevicesPage() {
     mutationFn: () => triggerScan(),
     onSuccess: () => {
       setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['devices'] })
         queryClient.invalidateQueries({ queryKey: ['topology'] })
       }, 2000)
     },
   })
 
-  const devices = useMemo(() => topology?.nodes || [], [topology?.nodes])
+  // Delete device mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteDevice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['topology'] })
+      toast.success('Device deleted')
+      setDeletingId(null)
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete device')
+      setDeletingId(null)
+    },
+  })
 
-  // Filter, sort, and paginate devices
-  const processedDevices = useMemo(() => {
-    let result = [...devices]
+  function handleDeleteClick(e: React.MouseEvent, deviceId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDeletingId(deviceId)
+  }
 
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (d) =>
-          d.label?.toLowerCase().includes(query) ||
-          d.ip_addresses?.some((ip) => ip.includes(query)) ||
-          d.manufacturer?.toLowerCase().includes(query) ||
-          d.mac_address?.toLowerCase().includes(query)
-      )
+  function confirmDelete() {
+    if (deletingId) {
+      deleteMutation.mutate(deletingId)
     }
+  }
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((d) => d.status === statusFilter)
-    }
+  function cancelDelete() {
+    setDeletingId(null)
+  }
 
-    // Apply device type filter
-    if (typeFilter !== 'all') {
-      result = result.filter((d) => d.device_type === typeFilter)
-    }
+  const devices = useMemo(() => deviceList?.devices || [], [deviceList?.devices])
+  const totalDevices = deviceList?.total || 0
 
-    // Apply sorting
+  // Client-side search filtering (search is not a server-side param here)
+  const filteredDevices = useMemo(() => {
+    if (!searchQuery) return devices
+
+    const query = searchQuery.toLowerCase()
+    return devices.filter(
+      (d) =>
+        d.hostname?.toLowerCase().includes(query) ||
+        d.ip_addresses?.some((ip) => ip.includes(query)) ||
+        d.manufacturer?.toLowerCase().includes(query) ||
+        d.mac_address?.toLowerCase().includes(query)
+    )
+  }, [devices, searchQuery])
+
+  // Client-side sorting
+  const sortedDevices = useMemo(() => {
+    const result = [...filteredDevices]
+
     result.sort((a, b) => {
-      let aVal: string | number = ''
-      let bVal: string | number = ''
+      let aVal: string = ''
+      let bVal: string = ''
 
       switch (sortField) {
-        case 'label':
-          aVal = a.label || ''
-          bVal = b.label || ''
+        case 'hostname':
+          aVal = a.hostname || ''
+          bVal = b.hostname || ''
           break
         case 'ip':
           aVal = a.ip_addresses?.[0] || ''
@@ -166,14 +202,10 @@ export function DevicesPage() {
     })
 
     return result
-  }, [devices, searchQuery, statusFilter, typeFilter, sortField, sortDirection])
+  }, [filteredDevices, sortField, sortDirection])
 
-  // Pagination
-  const totalPages = Math.ceil(processedDevices.length / pageSize)
-  const paginatedDevices = processedDevices.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+  // Server-side pagination totals
+  const totalPages = Math.ceil(totalDevices / pageSize)
 
   // Reset to page 1 when filters change
   const updateFilter = (key: string, value: string) => {
@@ -186,7 +218,7 @@ export function DevicesPage() {
     setSearchParams(searchParams)
   }
 
-  // Count devices by status and type
+  // Count devices by status and type (from current page data for display)
   const statusCounts = devices.reduce(
     (acc, d) => {
       acc[d.status] = (acc[d.status] || 0) + 1
@@ -230,12 +262,21 @@ export function DevicesPage() {
         <div>
           <h1 className="text-2xl font-semibold">Devices</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {processedDevices.length} of {devices.length} device
-            {devices.length !== 1 ? 's' : ''}
+            {searchQuery ? `${filteredDevices.length} matching of ` : ''}
+            {totalDevices} device{totalDevices !== 1 ? 's' : ''}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCreateDialogOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Device
+          </Button>
+
           <Button
             onClick={() => scanMutation.mutate()}
             disabled={scanMutation.isPending || !!activeScan}
@@ -266,7 +307,6 @@ export function DevicesPage() {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value)
-              setCurrentPage(1)
             }}
             className="pl-9"
           />
@@ -277,7 +317,7 @@ export function DevicesPage() {
           <div className="flex items-center gap-1">
             <StatusPill
               label="All"
-              count={devices.length}
+              count={totalDevices}
               active={statusFilter === 'all'}
               onClick={() => updateFilter('status', 'all')}
             />
@@ -366,18 +406,24 @@ export function DevicesPage() {
       )}
 
       {/* Empty state */}
-      {!isLoading && !error && processedDevices.length === 0 && (
+      {!isLoading && !error && sortedDevices.length === 0 && (
         <div className="text-center py-12">
           <Radar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          {devices.length === 0 ? (
+          {totalDevices === 0 ? (
             <>
               <h3 className="text-lg font-medium">No devices discovered</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-4">
-                Run a network scan to discover devices on your network.
+                Run a network scan or add a device manually.
               </p>
-              <Button onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-                {scanMutation.isPending ? 'Scanning...' : 'Scan Network'}
-              </Button>
+              <div className="flex items-center justify-center gap-2">
+                <Button onClick={() => setCreateDialogOpen(true)} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Device
+                </Button>
+                <Button onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
+                  {scanMutation.isPending ? 'Scanning...' : 'Scan Network'}
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -391,14 +437,14 @@ export function DevicesPage() {
       )}
 
       {/* Table View */}
-      {!isLoading && !error && paginatedDevices.length > 0 && viewMode === 'table' && (
+      {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'table' && (
         <div className="rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  <SortableHeader field="label" current={sortField} onClick={handleSort}>
-                    Hostname {getSortIcon('label')}
+                  <SortableHeader field="hostname" current={sortField} onClick={handleSort}>
+                    Hostname {getSortIcon('hostname')}
                   </SortableHeader>
                   <SortableHeader field="ip" current={sortField} onClick={handleSort}>
                     IP Address {getSortIcon('ip')}
@@ -415,10 +461,13 @@ export function DevicesPage() {
                   <SortableHeader field="status" current={sortField} onClick={handleSort}>
                     Status {getSortIcon('status')}
                   </SortableHeader>
+                  <th className="px-4 py-3 text-left font-medium w-12">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {paginatedDevices.map((device) => (
+                {sortedDevices.map((device) => (
                   <tr
                     key={device.id}
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -428,7 +477,7 @@ export function DevicesPage() {
                         to={`/devices/${device.id}`}
                         className="font-medium hover:text-primary"
                       >
-                        {device.label || 'Unknown'}
+                        {device.hostname || 'Unknown'}
                       </Link>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
@@ -446,6 +495,17 @@ export function DevicesPage() {
                     <td className="px-4 py-3">
                       <StatusBadge status={device.status} />
                     </td>
+                    <td className="px-4 py-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                        onClick={(e) => handleDeleteClick(e, device.id)}
+                        title="Delete device"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -455,25 +515,25 @@ export function DevicesPage() {
       )}
 
       {/* Grid View */}
-      {!isLoading && !error && paginatedDevices.length > 0 && viewMode === 'grid' && (
+      {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'grid' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {paginatedDevices.map((device) => (
+          {sortedDevices.map((device) => (
             <DeviceCard key={device.id} device={device} />
           ))}
         </div>
       )}
 
       {/* List View */}
-      {!isLoading && !error && paginatedDevices.length > 0 && viewMode === 'list' && (
+      {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'list' && (
         <div className="space-y-2">
-          {paginatedDevices.map((device) => (
+          {sortedDevices.map((device) => (
             <DeviceCardCompact key={device.id} device={device} />
           ))}
         </div>
       )}
 
       {/* Pagination */}
-      {!isLoading && !error && processedDevices.length > 0 && (
+      {!isLoading && !error && totalDevices > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Show</span>
@@ -497,8 +557,8 @@ export function DevicesPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {(currentPage - 1) * pageSize + 1}-
-              {Math.min(currentPage * pageSize, processedDevices.length)} of{' '}
-              {processedDevices.length}
+              {Math.min(currentPage * pageSize, totalDevices)} of{' '}
+              {totalDevices}
             </span>
 
             <div className="flex items-center gap-1">
@@ -547,6 +607,56 @@ export function DevicesPage() {
           </div>
         </div>
       )}
+
+      {/* Create Device Dialog */}
+      <CreateDeviceDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={!!deletingId}
+        isPending={deleteMutation.isPending}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
+    </div>
+  )
+}
+
+// Delete confirmation dialog
+function DeleteConfirmDialog({
+  open,
+  isPending,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean
+  isPending: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative z-50 w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg">
+        <h3 className="text-lg font-semibold mb-2">Delete Device</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Are you sure you want to delete this device? This action cannot be undone.
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={isPending}
+          >
+            {isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

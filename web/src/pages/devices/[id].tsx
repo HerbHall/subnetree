@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
@@ -31,14 +31,17 @@ import {
   Save,
   X,
   Radar,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   getDevice,
   updateDevice,
+  deleteDevice,
   getDeviceStatusHistory,
   getDeviceScanHistory,
   type DeviceStatusEvent,
@@ -93,11 +96,15 @@ const statusConfig: Record<DeviceStatus, { bg: string; text: string; label: stri
 export function DeviceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [copiedText, setCopiedText] = useState<string | null>(null)
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [isEditingTags, setIsEditingTags] = useState(false)
+  const [isEditingType, setIsEditingType] = useState(false)
   const [editedNotes, setEditedNotes] = useState('')
   const [editedTags, setEditedTags] = useState('')
+  const [editedType, setEditedType] = useState<DeviceType>('unknown')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Fetch device details
   const {
@@ -126,12 +133,33 @@ export function DeviceDetailPage() {
 
   // Update device mutation
   const updateMutation = useMutation({
-    mutationFn: (data: { notes?: string; tags?: string[] }) =>
+    mutationFn: (data: { notes?: string; tags?: string[]; device_type?: DeviceType }) =>
       updateDevice(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device', id] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
       setIsEditingNotes(false)
       setIsEditingTags(false)
+      setIsEditingType(false)
+      toast.success('Device updated')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update device')
+    },
+  })
+
+  // Delete device mutation
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteDevice(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['topology'] })
+      toast.success('Device deleted')
+      navigate('/devices')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete device')
+      setShowDeleteConfirm(false)
     },
   })
 
@@ -171,6 +199,19 @@ export function DeviceDetailPage() {
   function cancelEditTags() {
     setIsEditingTags(false)
     setEditedTags('')
+  }
+
+  function startEditType() {
+    setEditedType(device?.device_type || 'unknown')
+    setIsEditingType(true)
+  }
+
+  function saveType() {
+    updateMutation.mutate({ device_type: editedType })
+  }
+
+  function cancelEditType() {
+    setIsEditingType(false)
   }
 
   function formatTimestamp(timestamp: string) {
@@ -270,6 +311,15 @@ export function DeviceDetailPage() {
               </Button>
             </>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -345,7 +395,49 @@ export function DeviceDetailPage() {
           <CardContent className="space-y-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Type</p>
-              <p className="text-sm">{typeLabel}</p>
+              {isEditingType ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={editedType}
+                    onChange={(e) => setEditedType(e.target.value as DeviceType)}
+                    className="h-8 px-2 rounded-md border bg-background text-sm"
+                  >
+                    {Object.entries(deviceTypeLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={saveType}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={cancelEditType}
+                    disabled={updateMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm">{typeLabel}</p>
+                  <button
+                    onClick={startEditType}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit device type"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {device.manufacturer && (
@@ -596,6 +688,45 @@ export function DeviceDetailPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowDeleteConfirm(false)}
+          />
+          <div className="relative z-50 w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold mb-2">Delete Device</h3>
+            <p className="text-sm text-muted-foreground mb-1">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">
+                {device.hostname || 'this device'}
+              </span>
+              ?
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              This action cannot be undone. All associated data will be permanently removed.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete Device'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
