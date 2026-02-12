@@ -99,3 +99,41 @@ export async function createSnapshot(data: {
 }): Promise<DocsSnapshot> {
   return api.post<DocsSnapshot>('/docs/snapshots', data)
 }
+
+/**
+ * Information about a registered collector.
+ */
+export interface CollectorInfo {
+  name: string
+  available: boolean
+}
+
+/**
+ * Result of a collection run.
+ */
+export interface CollectionResult {
+  apps_discovered: number
+  snapshots_created: number
+  errors: string[]
+}
+
+/**
+ * List registered collectors with availability status.
+ */
+export async function listCollectors(): Promise<CollectorInfo[]> {
+  return api.get<CollectorInfo[]>('/docs/collectors')
+}
+
+/**
+ * Trigger collection from all available collectors.
+ */
+export async function triggerCollection(): Promise<CollectionResult> {
+  return api.post<CollectionResult>('/docs/collect')
+}
+
+/**
+ * Trigger collection from a specific named collector.
+ */
+export async function triggerCollectorByName(name: string): Promise<CollectionResult> {
+  return api.post<CollectionResult>(`/docs/collect/${name}`)
+}

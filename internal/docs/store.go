@@ -146,6 +146,29 @@ func (s *DocsStore) ListApplications(ctx context.Context, params ListApplication
 	return apps, total, rows.Err()
 }
 
+// UpsertApplication inserts a new application or updates it if the ID already exists.
+func (s *DocsStore) UpsertApplication(ctx context.Context, a *Application) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO docs_applications (
+			id, name, app_type, device_id, collector, status, metadata, discovered_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			name = excluded.name,
+			app_type = excluded.app_type,
+			device_id = excluded.device_id,
+			collector = excluded.collector,
+			status = excluded.status,
+			metadata = excluded.metadata,
+			updated_at = excluded.updated_at`,
+		a.ID, a.Name, a.AppType, a.DeviceID, a.Collector, a.Status, a.Metadata,
+		a.DiscoveredAt, a.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("upsert application: %w", err)
+	}
+	return nil
+}
+
 // UpdateApplication updates an existing application record.
 func (s *DocsStore) UpdateApplication(ctx context.Context, a *Application) error {
 	_, err := s.db.ExecContext(ctx, `

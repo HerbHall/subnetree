@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { FileText, Loader2, RefreshCw, Clock } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { FileText, Loader2, RefreshCw, Clock, Play, CheckCircle2, XCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { listApplications } from '@/api/docs'
+import { listApplications, listCollectors, triggerCollection } from '@/api/docs'
 import type { DocsApplication } from '@/api/docs'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const APP_TYPE_LABELS: Record<string, string> = {
   docker: 'Docker',
@@ -21,6 +22,8 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
 }
 
 export function DocumentationPage() {
+  const queryClient = useQueryClient()
+
   const {
     data,
     isLoading,
@@ -31,8 +34,28 @@ export function DocumentationPage() {
     queryFn: () => listApplications(),
   })
 
+  const { data: collectors } = useQuery({
+    queryKey: ['docs-collectors'],
+    queryFn: () => listCollectors(),
+  })
+
+  const collectMutation = useMutation({
+    mutationFn: () => triggerCollection(),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['docs-applications'] })
+      queryClient.invalidateQueries({ queryKey: ['docs-collectors'] })
+      toast.success(
+        `Collection complete: ${result.apps_discovered} apps discovered, ${result.snapshots_created} snapshots created`,
+      )
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Collection failed')
+    },
+  })
+
   const applications = data?.items ?? []
   const total = data?.total ?? 0
+  const availableCollectors = collectors?.filter((c) => c.available) ?? []
 
   return (
     <div className="space-y-6">
@@ -46,6 +69,44 @@ export function DocumentationPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Collector status badges */}
+          {collectors && collectors.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5 mr-2">
+              {collectors.map((c) => (
+                <span
+                  key={c.name}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs',
+                    c.available
+                      ? 'bg-green-500/10 text-green-500'
+                      : 'bg-gray-500/10 text-gray-500',
+                  )}
+                >
+                  {c.available ? (
+                    <CheckCircle2 className="h-3 w-3" />
+                  ) : (
+                    <XCircle className="h-3 w-3" />
+                  )}
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => collectMutation.mutate()}
+            disabled={collectMutation.isPending || availableCollectors.length === 0}
+          >
+            {collectMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+            ) : (
+              <Play className="h-4 w-4 mr-1.5" />
+            )}
+            Collect Now
+          </Button>
+
           <Button
             variant="outline"
             size="icon"

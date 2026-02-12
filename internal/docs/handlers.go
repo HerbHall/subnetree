@@ -21,6 +21,9 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/snapshots", Handler: m.handleListSnapshots},
 		{Method: "GET", Path: "/snapshots/{id}", Handler: m.handleGetSnapshot},
 		{Method: "POST", Path: "/snapshots", Handler: m.handleCreateSnapshot},
+		{Method: "GET", Path: "/collectors", Handler: m.handleListCollectors},
+		{Method: "POST", Path: "/collect", Handler: m.handleTriggerCollection},
+		{Method: "POST", Path: "/collect/{collector}", Handler: m.handleTriggerCollectorByName},
 	}
 }
 
@@ -244,6 +247,84 @@ func (m *Module) handleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	m.publishEvent(r.Context(), TopicSnapshotCreated, snap)
 
 	docsWriteJSON(w, http.StatusCreated, snap)
+}
+
+// CollectorInfo describes a registered collector and its availability.
+type CollectorInfo struct {
+	Name      string `json:"name"`
+	Available bool   `json:"available"`
+}
+
+// handleListCollectors returns the registered collectors with availability status.
+//
+//	@Summary		List collectors
+//	@Description	Returns all registered infrastructure collectors and whether they are currently available.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{array}		CollectorInfo
+//	@Router			/docs/collectors [get]
+func (m *Module) handleListCollectors(w http.ResponseWriter, _ *http.Request) {
+	infos := make([]CollectorInfo, 0, len(m.collectors))
+	for _, c := range m.collectors {
+		infos = append(infos, CollectorInfo{
+			Name:      c.Name(),
+			Available: c.Available(),
+		})
+	}
+	docsWriteJSON(w, http.StatusOK, infos)
+}
+
+// handleTriggerCollection runs collection from all available collectors.
+//
+//	@Summary		Trigger collection
+//	@Description	Runs configuration collection from all available collectors immediately.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	CollectionResult
+//	@Failure		503	{object}	map[string]any
+//	@Router			/docs/collect [post]
+func (m *Module) handleTriggerCollection(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		docsWriteError(w, http.StatusServiceUnavailable, "docs store not available")
+		return
+	}
+
+	result := m.RunCollection(r.Context())
+	docsWriteJSON(w, http.StatusOK, result)
+}
+
+// handleTriggerCollectorByName runs collection from a single named collector.
+//
+//	@Summary		Trigger collector by name
+//	@Description	Runs configuration collection from a specific named collector.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			collector	path		string	true	"Collector name"
+//	@Success		200			{object}	CollectionResult
+//	@Failure		404			{object}	map[string]any
+//	@Failure		503			{object}	map[string]any
+//	@Router			/docs/collect/{collector} [post]
+func (m *Module) handleTriggerCollectorByName(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		docsWriteError(w, http.StatusServiceUnavailable, "docs store not available")
+		return
+	}
+
+	name := r.PathValue("collector")
+	if name == "" {
+		docsWriteError(w, http.StatusBadRequest, "collector name is required")
+		return
+	}
+
+	result, err := m.RunCollectorByName(r.Context(), name)
+	if err != nil {
+		docsWriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	docsWriteJSON(w, http.StatusOK, result)
 }
 
 // -- helpers --

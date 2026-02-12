@@ -65,6 +65,10 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 	m.bus = deps.Bus
 	m.plugins = deps.Plugins
 
+	// Register collectors.
+	docker := NewDockerCollector(m.cfg.DockerSocket, m.logger.Named("docker"))
+	m.collectors = append(m.collectors, docker)
+
 	m.logger.Info("docs module initialized",
 		zap.Duration("retention_period", m.cfg.RetentionPeriod),
 		zap.Duration("collect_interval", m.cfg.CollectInterval),
@@ -76,8 +80,52 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 func (m *Module) Start(_ context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.startMaintenance()
+	m.startCollection()
 	m.logger.Info("docs module started")
 	return nil
+}
+
+// startCollection launches background goroutines for periodic and initial
+// collection from all registered collectors.
+func (m *Module) startCollection() {
+	// Initial collection after a short delay.
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		select {
+		case <-m.ctx.Done():
+			return
+		case <-time.After(30 * time.Second):
+			result := m.RunCollection(m.ctx)
+			m.logger.Info("initial collection complete",
+				zap.Int("apps_discovered", result.AppsDiscovered),
+				zap.Int("snapshots_created", result.SnapshotsCreated),
+				zap.Int("errors", len(result.Errors)),
+			)
+		}
+	}()
+
+	// Periodic collection.
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		ticker := time.NewTicker(m.cfg.CollectInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-m.ctx.Done():
+				return
+			case <-ticker.C:
+				result := m.RunCollection(m.ctx)
+				m.logger.Info("periodic collection complete",
+					zap.Int("apps_discovered", result.AppsDiscovered),
+					zap.Int("snapshots_created", result.SnapshotsCreated),
+					zap.Int("errors", len(result.Errors)),
+				)
+			}
+		}
+	}()
 }
 
 func (m *Module) Stop(_ context.Context) error {

@@ -620,3 +620,187 @@ func TestDocsQueryInt(t *testing.T) {
 		})
 	}
 }
+
+// -- handleListCollectors tests --
+
+func TestHandleListCollectors_Empty(t *testing.T) {
+	m := newTestModule(t)
+	req := httptest.NewRequest(http.MethodGet, "/collectors", http.NoBody)
+	w := httptest.NewRecorder()
+
+	m.handleListCollectors(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var infos []CollectorInfo
+	if err := json.NewDecoder(w.Body).Decode(&infos); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(infos) != 0 {
+		t.Errorf("len(infos) = %d, want 0", len(infos))
+	}
+}
+
+func TestHandleListCollectors_WithCollectors(t *testing.T) {
+	m := newTestModule(t)
+	m.collectors = []Collector{
+		&mockCollector{name: "docker", available: true},
+		&mockCollector{name: "systemd", available: false},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/collectors", http.NoBody)
+	w := httptest.NewRecorder()
+
+	m.handleListCollectors(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var infos []CollectorInfo
+	if err := json.NewDecoder(w.Body).Decode(&infos); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(infos) != 2 {
+		t.Fatalf("len(infos) = %d, want 2", len(infos))
+	}
+	if infos[0].Name != "docker" {
+		t.Errorf("infos[0].Name = %q, want %q", infos[0].Name, "docker")
+	}
+	if !infos[0].Available {
+		t.Error("infos[0].Available = false, want true")
+	}
+	if infos[1].Name != "systemd" {
+		t.Errorf("infos[1].Name = %q, want %q", infos[1].Name, "systemd")
+	}
+	if infos[1].Available {
+		t.Error("infos[1].Available = true, want false")
+	}
+}
+
+// -- handleTriggerCollection tests --
+
+func TestHandleTriggerCollection(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC()
+	m.collectors = []Collector{
+		&mockCollector{
+			name:      "test",
+			available: true,
+			apps: []Application{
+				{
+					ID: "app-001", Name: "nginx", AppType: "docker-container",
+					Collector: "test", Status: "active", Metadata: "{}",
+					DiscoveredAt: now, UpdatedAt: now,
+				},
+			},
+			configs: map[string]*CollectedConfig{
+				"app-001": {Content: `{"image":"nginx"}`, Format: "json"},
+			},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/collect", http.NoBody)
+	w := httptest.NewRecorder()
+
+	m.handleTriggerCollection(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var result CollectionResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AppsDiscovered != 1 {
+		t.Errorf("AppsDiscovered = %d, want 1", result.AppsDiscovered)
+	}
+	if result.SnapshotsCreated != 1 {
+		t.Errorf("SnapshotsCreated = %d, want 1", result.SnapshotsCreated)
+	}
+}
+
+func TestHandleTriggerCollection_NilStore(t *testing.T) {
+	m := &Module{logger: zap.NewNop()}
+	req := httptest.NewRequest(http.MethodPost, "/collect", http.NoBody)
+	w := httptest.NewRecorder()
+
+	m.handleTriggerCollection(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	}
+}
+
+// -- handleTriggerCollectorByName tests --
+
+func TestHandleTriggerCollectorByName(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC()
+	m.collectors = []Collector{
+		&mockCollector{
+			name:      "docker",
+			available: true,
+			apps: []Application{
+				{
+					ID: "app-001", Name: "nginx", AppType: "docker-container",
+					Collector: "docker", Status: "active", Metadata: "{}",
+					DiscoveredAt: now, UpdatedAt: now,
+				},
+			},
+			configs: map[string]*CollectedConfig{
+				"app-001": {Content: `{"from":"docker"}`, Format: "json"},
+			},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/collect/docker", http.NoBody)
+	req.SetPathValue("collector", "docker")
+	w := httptest.NewRecorder()
+
+	m.handleTriggerCollectorByName(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var result CollectionResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AppsDiscovered != 1 {
+		t.Errorf("AppsDiscovered = %d, want 1", result.AppsDiscovered)
+	}
+}
+
+func TestHandleTriggerCollectorByName_NotFound(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/collect/nonexistent", http.NoBody)
+	req.SetPathValue("collector", "nonexistent")
+	w := httptest.NewRecorder()
+
+	m.handleTriggerCollectorByName(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestHandleTriggerCollectorByName_NilStore(t *testing.T) {
+	m := &Module{logger: zap.NewNop()}
+	req := httptest.NewRequest(http.MethodPost, "/collect/docker", http.NoBody)
+	req.SetPathValue("collector", "docker")
+	w := httptest.NewRecorder()
+
+	m.handleTriggerCollectorByName(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	}
+}
