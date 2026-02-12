@@ -197,7 +197,7 @@
 - [x] README: "Why SubNetree?" section -- value proposition, feature comparison table (discovery + monitoring + remote access + vault + IoT in one tool), clear differentiation from Zabbix/LibreNMS/Uptime Kuma
 - [ ] README: status badges (CI build, Go version, license, latest release, Docker pulls)
 - [x] README: Docker quickstart section (`docker run` one-liner + docker-compose snippet)
-- [ ] README: screenshots/GIF of dashboard (blocked on dashboard implementation -- placeholder with architecture diagram until then)
+- [x] README: screenshots/GIF of dashboard (added in PR #156)
 - [x] README: "Current Status" section -- honest about what works today vs. what's planned, links to roadmap
 - [x] README: clarify licensing wording to "free for personal, home-lab, and non-competing production use"
 - [x] Seed GitHub Issues: 5–10 issues labeled `good first issue` and `help wanted` (e.g., "add device type icon mapping", "write Prometheus exporter example plugin", "add ARM64 CI build target")
