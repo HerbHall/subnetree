@@ -116,7 +116,17 @@
       "Bash(docker rm:*)",
       "Bash(docker exec:*)",
       "WebFetch(domain:www.modularmanagement.com)",
-      "Bash(code:*)"
+      "Bash(code:*)",
+      "Bash(swag init:*)",
+      "Bash(for pr in 152 151 150 149 148 147 146)",
+      "Bash(do echo \"=== PR #$pr ===\")",
+      "Bash(done)",
+      "Bash(git status:*)",
+      "Bash(git stash:*)",
+      "Bash(git remote add:*)",
+      "Bash(cat:*)",
+      "Bash(CI=true pnpm install:*)",
+      "Bash(git diff:*)"
     ]
   }
 }
