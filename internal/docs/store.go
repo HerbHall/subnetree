@@ -316,3 +316,90 @@ func (s *DocsStore) DeleteOldSnapshots(ctx context.Context, before time.Time) (i
 	}
 	return result.RowsAffected()
 }
+
+// ApplicationStats holds aggregate statistics for an application's snapshots.
+type ApplicationStats struct {
+	SnapshotCount  int       `json:"snapshot_count"`
+	LatestCapture  time.Time `json:"latest_capture"`
+	TotalSizeBytes int64     `json:"total_size_bytes"`
+}
+
+// ListSnapshotHistory returns paginated snapshots for an application ordered by
+// capture time descending, along with the total count.
+func (s *DocsStore) ListSnapshotHistory(ctx context.Context, applicationID string, limit, offset int) ([]Snapshot, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+
+	var total int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM docs_snapshots WHERE application_id = ?`,
+		applicationID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count snapshot history: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, application_id, content_hash, content, format, size_bytes, source, captured_at
+		 FROM docs_snapshots WHERE application_id = ?
+		 ORDER BY captured_at DESC LIMIT ? OFFSET ?`,
+		applicationID, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list snapshot history: %w", err)
+	}
+	defer rows.Close()
+
+	var snapshots []Snapshot
+	for rows.Next() {
+		var snap Snapshot
+		if err := rows.Scan(
+			&snap.ID, &snap.ApplicationID, &snap.ContentHash, &snap.Content,
+			&snap.Format, &snap.SizeBytes, &snap.Source, &snap.CapturedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan snapshot history row: %w", err)
+		}
+		snapshots = append(snapshots, snap)
+	}
+	return snapshots, total, rows.Err()
+}
+
+// DeleteExcessSnapshots keeps only the most recent maxCount snapshots for an
+// application, deleting any older ones. Returns the number deleted.
+func (s *DocsStore) DeleteExcessSnapshots(ctx context.Context, applicationID string, maxCount int) (int64, error) {
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM docs_snapshots
+		WHERE application_id = ?
+		  AND id NOT IN (
+			SELECT id FROM docs_snapshots
+			WHERE application_id = ?
+			ORDER BY captured_at DESC
+			LIMIT ?
+		  )`,
+		applicationID, applicationID, maxCount,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("delete excess snapshots: %w", err)
+	}
+	return result.RowsAffected()
+}
+
+// GetApplicationStats returns aggregate snapshot statistics for an application.
+func (s *DocsStore) GetApplicationStats(ctx context.Context, id string) (*ApplicationStats, error) {
+	var stats ApplicationStats
+	var latestCapture sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(MAX(captured_at), '0001-01-01'), COALESCE(SUM(size_bytes), 0)
+		FROM docs_snapshots WHERE application_id = ?`,
+		id,
+	).Scan(&stats.SnapshotCount, &latestCapture, &stats.TotalSizeBytes)
+	if err != nil {
+		return nil, fmt.Errorf("get application stats: %w", err)
+	}
+	if latestCapture.Valid {
+		stats.LatestCapture = latestCapture.Time
+	}
+	return &stats, nil
+}

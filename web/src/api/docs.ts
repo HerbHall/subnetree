@@ -137,3 +137,51 @@ export async function triggerCollection(): Promise<CollectionResult> {
 export async function triggerCollectorByName(name: string): Promise<CollectionResult> {
   return api.post<CollectionResult>(`/docs/collect/${name}`)
 }
+
+/**
+ * Paginated snapshot history for an application.
+ */
+export interface SnapshotHistory {
+  snapshots: DocsSnapshot[]
+  total: number
+}
+
+/**
+ * Result of comparing two snapshots.
+ */
+export interface DiffResult {
+  diff_text: string
+  old_snapshot_id: string
+  new_snapshot_id: string
+}
+
+/**
+ * Get paginated snapshot history for an application.
+ */
+export async function getApplicationHistory(
+  appId: string,
+  limit = 20,
+  offset = 0,
+): Promise<SnapshotHistory> {
+  const searchParams = new URLSearchParams()
+  searchParams.set('limit', String(limit))
+  searchParams.set('offset', String(offset))
+  return api.get<SnapshotHistory>(`/docs/applications/${appId}/history?${searchParams.toString()}`)
+}
+
+/**
+ * Get a unified diff between two snapshots.
+ */
+export async function getSnapshotDiff(
+  snapshotId: string,
+  otherSnapshotId: string,
+): Promise<DiffResult> {
+  return api.get<DiffResult>(`/docs/snapshots/${snapshotId}/diff/${otherSnapshotId}`)
+}
+
+/**
+ * Delete a snapshot by ID.
+ */
+export async function deleteSnapshot(snapshotId: string): Promise<void> {
+  return api.delete<void>(`/docs/snapshots/${snapshotId}`)
+}

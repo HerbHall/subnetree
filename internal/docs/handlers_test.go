@@ -3,6 +3,7 @@ package docs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -556,6 +557,290 @@ func TestHandleCreateSnapshot_NilStore(t *testing.T) {
 
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	}
+}
+
+// -- handleApplicationHistory tests --
+
+func TestHandleApplicationHistory_WithData(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	app := &Application{
+		ID: "app-001", Name: "Test", AppType: "test",
+		Collector: "manual", Status: "active", Metadata: "{}",
+		DiscoveredAt: now, UpdatedAt: now,
+	}
+	if err := m.store.InsertApplication(context.Background(), app); err != nil {
+		t.Fatalf("insert application: %v", err)
+	}
+
+	for i := 0; i < 3; i++ {
+		snap := &Snapshot{
+			ID: fmt.Sprintf("snap-%03d", i), ApplicationID: "app-001",
+			ContentHash: fmt.Sprintf("h%d", i), Content: fmt.Sprintf("cfg %d", i),
+			Format: "text", SizeBytes: 5, Source: "manual",
+			CapturedAt: now.Add(time.Duration(i) * time.Minute),
+		}
+		if err := m.store.InsertSnapshot(context.Background(), snap); err != nil {
+			t.Fatalf("insert snapshot %d: %v", i, err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/applications/app-001/history?limit=10", http.NoBody)
+	req.SetPathValue("id", "app-001")
+	w := httptest.NewRecorder()
+
+	m.handleApplicationHistory(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]json.RawMessage
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	var snapshots []Snapshot
+	if err := json.Unmarshal(resp["snapshots"], &snapshots); err != nil {
+		t.Fatalf("decode snapshots: %v", err)
+	}
+	if len(snapshots) != 3 {
+		t.Errorf("len(snapshots) = %d, want 3", len(snapshots))
+	}
+
+	var total int
+	if err := json.Unmarshal(resp["total"], &total); err != nil {
+		t.Fatalf("decode total: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("total = %d, want 3", total)
+	}
+}
+
+func TestHandleApplicationHistory_Empty(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	app := &Application{
+		ID: "app-001", Name: "Test", AppType: "test",
+		Collector: "manual", Status: "active", Metadata: "{}",
+		DiscoveredAt: now, UpdatedAt: now,
+	}
+	if err := m.store.InsertApplication(context.Background(), app); err != nil {
+		t.Fatalf("insert application: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/applications/app-001/history", http.NoBody)
+	req.SetPathValue("id", "app-001")
+	w := httptest.NewRecorder()
+
+	m.handleApplicationHistory(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]json.RawMessage
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	var snapshots []Snapshot
+	if err := json.Unmarshal(resp["snapshots"], &snapshots); err != nil {
+		t.Fatalf("decode snapshots: %v", err)
+	}
+	if len(snapshots) != 0 {
+		t.Errorf("len(snapshots) = %d, want 0", len(snapshots))
+	}
+}
+
+func TestHandleApplicationHistory_InvalidApp(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/applications/nonexistent/history", http.NoBody)
+	req.SetPathValue("id", "nonexistent")
+	w := httptest.NewRecorder()
+
+	m.handleApplicationHistory(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+// -- handleSnapshotDiff tests --
+
+func TestHandleSnapshotDiff_Normal(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	app := &Application{
+		ID: "app-001", Name: "Test", AppType: "test",
+		Collector: "manual", Status: "active", Metadata: "{}",
+		DiscoveredAt: now, UpdatedAt: now,
+	}
+	if err := m.store.InsertApplication(context.Background(), app); err != nil {
+		t.Fatalf("insert application: %v", err)
+	}
+
+	snap1 := &Snapshot{
+		ID: "snap-001", ApplicationID: "app-001", ContentHash: "h1",
+		Content: "line1\nline2\nline3", Format: "text", SizeBytes: 17,
+		Source: "manual", CapturedAt: now,
+	}
+	snap2 := &Snapshot{
+		ID: "snap-002", ApplicationID: "app-001", ContentHash: "h2",
+		Content: "line1\nLINE2\nline3", Format: "text", SizeBytes: 17,
+		Source: "manual", CapturedAt: now.Add(time.Minute),
+	}
+	if err := m.store.InsertSnapshot(context.Background(), snap1); err != nil {
+		t.Fatalf("insert snap1: %v", err)
+	}
+	if err := m.store.InsertSnapshot(context.Background(), snap2); err != nil {
+		t.Fatalf("insert snap2: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/snapshots/snap-001/diff/snap-002", http.NoBody)
+	req.SetPathValue("id", "snap-001")
+	req.SetPathValue("other_id", "snap-002")
+	w := httptest.NewRecorder()
+
+	m.handleSnapshotDiff(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp DiffResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.OldSnapshotID != "snap-001" {
+		t.Errorf("OldSnapshotID = %q, want %q", resp.OldSnapshotID, "snap-001")
+	}
+	if resp.NewSnapshotID != "snap-002" {
+		t.Errorf("NewSnapshotID = %q, want %q", resp.NewSnapshotID, "snap-002")
+	}
+	if resp.DiffText == "" {
+		t.Error("DiffText is empty, expected diff output")
+	}
+}
+
+func TestHandleSnapshotDiff_SameSnapshot(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	app := &Application{
+		ID: "app-001", Name: "Test", AppType: "test",
+		Collector: "manual", Status: "active", Metadata: "{}",
+		DiscoveredAt: now, UpdatedAt: now,
+	}
+	if err := m.store.InsertApplication(context.Background(), app); err != nil {
+		t.Fatalf("insert application: %v", err)
+	}
+
+	snap := &Snapshot{
+		ID: "snap-001", ApplicationID: "app-001", ContentHash: "h1",
+		Content: "identical content", Format: "text", SizeBytes: 17,
+		Source: "manual", CapturedAt: now,
+	}
+	if err := m.store.InsertSnapshot(context.Background(), snap); err != nil {
+		t.Fatalf("insert snapshot: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/snapshots/snap-001/diff/snap-001", http.NoBody)
+	req.SetPathValue("id", "snap-001")
+	req.SetPathValue("other_id", "snap-001")
+	w := httptest.NewRecorder()
+
+	m.handleSnapshotDiff(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp DiffResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	// Same content means empty diff.
+	if resp.DiffText != "" {
+		t.Errorf("DiffText = %q, want empty (identical content)", resp.DiffText)
+	}
+}
+
+func TestHandleSnapshotDiff_NotFound(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/snapshots/nonexistent/diff/also-nonexistent", http.NoBody)
+	req.SetPathValue("id", "nonexistent")
+	req.SetPathValue("other_id", "also-nonexistent")
+	w := httptest.NewRecorder()
+
+	m.handleSnapshotDiff(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+// -- handleDeleteSnapshot tests --
+
+func TestHandleDeleteSnapshot_Success(t *testing.T) {
+	m := newTestModule(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	app := &Application{
+		ID: "app-001", Name: "Test", AppType: "test",
+		Collector: "manual", Status: "active", Metadata: "{}",
+		DiscoveredAt: now, UpdatedAt: now,
+	}
+	if err := m.store.InsertApplication(context.Background(), app); err != nil {
+		t.Fatalf("insert application: %v", err)
+	}
+
+	snap := &Snapshot{
+		ID: "snap-001", ApplicationID: "app-001", ContentHash: "h1",
+		Content: "to delete", Format: "text", SizeBytes: 9,
+		Source: "manual", CapturedAt: now,
+	}
+	if err := m.store.InsertSnapshot(context.Background(), snap); err != nil {
+		t.Fatalf("insert snapshot: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/snapshots/snap-001", http.NoBody)
+	req.SetPathValue("id", "snap-001")
+	w := httptest.NewRecorder()
+
+	m.handleDeleteSnapshot(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNoContent)
+	}
+
+	// Verify it's gone.
+	got, err := m.store.GetSnapshot(context.Background(), "snap-001")
+	if err != nil {
+		t.Fatalf("get snapshot after delete: %v", err)
+	}
+	if got != nil {
+		t.Error("snapshot should have been deleted")
+	}
+}
+
+func TestHandleDeleteSnapshot_NotFound(t *testing.T) {
+	m := newTestModule(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/snapshots/nonexistent", http.NoBody)
+	req.SetPathValue("id", "nonexistent")
+	w := httptest.NewRecorder()
+
+	m.handleDeleteSnapshot(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
 	}
 }
 

@@ -18,9 +18,12 @@ func (m *Module) Routes() []plugin.Route {
 	return []plugin.Route{
 		{Method: "GET", Path: "/applications", Handler: m.handleListApplications},
 		{Method: "GET", Path: "/applications/{id}", Handler: m.handleGetApplication},
+		{Method: "GET", Path: "/applications/{id}/history", Handler: m.handleApplicationHistory},
 		{Method: "GET", Path: "/snapshots", Handler: m.handleListSnapshots},
 		{Method: "GET", Path: "/snapshots/{id}", Handler: m.handleGetSnapshot},
 		{Method: "POST", Path: "/snapshots", Handler: m.handleCreateSnapshot},
+		{Method: "DELETE", Path: "/snapshots/{id}", Handler: m.handleDeleteSnapshot},
+		{Method: "GET", Path: "/snapshots/{id}/diff/{other_id}", Handler: m.handleSnapshotDiff},
 		{Method: "GET", Path: "/collectors", Handler: m.handleListCollectors},
 		{Method: "POST", Path: "/collect", Handler: m.handleTriggerCollection},
 		{Method: "POST", Path: "/collect/{collector}", Handler: m.handleTriggerCollectorByName},
@@ -325,6 +328,174 @@ func (m *Module) handleTriggerCollectorByName(w http.ResponseWriter, r *http.Req
 		return
 	}
 	docsWriteJSON(w, http.StatusOK, result)
+}
+
+// handleApplicationHistory returns paginated snapshot history for an application.
+//
+//	@Summary		Application history
+//	@Description	Returns paginated snapshot history for an application with total count.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string	true	"Application ID"
+//	@Param			limit	query		int		false	"Max results"	default(20)
+//	@Param			offset	query		int		false	"Offset"		default(0)
+//	@Success		200		{object}	map[string]any
+//	@Failure		400		{object}	map[string]any
+//	@Failure		404		{object}	map[string]any
+//	@Failure		500		{object}	map[string]any
+//	@Router			/docs/applications/{id}/history [get]
+func (m *Module) handleApplicationHistory(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		docsWriteError(w, http.StatusServiceUnavailable, "docs store not available")
+		return
+	}
+
+	id := r.PathValue("id")
+	if id == "" {
+		docsWriteError(w, http.StatusBadRequest, "application ID is required")
+		return
+	}
+
+	app, err := m.store.GetApplication(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get application for history", zap.String("id", id), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to get application")
+		return
+	}
+	if app == nil {
+		docsWriteError(w, http.StatusNotFound, "application not found")
+		return
+	}
+
+	limit := docsQueryInt(r, "limit", 20)
+	offset := docsQueryInt(r, "offset", 0)
+
+	snapshots, total, err := m.store.ListSnapshotHistory(r.Context(), id, limit, offset)
+	if err != nil {
+		m.logger.Warn("failed to list snapshot history", zap.String("id", id), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to list snapshot history")
+		return
+	}
+	if snapshots == nil {
+		snapshots = []Snapshot{}
+	}
+
+	docsWriteJSON(w, http.StatusOK, map[string]any{
+		"snapshots": snapshots,
+		"total":     total,
+	})
+}
+
+// DiffResponse is the response body for GET /snapshots/{id}/diff/{other_id}.
+type DiffResponse struct {
+	DiffText      string `json:"diff_text"`
+	OldSnapshotID string `json:"old_snapshot_id"`
+	NewSnapshotID string `json:"new_snapshot_id"`
+}
+
+// handleSnapshotDiff returns a unified diff between two snapshots.
+//
+//	@Summary		Diff snapshots
+//	@Description	Returns a unified diff between two configuration snapshots.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id			path		string	true	"Base snapshot ID"
+//	@Param			other_id	path		string	true	"Comparison snapshot ID"
+//	@Success		200			{object}	DiffResponse
+//	@Failure		400			{object}	map[string]any
+//	@Failure		404			{object}	map[string]any
+//	@Failure		500			{object}	map[string]any
+//	@Router			/docs/snapshots/{id}/diff/{other_id} [get]
+func (m *Module) handleSnapshotDiff(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		docsWriteError(w, http.StatusServiceUnavailable, "docs store not available")
+		return
+	}
+
+	id := r.PathValue("id")
+	otherID := r.PathValue("other_id")
+	if id == "" || otherID == "" {
+		docsWriteError(w, http.StatusBadRequest, "both snapshot IDs are required")
+		return
+	}
+
+	oldSnap, err := m.store.GetSnapshot(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get old snapshot", zap.String("id", id), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to get snapshot")
+		return
+	}
+	if oldSnap == nil {
+		docsWriteError(w, http.StatusNotFound, "base snapshot not found")
+		return
+	}
+
+	newSnap, err := m.store.GetSnapshot(r.Context(), otherID)
+	if err != nil {
+		m.logger.Warn("failed to get new snapshot", zap.String("id", otherID), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to get snapshot")
+		return
+	}
+	if newSnap == nil {
+		docsWriteError(w, http.StatusNotFound, "comparison snapshot not found")
+		return
+	}
+
+	lines := ComputeDiff(oldSnap.Content, newSnap.Content)
+	diffText := FormatUnifiedDiff(lines, 3)
+
+	docsWriteJSON(w, http.StatusOK, DiffResponse{
+		DiffText:      diffText,
+		OldSnapshotID: id,
+		NewSnapshotID: otherID,
+	})
+}
+
+// handleDeleteSnapshot deletes a single snapshot by ID.
+//
+//	@Summary		Delete snapshot
+//	@Description	Deletes a configuration snapshot by its ID.
+//	@Tags			docs
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path	string	true	"Snapshot ID"
+//	@Success		204
+//	@Failure		400	{object}	map[string]any
+//	@Failure		404	{object}	map[string]any
+//	@Failure		500	{object}	map[string]any
+//	@Router			/docs/snapshots/{id} [delete]
+func (m *Module) handleDeleteSnapshot(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		docsWriteError(w, http.StatusServiceUnavailable, "docs store not available")
+		return
+	}
+
+	id := r.PathValue("id")
+	if id == "" {
+		docsWriteError(w, http.StatusBadRequest, "snapshot ID is required")
+		return
+	}
+
+	snap, err := m.store.GetSnapshot(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get snapshot for delete", zap.String("id", id), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to get snapshot")
+		return
+	}
+	if snap == nil {
+		docsWriteError(w, http.StatusNotFound, "snapshot not found")
+		return
+	}
+
+	if err := m.store.DeleteSnapshot(r.Context(), id); err != nil {
+		m.logger.Error("failed to delete snapshot", zap.String("id", id), zap.Error(err))
+		docsWriteError(w, http.StatusInternalServerError, "failed to delete snapshot")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // -- helpers --

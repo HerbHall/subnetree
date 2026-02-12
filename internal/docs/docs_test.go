@@ -137,8 +137,8 @@ func TestRoutes(t *testing.T) {
 	m := New()
 	routes := m.Routes()
 
-	if len(routes) != 8 {
-		t.Fatalf("Routes() returned %d routes, want 8", len(routes))
+	if len(routes) != 11 {
+		t.Fatalf("Routes() returned %d routes, want 11", len(routes))
 	}
 
 	expected := []struct {
@@ -147,9 +147,12 @@ func TestRoutes(t *testing.T) {
 	}{
 		{"GET", "/applications"},
 		{"GET", "/applications/{id}"},
+		{"GET", "/applications/{id}/history"},
 		{"GET", "/snapshots"},
 		{"GET", "/snapshots/{id}"},
 		{"POST", "/snapshots"},
+		{"DELETE", "/snapshots/{id}"},
+		{"GET", "/snapshots/{id}/diff/{other_id}"},
 		{"GET", "/collectors"},
 		{"POST", "/collect"},
 		{"POST", "/collect/{collector}"},

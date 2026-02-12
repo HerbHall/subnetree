@@ -79,7 +79,17 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 func (m *Module) Start(_ context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
-	m.startMaintenance()
+
+	// Start the maintenance worker for retention + snapshot cap enforcement.
+	if m.store != nil {
+		worker := NewMaintenanceWorker(m.store, m.cfg, m.logger.Named("maintenance"))
+		m.wg.Add(1)
+		go func() {
+			defer m.wg.Done()
+			worker.Run(m.ctx)
+		}()
+	}
+
 	m.startCollection()
 	m.logger.Info("docs module started")
 	return nil
@@ -173,40 +183,3 @@ func (m *Module) publishEvent(ctx context.Context, topic string, payload any) {
 	})
 }
 
-// startMaintenance launches a background goroutine that periodically
-// deletes old snapshots past the retention window.
-func (m *Module) startMaintenance() {
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		ticker := time.NewTicker(m.cfg.MaintenanceInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-m.ctx.Done():
-				return
-			case <-ticker.C:
-				m.runMaintenance()
-			}
-		}
-	}()
-}
-
-// runMaintenance executes a single maintenance cycle.
-func (m *Module) runMaintenance() {
-	if m.store == nil {
-		return
-	}
-	ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
-	defer cancel()
-
-	cutoff := time.Now().Add(-m.cfg.RetentionPeriod)
-
-	deleted, err := m.store.DeleteOldSnapshots(ctx, cutoff)
-	if err != nil {
-		m.logger.Warn("failed to delete old snapshots", zap.Error(err))
-	} else if deleted > 0 {
-		m.logger.Info("purged old snapshots", zap.Int64("count", deleted))
-	}
-}
