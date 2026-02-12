@@ -12,7 +12,7 @@ export async function getTopology(): Promise<TopologyGraph> {
  * Get a single device by ID.
  */
 export async function getDevice(id: string): Promise<Device> {
-  return api.get<Device>(`/devices/${id}`)
+  return api.get<Device>(`/recon/devices/${id}`)
 }
 
 /**
@@ -22,7 +22,7 @@ export async function updateDevice(
   id: string,
   data: { notes?: string; tags?: string[] }
 ): Promise<Device> {
-  return api.put<Device>(`/devices/${id}`, data)
+  return api.put<Device>(`/recon/devices/${id}`, data)
 }
 
 /**
@@ -39,14 +39,14 @@ export async function getDeviceStatusHistory(
   id: string,
   limit = 50
 ): Promise<DeviceStatusEvent[]> {
-  return api.get<DeviceStatusEvent[]>(`/devices/${id}/status-history?limit=${limit}`)
+  return api.get<DeviceStatusEvent[]>(`/recon/devices/${id}/history?limit=${limit}`)
 }
 
 /**
  * Get scan history for a device (scans that discovered/updated this device).
  */
 export async function getDeviceScanHistory(id: string): Promise<Scan[]> {
-  return api.get<Scan[]>(`/devices/${id}/scans`)
+  return api.get<Scan[]>(`/recon/devices/${id}/scans`)
 }
 
 /**

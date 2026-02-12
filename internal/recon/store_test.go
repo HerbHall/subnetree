@@ -455,3 +455,302 @@ func TestTopologyLinkCRUD(t *testing.T) {
 		t.Errorf("link count = %d, want 1 (unique constraint)", len(links))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Device CRUD store tests
+// ---------------------------------------------------------------------------
+
+func TestUpdateDevice_Success(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "update-me",
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:01",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	notes := "updated notes"
+	tags := []string{"tag-a", "tag-b"}
+	err := s.UpdateDevice(ctx, d.ID, UpdateDeviceParams{
+		Notes: &notes,
+		Tags:  &tags,
+	})
+	if err != nil {
+		t.Fatalf("UpdateDevice: %v", err)
+	}
+
+	got, _ := s.GetDevice(ctx, d.ID)
+	if got.Notes != "updated notes" {
+		t.Errorf("Notes = %q, want %q", got.Notes, "updated notes")
+	}
+	if len(got.Tags) != 2 || got.Tags[0] != "tag-a" {
+		t.Errorf("Tags = %v, want [tag-a tag-b]", got.Tags)
+	}
+}
+
+func TestUpdateDevice_NotFound(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	notes := "test"
+	err := s.UpdateDevice(ctx, "nonexistent", UpdateDeviceParams{Notes: &notes})
+	if err == nil {
+		t.Error("expected error for nonexistent device")
+	}
+}
+
+func TestUpdateDevice_PartialUpdate(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "partial-update",
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:02",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+		Notes:           "original notes",
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	// Update only tags, leave notes untouched.
+	tags := []string{"new-tag"}
+	err := s.UpdateDevice(ctx, d.ID, UpdateDeviceParams{Tags: &tags})
+	if err != nil {
+		t.Fatalf("UpdateDevice: %v", err)
+	}
+
+	got, _ := s.GetDevice(ctx, d.ID)
+	if got.Notes != "original notes" {
+		t.Errorf("Notes = %q, want %q (should not change)", got.Notes, "original notes")
+	}
+	if len(got.Tags) != 1 || got.Tags[0] != "new-tag" {
+		t.Errorf("Tags = %v, want [new-tag]", got.Tags)
+	}
+}
+
+func TestDeleteDevice_Success(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "delete-me",
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:03",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	err := s.DeleteDevice(ctx, d.ID)
+	if err != nil {
+		t.Fatalf("DeleteDevice: %v", err)
+	}
+
+	_, err = s.GetDevice(ctx, d.ID)
+	if err == nil {
+		t.Error("expected error after delete")
+	}
+}
+
+func TestDeleteDevice_NotFound(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	err := s.DeleteDevice(ctx, "nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent device")
+	}
+}
+
+func TestInsertManualDevice(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:    "manual-device",
+		IPAddresses: []string{"10.0.0.99"},
+		DeviceType:  models.DeviceTypeServer,
+		Notes:       "manually added",
+	}
+	err := s.InsertManualDevice(ctx, d)
+	if err != nil {
+		t.Fatalf("InsertManualDevice: %v", err)
+	}
+	if d.ID == "" {
+		t.Error("expected non-empty ID")
+	}
+
+	got, err := s.GetDevice(ctx, d.ID)
+	if err != nil {
+		t.Fatalf("GetDevice: %v", err)
+	}
+	if got.Hostname != "manual-device" {
+		t.Errorf("Hostname = %q, want manual-device", got.Hostname)
+	}
+	if got.DiscoveryMethod != models.DiscoveryManual {
+		t.Errorf("DiscoveryMethod = %q, want manual", got.DiscoveryMethod)
+	}
+	if got.Status != models.DeviceStatusUnknown {
+		t.Errorf("Status = %q, want unknown", got.Status)
+	}
+}
+
+func TestGetDeviceHistory_Empty(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	changes, total, err := s.GetDeviceHistory(ctx, "no-such-device", 50, 0)
+	if err != nil {
+		t.Fatalf("GetDeviceHistory: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("total = %d, want 0", total)
+	}
+	if len(changes) != 0 {
+		t.Errorf("changes = %d, want 0", len(changes))
+	}
+}
+
+func TestGetDeviceHistory_WithChanges(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "history-test",
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:04",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	// Mark offline -- should record a status change.
+	if err := s.MarkDeviceOffline(ctx, d.ID); err != nil {
+		t.Fatalf("MarkDeviceOffline: %v", err)
+	}
+
+	changes, total, err := s.GetDeviceHistory(ctx, d.ID, 50, 0)
+	if err != nil {
+		t.Fatalf("GetDeviceHistory: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("total = %d, want 1", total)
+	}
+	if len(changes) != 1 {
+		t.Fatalf("changes = %d, want 1", len(changes))
+	}
+	if changes[0].OldStatus != "online" {
+		t.Errorf("OldStatus = %q, want online", changes[0].OldStatus)
+	}
+	if changes[0].NewStatus != "offline" {
+		t.Errorf("NewStatus = %q, want offline", changes[0].NewStatus)
+	}
+}
+
+func TestGetDeviceScans(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:05",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	scan := &models.ScanResult{Subnet: "10.0.0.0/24", Status: "completed"}
+	_ = s.CreateScan(ctx, scan)
+	_ = s.LinkScanDevice(ctx, scan.ID, d.ID)
+
+	scans, total, err := s.GetDeviceScans(ctx, d.ID, 50, 0)
+	if err != nil {
+		t.Fatalf("GetDeviceScans: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if len(scans) != 1 {
+		t.Fatalf("scans = %d, want 1", len(scans))
+	}
+	if scans[0].Subnet != "10.0.0.0/24" {
+		t.Errorf("Subnet = %q, want 10.0.0.0/24", scans[0].Subnet)
+	}
+}
+
+func TestUpsertDevice_RecordsStatusChange(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create an online device.
+	d := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:06",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	// Manually set it offline so the next upsert detects a change.
+	_, _ = s.db.ExecContext(ctx, "UPDATE recon_devices SET status = 'offline' WHERE id = ?", d.ID)
+
+	// Upsert again -- status goes offline -> online.
+	d2 := &models.Device{
+		IPAddresses:     []string{"10.0.0.1"},
+		MACAddress:      "AA:BB:CC:DD:EE:06",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, d2)
+
+	changes, total, err := s.GetDeviceHistory(ctx, d.ID, 50, 0)
+	if err != nil {
+		t.Fatalf("GetDeviceHistory: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("total = %d, want 1", total)
+	}
+	if changes[0].OldStatus != "offline" {
+		t.Errorf("OldStatus = %q, want offline", changes[0].OldStatus)
+	}
+	if changes[0].NewStatus != "online" {
+		t.Errorf("NewStatus = %q, want online", changes[0].NewStatus)
+	}
+}
+
+func TestListDevices_FilterByType(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	server := &models.Device{
+		IPAddresses: []string{"10.0.0.1"}, MACAddress: "AA:BB:CC:00:00:01",
+		DeviceType: models.DeviceTypeServer, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	router := &models.Device{
+		IPAddresses: []string{"10.0.0.2"}, MACAddress: "AA:BB:CC:00:00:02",
+		DeviceType: models.DeviceTypeRouter, Status: models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, _ = s.UpsertDevice(ctx, server)
+	_, _ = s.UpsertDevice(ctx, router)
+
+	devices, total, err := s.ListDevices(ctx, ListDevicesOptions{DeviceType: "server"})
+	if err != nil {
+		t.Fatalf("ListDevices: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if len(devices) != 1 {
+		t.Fatalf("count = %d, want 1", len(devices))
+	}
+	if devices[0].DeviceType != models.DeviceTypeServer {
+		t.Errorf("DeviceType = %q, want server", devices[0].DeviceType)
+	}
+}

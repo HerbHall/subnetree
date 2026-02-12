@@ -36,10 +36,37 @@ type TopologyLink struct {
 
 // ListDevicesOptions controls pagination and filtering for device queries.
 type ListDevicesOptions struct {
-	Limit  int
-	Offset int
-	Status string
-	ScanID string
+	Limit      int
+	Offset     int
+	Status     string
+	DeviceType string
+	ScanID     string
+}
+
+// UpdateDeviceParams holds partial update fields for a device.
+type UpdateDeviceParams struct {
+	Notes        *string            `json:"notes,omitempty"`
+	Tags         *[]string          `json:"tags,omitempty"`
+	CustomFields *map[string]string `json:"custom_fields,omitempty"`
+	DeviceType   *string            `json:"device_type,omitempty"`
+}
+
+// DeviceStatusChange records a status transition for a device.
+type DeviceStatusChange struct {
+	ID        string    `json:"id"`
+	DeviceID  string    `json:"device_id"`
+	OldStatus string    `json:"old_status"`
+	NewStatus string    `json:"new_status"`
+	ChangedAt time.Time `json:"changed_at"`
+}
+
+// ScanSummary is a lightweight scan record for device scan history.
+type ScanSummary struct {
+	ID        string `json:"id"`
+	Subnet    string `json:"subnet"`
+	Status    string `json:"status"`
+	StartedAt string `json:"started_at"`
+	Total     int    `json:"total"`
 }
 
 // UpsertDevice inserts a new device or updates an existing one.
@@ -85,18 +112,27 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 			method = device.DiscoveryMethod
 		}
 
+		newStatus := string(models.DeviceStatusOnline)
+
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE recon_devices SET
 				ip_addresses = ?, mac_address = ?, manufacturer = ?,
 				status = ?, discovery_method = ?, last_seen = ?
 			WHERE id = ?`,
 			string(ipsJSON), mac, manufacturer,
-			string(models.DeviceStatusOnline), string(method), now,
+			newStatus, string(method), now,
 			existing.ID,
 		)
 		if err != nil {
 			return false, fmt.Errorf("update device: %w", err)
 		}
+
+		// Record status change if status actually changed.
+		oldStatus := string(existing.Status)
+		if oldStatus != newStatus {
+			s.recordStatusChange(ctx, existing.ID, oldStatus, newStatus)
+		}
+
 		device.ID = existing.ID
 		return false, nil
 	}
@@ -173,6 +209,10 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 	if opts.Status != "" {
 		where += " AND status = ?"
 		args = append(args, opts.Status)
+	}
+	if opts.DeviceType != "" {
+		where += " AND device_type = ?"
+		args = append(args, opts.DeviceType)
 	}
 	if opts.ScanID != "" {
 		where += " AND id IN (SELECT device_id FROM recon_scan_devices WHERE scan_id = ?)"
@@ -392,14 +432,28 @@ func (s *ReconStore) FindStaleDevices(ctx context.Context, threshold time.Time) 
 	return devices, rows.Err()
 }
 
-// MarkDeviceOffline sets a device's status to offline.
+// MarkDeviceOffline sets a device's status to offline and records the change.
 func (s *ReconStore) MarkDeviceOffline(ctx context.Context, deviceID string) error {
-	_, err := s.db.ExecContext(ctx,
+	// Read current status before updating.
+	var oldStatus string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT status FROM recon_devices WHERE id = ?`, deviceID,
+	).Scan(&oldStatus)
+	if err != nil {
+		return fmt.Errorf("read device status: %w", err)
+	}
+
+	newStatus := string(models.DeviceStatusOffline)
+	_, err = s.db.ExecContext(ctx,
 		`UPDATE recon_devices SET status = ? WHERE id = ?`,
-		string(models.DeviceStatusOffline), deviceID,
+		newStatus, deviceID,
 	)
 	if err != nil {
 		return fmt.Errorf("mark device offline: %w", err)
+	}
+
+	if oldStatus != newStatus {
+		s.recordStatusChange(ctx, deviceID, oldStatus, newStatus)
 	}
 	return nil
 }
@@ -446,4 +500,188 @@ func (s *ReconStore) scanDeviceRow(rows *sql.Rows) (*models.Device, error) {
 	_ = json.Unmarshal([]byte(tagsJSON), &d.Tags)
 	_ = json.Unmarshal([]byte(cfJSON), &d.CustomFields)
 	return &d, nil
+}
+
+// recordStatusChange inserts a row into recon_device_history.
+// Errors are silently ignored so callers are not disrupted by history failures.
+func (s *ReconStore) recordStatusChange(ctx context.Context, deviceID, oldStatus, newStatus string) {
+	_, _ = s.db.ExecContext(ctx, `
+		INSERT INTO recon_device_history (id, device_id, old_status, new_status, changed_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		uuid.New().String(), deviceID, oldStatus, newStatus, time.Now().UTC(),
+	)
+}
+
+// UpdateDevice applies a partial update to an existing device.
+func (s *ReconStore) UpdateDevice(ctx context.Context, id string, params UpdateDeviceParams) error {
+	// Verify the device exists.
+	existing, err := s.GetDevice(ctx, id)
+	if err != nil {
+		return fmt.Errorf("device not found: %w", err)
+	}
+
+	if params.Notes != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET notes = ? WHERE id = ?`, *params.Notes, id)
+		if err != nil {
+			return fmt.Errorf("update notes: %w", err)
+		}
+	}
+	if params.Tags != nil {
+		tagsJSON, _ := json.Marshal(*params.Tags)
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET tags = ? WHERE id = ?`, string(tagsJSON), id)
+		if err != nil {
+			return fmt.Errorf("update tags: %w", err)
+		}
+	}
+	if params.CustomFields != nil {
+		cfJSON, _ := json.Marshal(*params.CustomFields)
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET custom_fields = ? WHERE id = ?`, string(cfJSON), id)
+		if err != nil {
+			return fmt.Errorf("update custom_fields: %w", err)
+		}
+	}
+	if params.DeviceType != nil {
+		oldType := string(existing.DeviceType)
+		if *params.DeviceType != oldType {
+			_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET device_type = ? WHERE id = ?`, *params.DeviceType, id)
+			if err != nil {
+				return fmt.Errorf("update device_type: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// DeleteDevice removes a device by ID. Returns an error if the device does not exist.
+func (s *ReconStore) DeleteDevice(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM recon_devices WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete device: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// InsertManualDevice creates a new device record with discovery_method=manual.
+func (s *ReconStore) InsertManualDevice(ctx context.Context, device *models.Device) error {
+	now := time.Now().UTC()
+	if device.ID == "" {
+		device.ID = uuid.New().String()
+	}
+	if device.Status == "" {
+		device.Status = models.DeviceStatusUnknown
+	}
+	device.DiscoveryMethod = models.DiscoveryManual
+	device.FirstSeen = now
+	device.LastSeen = now
+
+	ipsJSON, _ := json.Marshal(device.IPAddresses)
+	if device.IPAddresses == nil {
+		ipsJSON = []byte("[]")
+	}
+	tagsJSON, _ := json.Marshal(device.Tags)
+	if device.Tags == nil {
+		tagsJSON = []byte("[]")
+	}
+	cfJSON, _ := json.Marshal(device.CustomFields)
+	if device.CustomFields == nil {
+		cfJSON = []byte("{}")
+	}
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO recon_devices (
+			id, hostname, ip_addresses, mac_address, manufacturer,
+			device_type, os, status, discovery_method, agent_id,
+			first_seen, last_seen, notes, tags, custom_fields
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
+		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
+		now, now, device.Notes, string(tagsJSON), string(cfJSON),
+	)
+	if err != nil {
+		return fmt.Errorf("insert manual device: %w", err)
+	}
+	return nil
+}
+
+// GetDeviceHistory returns paginated status change history for a device.
+func (s *ReconStore) GetDeviceHistory(ctx context.Context, deviceID string, limit, offset int) ([]DeviceStatusChange, int, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	var total int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM recon_device_history WHERE device_id = ?`, deviceID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count device history: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, device_id, old_status, new_status, changed_at
+		FROM recon_device_history
+		WHERE device_id = ?
+		ORDER BY changed_at DESC
+		LIMIT ? OFFSET ?`,
+		deviceID, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list device history: %w", err)
+	}
+	defer rows.Close()
+
+	var changes []DeviceStatusChange
+	for rows.Next() {
+		var c DeviceStatusChange
+		if err := rows.Scan(&c.ID, &c.DeviceID, &c.OldStatus, &c.NewStatus, &c.ChangedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan history row: %w", err)
+		}
+		changes = append(changes, c)
+	}
+	return changes, total, rows.Err()
+}
+
+// GetDeviceScans returns scans that discovered or updated a given device.
+func (s *ReconStore) GetDeviceScans(ctx context.Context, deviceID string, limit, offset int) ([]ScanSummary, int, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	var total int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM recon_scan_devices sd
+		 JOIN recon_scans sc ON sc.id = sd.scan_id
+		 WHERE sd.device_id = ?`, deviceID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count device scans: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT sc.id, sc.subnet, sc.status, sc.started_at, sc.total
+		FROM recon_scan_devices sd
+		JOIN recon_scans sc ON sc.id = sd.scan_id
+		WHERE sd.device_id = ?
+		ORDER BY sc.started_at DESC
+		LIMIT ? OFFSET ?`,
+		deviceID, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list device scans: %w", err)
+	}
+	defer rows.Close()
+
+	var scans []ScanSummary
+	for rows.Next() {
+		var sc ScanSummary
+		if err := rows.Scan(&sc.ID, &sc.Subnet, &sc.Status, &sc.StartedAt, &sc.Total); err != nil {
+			return nil, 0, fmt.Errorf("scan summary row: %w", err)
+		}
+		scans = append(scans, sc)
+	}
+	return scans, total, rows.Err()
 }

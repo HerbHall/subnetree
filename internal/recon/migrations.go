@@ -71,5 +71,29 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     2,
+			Description: "create recon_device_history table for status change tracking",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`CREATE TABLE IF NOT EXISTS recon_device_history (
+						id TEXT PRIMARY KEY,
+						device_id TEXT NOT NULL,
+						old_status TEXT NOT NULL,
+						new_status TEXT NOT NULL,
+						changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						FOREIGN KEY (device_id) REFERENCES recon_devices(id) ON DELETE CASCADE
+					)`,
+					`CREATE INDEX IF NOT EXISTS idx_recon_device_history_device ON recon_device_history(device_id)`,
+					`CREATE INDEX IF NOT EXISTS idx_recon_device_history_changed ON recon_device_history(changed_at)`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

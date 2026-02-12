@@ -484,6 +484,64 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_recon.CreateDeviceRequest:
+    properties:
+      device_type:
+        type: string
+      hostname:
+        type: string
+      ip_addresses:
+        items:
+          type: string
+        type: array
+      mac_address:
+        type: string
+      notes:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  internal_recon.DeviceListResponse:
+    properties:
+      devices:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  internal_recon.DeviceScanEvent:
+    properties:
+      completed_at:
+        type: string
+      devices_found:
+        type: integer
+      id:
+        type: string
+      started_at:
+        type: string
+      status:
+        type: string
+      target_cidr:
+        type: string
+    type: object
+  internal_recon.DeviceStatusEvent:
+    properties:
+      device_id:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
   internal_recon.ScanRequest:
     properties:
       subnet:
@@ -545,6 +603,21 @@ definitions:
         allOf:
         - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStatus'
         example: online
+    type: object
+  internal_recon.UpdateDeviceParams:
+    properties:
+      custom_fields:
+        additionalProperties:
+          type: string
+        type: object
+      device_type:
+        type: string
+      notes:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
     type: object
   internal_server.HealthResponse:
     properties:
@@ -1241,6 +1314,246 @@ paths:
       summary: Monitoring status
       tags:
       - pulse
+  /recon/devices:
+    get:
+      description: Returns a paginated list of devices with optional status and type
+        filters.
+      parameters:
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by device type
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.DeviceListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List devices
+      tags:
+      - recon
+    post:
+      consumes:
+      - application/json
+      description: Manually creates a new device record.
+      parameters:
+      - description: Device to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.CreateDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Create device
+      tags:
+      - recon
+  /recon/devices/{id}:
+    delete:
+      description: Permanently removes a device and its history.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Delete device
+      tags:
+      - recon
+    get:
+      description: Returns a single device by its ID.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get device
+      tags:
+      - recon
+    put:
+      consumes:
+      - application/json
+      description: Partially updates a device's notes, tags, custom fields, or device
+        type.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.UpdateDeviceParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Update device
+      tags:
+      - recon
+  /recon/devices/{id}/history:
+    get:
+      description: Returns the status change timeline for a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.DeviceStatusEvent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Device status history
+      tags:
+      - recon
+  /recon/devices/{id}/scans:
+    get:
+      description: Returns scans that discovered or updated the specified device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.DeviceScanEvent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Device scan history
+      tags:
+      - recon
   /recon/scan:
     post:
       consumes:
