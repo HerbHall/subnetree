@@ -851,7 +851,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of devices with optional status and type filters.",
+                "description": "Returns a paginated list of devices with optional status, type, category, and owner filters.",
                 "produces": [
                     "application/json"
                 ],
@@ -884,6 +884,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by device type",
                         "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by owner",
+                        "name": "owner",
                         "in": "query"
                     }
                 ],
@@ -935,6 +947,57 @@ const docTemplate = `{
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Device"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/devices/bulk": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Applies the same partial update to multiple devices by ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Bulk update devices",
+                "parameters": [
+                    {
+                        "description": "Device IDs and fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.BulkUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.BulkUpdateResponse"
                         }
                     },
                     "400": {
@@ -1205,6 +1268,46 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/inventory/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns aggregate device inventory statistics including counts by status, category, and type.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Inventory summary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Days since last seen to consider stale",
+                        "name": "stale_days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.InventorySummary"
                         }
                     },
                     "500": {
@@ -2264,6 +2367,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "agent-01"
                 },
+                "category": {
+                    "type": "string",
+                    "example": "production"
+                },
                 "custom_fields": {
                     "type": "object",
                     "additionalProperties": {
@@ -2308,6 +2415,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-01-15T10:30:00Z"
                 },
+                "location": {
+                    "type": "string",
+                    "example": "Rack A3, U12"
+                },
                 "mac_address": {
                     "type": "string",
                     "example": "00:1a:2b:3c:4d:5e"
@@ -2323,6 +2434,14 @@ const docTemplate = `{
                 "os": {
                     "type": "string",
                     "example": "Ubuntu 22.04"
+                },
+                "owner": {
+                    "type": "string",
+                    "example": "platform-team"
+                },
+                "primary_role": {
+                    "type": "string",
+                    "example": "web-server"
                 },
                 "status": {
                     "allOf": [
@@ -2701,6 +2820,28 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_recon.BulkUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "device_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updates": {
+                    "$ref": "#/definitions/internal_recon.UpdateDeviceParams"
+                }
+            }
+        },
+        "internal_recon.BulkUpdateResponse": {
+            "type": "object",
+            "properties": {
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_recon.CreateDeviceRequest": {
             "type": "object",
             "properties": {
@@ -2787,6 +2928,35 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_recon.InventorySummary": {
+            "type": "object",
+            "properties": {
+                "by_category": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "by_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "offline_count": {
+                    "type": "integer"
+                },
+                "online_count": {
+                    "type": "integer"
+                },
+                "stale_count": {
+                    "type": "integer"
+                },
+                "total_devices": {
+                    "type": "integer"
                 }
             }
         },
@@ -2887,6 +3057,9 @@ const docTemplate = `{
         "internal_recon.UpdateDeviceParams": {
             "type": "object",
             "properties": {
+                "category": {
+                    "type": "string"
+                },
                 "custom_fields": {
                     "type": "object",
                     "additionalProperties": {
@@ -2896,7 +3069,16 @@ const docTemplate = `{
                 "device_type": {
                     "type": "string"
                 },
+                "location": {
+                    "type": "string"
+                },
                 "notes": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "primary_role": {
                     "type": "string"
                 },
                 "tags": {

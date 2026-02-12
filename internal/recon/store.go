@@ -880,11 +880,10 @@ func (s *ReconStore) BulkUpdateDevices(ctx context.Context, ids []string, params
 		setArgs = append(setArgs, id)
 	}
 
-	query := "UPDATE recon_devices SET " +
+	query := "UPDATE recon_devices SET " + //nolint:gosec // G202: dynamic SQL uses parameterized placeholders only
 		strings.Join(setClauses, ", ") +
 		" WHERE id IN (" + strings.Join(placeholders, ", ") + ")"
 
-	//nolint:gosec // query uses parameterized placeholders only
 	res, err := tx.ExecContext(ctx, query, setArgs...)
 	if err != nil {
 		return 0, fmt.Errorf("bulk update: %w", err)

@@ -173,6 +173,9 @@ definitions:
       agent_id:
         example: agent-01
         type: string
+      category:
+        example: production
+        type: string
       custom_fields:
         additionalProperties:
           type: string
@@ -201,6 +204,9 @@ definitions:
       last_seen:
         example: "2026-01-15T10:30:00Z"
         type: string
+      location:
+        example: Rack A3, U12
+        type: string
       mac_address:
         example: 00:1a:2b:3c:4d:5e
         type: string
@@ -212,6 +218,12 @@ definitions:
         type: string
       os:
         example: Ubuntu 22.04
+        type: string
+      owner:
+        example: platform-team
+        type: string
+      primary_role:
+        example: web-server
         type: string
       status:
         allOf:
@@ -484,6 +496,20 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_recon.BulkUpdateRequest:
+    properties:
+      device_ids:
+        items:
+          type: string
+        type: array
+      updates:
+        $ref: '#/definitions/internal_recon.UpdateDeviceParams'
+    type: object
+  internal_recon.BulkUpdateResponse:
+    properties:
+      updated:
+        type: integer
+    type: object
   internal_recon.CreateDeviceRequest:
     properties:
       device_type:
@@ -541,6 +567,25 @@ definitions:
         type: string
       timestamp:
         type: string
+    type: object
+  internal_recon.InventorySummary:
+    properties:
+      by_category:
+        additionalProperties:
+          type: integer
+        type: object
+      by_type:
+        additionalProperties:
+          type: integer
+        type: object
+      offline_count:
+        type: integer
+      online_count:
+        type: integer
+      stale_count:
+        type: integer
+      total_devices:
+        type: integer
     type: object
   internal_recon.ScanRequest:
     properties:
@@ -606,13 +651,21 @@ definitions:
     type: object
   internal_recon.UpdateDeviceParams:
     properties:
+      category:
+        type: string
       custom_fields:
         additionalProperties:
           type: string
         type: object
       device_type:
         type: string
+      location:
+        type: string
       notes:
+        type: string
+      owner:
+        type: string
+      primary_role:
         type: string
       tags:
         items:
@@ -1316,8 +1369,8 @@ paths:
       - pulse
   /recon/devices:
     get:
-      description: Returns a paginated list of devices with optional status and type
-        filters.
+      description: Returns a paginated list of devices with optional status, type,
+        category, and owner filters.
       parameters:
       - default: 50
         description: Max results
@@ -1336,6 +1389,14 @@ paths:
       - description: Filter by device type
         in: query
         name: type
+        type: string
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      - description: Filter by owner
+        in: query
+        name: owner
         type: string
       produces:
       - application/json
@@ -1552,6 +1613,64 @@ paths:
       security:
       - BearerAuth: []
       summary: Device scan history
+      tags:
+      - recon
+  /recon/devices/bulk:
+    patch:
+      consumes:
+      - application/json
+      description: Applies the same partial update to multiple devices by ID.
+      parameters:
+      - description: Device IDs and fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.BulkUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.BulkUpdateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Bulk update devices
+      tags:
+      - recon
+  /recon/inventory/summary:
+    get:
+      description: Returns aggregate device inventory statistics including counts
+        by status, category, and type.
+      parameters:
+      - default: 30
+        description: Days since last seen to consider stale
+        in: query
+        name: stale_days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.InventorySummary'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Inventory summary
       tags:
       - recon
   /recon/scan:
