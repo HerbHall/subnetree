@@ -2,13 +2,16 @@
 
 ### Logo
 
-The SubNetree logo is an "N" constructed from network topology elements:
-- **4 primary nodes** at the letter's corners (green) -- network endpoints
-- **3 midpoint nodes** (amber/sage) -- monitored devices along connections
+The SubNetree logo is a **tree topology** built from network nodes, visually representing subnet hierarchy (the "Sub-Net-Tree" concept):
+
+- **Root server node** (bottom, large green) -- the vantage point, where monitoring originates
+- **Junction node** (center green) -- where the tree branches into subnets
+- **2 subnet gateway nodes** (green) -- branch points representing subnet boundaries
+- **4 leaf device nodes** (earth tone) -- monitored endpoints at the tree's canopy
 - **2 satellite nodes** (sage) -- discovered peripheral devices
-- **Connection lines** forming the N shape -- network links and topology
+- **Branch connection lines** (green trunk, earth-tone leaves) -- network topology links
+- **Subtle discovery links** (dashed) -- cross-subnet connections and scan paths
 - **Outer pulse ring** (dashed) -- monitoring/discovery radar sweep
-- **Center node with glow** -- the vantage point (the server)
 
 Logo files: `assets/brand/logo.svg` (dark background), `assets/brand/logo-light.svg` (light background)
 Favicon: `web/public/favicon.svg`

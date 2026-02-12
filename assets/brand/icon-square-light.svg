@@ -1,0 +1,60 @@
+<svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- SubNetree square app icon (light) -->
+  <rect width="256" height="256" rx="32" fill="#f5f5f0" />
+
+  <!-- Outer monitoring pulse ring -->
+  <circle cx="128" cy="128" r="114" stroke="rgba(22,101,52,0.10)" stroke-width="2" fill="none" />
+  <circle cx="128" cy="128" r="102" stroke="rgba(22,101,52,0.06)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" />
+
+  <!-- Trunk: root to junction -->
+  <line x1="128" y1="200" x2="128" y2="132" stroke="rgba(22,101,52,0.40)" stroke-width="5" />
+
+  <!-- Main branches: junction to subnet nodes -->
+  <line x1="128" y1="132" x2="72" y2="88" stroke="rgba(22,101,52,0.35)" stroke-width="4.5" />
+  <line x1="128" y1="132" x2="184" y2="88" stroke="rgba(22,101,52,0.35)" stroke-width="4.5" />
+
+  <!-- Leaf branches: subnet nodes to device leaves -->
+  <line x1="72" y1="88" x2="44" y2="56" stroke="rgba(146,116,78,0.40)" stroke-width="3.5" />
+  <line x1="72" y1="88" x2="100" y2="56" stroke="rgba(146,116,78,0.40)" stroke-width="3.5" />
+  <line x1="184" y1="88" x2="156" y2="56" stroke="rgba(146,116,78,0.40)" stroke-width="3.5" />
+  <line x1="184" y1="88" x2="212" y2="56" stroke="rgba(146,116,78,0.40)" stroke-width="3.5" />
+
+  <!-- Discovery links -->
+  <line x1="100" y1="56" x2="156" y2="56" stroke="rgba(22,101,52,0.07)" stroke-width="2" />
+  <line x1="72" y1="88" x2="184" y2="88" stroke="rgba(22,101,52,0.06)" stroke-width="2" stroke-dasharray="6 6" />
+
+  <!-- Satellite discovery lines -->
+  <line x1="128" y1="132" x2="96" y2="156" stroke="rgba(100,116,80,0.15)" stroke-width="2" />
+  <line x1="128" y1="132" x2="164" y2="152" stroke="rgba(100,116,80,0.15)" stroke-width="2" />
+
+  <!-- Leaf device nodes (earth tone) -->
+  <circle cx="44" cy="56" r="10" fill="#f5f5f0" stroke="#92734e" stroke-width="3" />
+  <circle cx="44" cy="56" r="4.5" fill="#92734e" />
+  <circle cx="100" cy="56" r="10" fill="#f5f5f0" stroke="#92734e" stroke-width="3" />
+  <circle cx="100" cy="56" r="4.5" fill="#92734e" />
+  <circle cx="156" cy="56" r="10" fill="#f5f5f0" stroke="#92734e" stroke-width="3" />
+  <circle cx="156" cy="56" r="4.5" fill="#92734e" />
+  <circle cx="212" cy="56" r="10" fill="#f5f5f0" stroke="#92734e" stroke-width="3" />
+  <circle cx="212" cy="56" r="4.5" fill="#92734e" />
+
+  <!-- Subnet gateway nodes (green) -->
+  <circle cx="72" cy="88" r="13" fill="#f5f5f0" stroke="#16a34a" stroke-width="4" />
+  <circle cx="72" cy="88" r="6" fill="#16a34a" />
+  <circle cx="184" cy="88" r="13" fill="#f5f5f0" stroke="#16a34a" stroke-width="4" />
+  <circle cx="184" cy="88" r="6" fill="#16a34a" />
+
+  <!-- Junction node -->
+  <circle cx="128" cy="132" r="15" fill="#f5f5f0" stroke="#16a34a" stroke-width="4" />
+  <circle cx="128" cy="132" r="7.5" fill="#16a34a" />
+
+  <!-- Satellite nodes (sage) -->
+  <circle cx="96" cy="156" r="7" fill="#f5f5f0" stroke="rgba(100,116,80,0.5)" stroke-width="2.5" />
+  <circle cx="96" cy="156" r="3" fill="#6b7a56" />
+  <circle cx="164" cy="152" r="7" fill="#f5f5f0" stroke="rgba(100,116,80,0.5)" stroke-width="2.5" />
+  <circle cx="164" cy="152" r="3" fill="#6b7a56" />
+
+  <!-- Root server node (the vantage point) -->
+  <circle cx="128" cy="200" r="21" fill="none" stroke="rgba(22,101,52,0.10)" stroke-width="2" />
+  <circle cx="128" cy="200" r="18" fill="#f5f5f0" stroke="#16a34a" stroke-width="5" />
+  <circle cx="128" cy="200" r="9" fill="#16a34a" />
+</svg>

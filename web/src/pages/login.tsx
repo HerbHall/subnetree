@@ -57,7 +57,8 @@ export function LoginPage() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="items-center">
+        <img src="/favicon.svg" alt="SubNetree" className="mb-2 h-12 w-12" />
         <CardTitle>Sign in to SubNetree</CardTitle>
         <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
       </CardHeader>
