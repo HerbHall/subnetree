@@ -26,9 +26,9 @@ type DiffLine struct {
 }
 
 // ComputeDiff computes a line-based diff between old and new content using LCS.
-func ComputeDiff(old, new string) []DiffLine {
+func ComputeDiff(old, updated string) []DiffLine {
 	oldLines := splitLines(old)
-	newLines := splitLines(new)
+	newLines := splitLines(updated)
 
 	lcs := computeLCS(oldLines, newLines)
 
@@ -102,18 +102,19 @@ func FormatUnifiedDiff(lines []DiffLine, contextLines int) string {
 	// Identify which lines to include (changed lines + surrounding context).
 	include := make([]bool, len(lines))
 	for i, line := range lines {
-		if line.Type != DiffContext {
-			lo := i - contextLines
-			if lo < 0 {
-				lo = 0
-			}
-			hi := i + contextLines
-			if hi >= len(lines) {
-				hi = len(lines) - 1
-			}
-			for j := lo; j <= hi; j++ {
-				include[j] = true
-			}
+		if line.Type == DiffContext {
+			continue
+		}
+		lo := i - contextLines
+		if lo < 0 {
+			lo = 0
+		}
+		hi := i + contextLines
+		if hi >= len(lines) {
+			hi = len(lines) - 1
+		}
+		for j := lo; j <= hi; j++ {
+			include[j] = true
 		}
 	}
 
@@ -249,11 +250,12 @@ func computeLCS(a, b []string) []string {
 
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {
-			if a[i-1] == b[j-1] {
+			switch {
+			case a[i-1] == b[j-1]:
 				table[i][j] = table[i-1][j-1] + 1
-			} else if table[i-1][j] >= table[i][j-1] {
+			case table[i-1][j] >= table[i][j-1]:
 				table[i][j] = table[i-1][j]
-			} else {
+			default:
 				table[i][j] = table[i][j-1]
 			}
 		}
@@ -269,14 +271,15 @@ func computeLCS(a, b []string) []string {
 	i, j := m, n
 	idx := lcsLen - 1
 	for i > 0 && j > 0 {
-		if a[i-1] == b[j-1] {
+		switch {
+		case a[i-1] == b[j-1]:
 			result[idx] = a[i-1]
 			idx--
 			i--
 			j--
-		} else if table[i-1][j] >= table[i][j-1] {
+		case table[i-1][j] >= table[i][j-1]:
 			i--
-		} else {
+		default:
 			j--
 		}
 	}

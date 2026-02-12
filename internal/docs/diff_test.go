@@ -111,9 +111,9 @@ func TestComputeDiff(t *testing.T) {
 
 func TestComputeDiff_LineNumbers(t *testing.T) {
 	old := "aaa\nbbb\nccc"
-	new := "aaa\nBBB\nccc"
+	updated := "aaa\nBBB\nccc"
 
-	lines := ComputeDiff(old, new)
+	lines := ComputeDiff(old, updated)
 
 	// Expect: context(aaa), remove(bbb), add(BBB), context(ccc)
 	if len(lines) != 4 {
