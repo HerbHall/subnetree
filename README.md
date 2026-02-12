@@ -45,6 +45,20 @@ HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 
 See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
 
+## Screenshots
+
+### Dashboard Overview
+
+![Dashboard showing device counts, recent scans, and network status](docs/images/dashboard-overview.png)
+
+### Device Discovery
+
+![Discovered network devices with search, filtering, and status indicators](docs/images/device-list.png)
+
+### Network Topology
+
+![Interactive network topology visualization with grid layout](docs/images/topology-visualization.png)
+
 ## Quick Start (Docker)
 
 ```console
