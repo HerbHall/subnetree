@@ -1,0 +1,74 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Sage & Berry",
+  "description": "Warm cream and sage with berry red accents for a natural look.",
+  "base_mode": "light",
+  "layers": ["colors", "effects"],
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#F7F2E8",
+      "bg-surface": "#F2E8CF",
+      "bg-card": "#FFFFFF",
+      "bg-elevated": "#FFFFFF",
+      "bg-hover": "rgba(106, 153, 78, 0.04)",
+      "bg-active": "rgba(106, 153, 78, 0.08)",
+      "bg-selected": "rgba(106, 153, 78, 0.06)"
+    },
+    "text": {
+      "text-primary": "#2A3B2D",
+      "text-secondary": "#5A7A4A",
+      "text-muted": "#8AA87A",
+      "text-accent": "#386641",
+      "text-warm": "#8B6914",
+      "text-inverse": "#F7F2E8"
+    },
+    "borders": {
+      "border-subtle": "rgba(106, 153, 78, 0.06)",
+      "border-default": "rgba(106, 153, 78, 0.15)",
+      "border-strong": "rgba(106, 153, 78, 0.25)",
+      "border-focus": "#6A994E"
+    },
+    "buttons": {
+      "btn-primary-bg": "#386641",
+      "btn-primary-hover": "#2D5235",
+      "btn-primary-text": "#FFFFFF",
+      "btn-danger-bg": "#BC4749",
+      "btn-danger-hover": "#A03638",
+      "btn-danger-text": "#FFFFFF"
+    },
+    "inputs": {
+      "input-bg": "#FFFFFF",
+      "input-border": "rgba(106, 153, 78, 0.15)",
+      "input-focus": "#6A994E",
+      "input-text": "#2A3B2D",
+      "input-placeholder": "#8AA87A"
+    },
+    "sidebar": {
+      "sidebar-bg": "#F2E8CF",
+      "sidebar-item": "#5A7A4A",
+      "sidebar-active": "#386641",
+      "sidebar-active-bg": "rgba(56, 102, 65, 0.08)"
+    },
+    "status": {
+      "status-online": "#6A994E",
+      "status-degraded": "#D4A017",
+      "status-offline": "#BC4749",
+      "status-unknown": "#8AA87A"
+    },
+    "charts": {
+      "chart-green": "#6A994E",
+      "chart-amber": "#D4A017",
+      "chart-sage": "#8AA87A",
+      "chart-red": "#BC4749",
+      "chart-blue": "#4A90D9",
+      "chart-grid": "rgba(106, 153, 78, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.05)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.07)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.1)",
+      "shadow-glow": "0 0 20px rgba(106, 153, 78, 0.08)"
+    }
+  }
+}

@@ -262,6 +262,29 @@ export const TOKEN_CATEGORIES: Record<string, { label: string; vars: string[] }>
 }
 
 /**
+ * Maps each theme layer to the token categories it contains.
+ * Used for layer badges and grouping in the editor.
+ */
+export const LAYER_CATEGORIES: Record<string, { label: string; categories: string[] }> = {
+  colors: {
+    label: 'Colors',
+    categories: ['backgrounds', 'text', 'borders', 'buttons', 'inputs', 'sidebar', 'status', 'charts'],
+  },
+  typography: {
+    label: 'Typography',
+    categories: ['typography'],
+  },
+  shape: {
+    label: 'Shape',
+    categories: ['spacing'],
+  },
+  effects: {
+    label: 'Effects',
+    categories: ['effects'],
+  },
+}
+
+/**
  * Flatten a ThemeTokens object into a flat CSS variable map.
  * { backgrounds: { 'bg-root': '#fff' } } -> { '--nv-bg-root': '#fff' }
  */

@@ -1,0 +1,74 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Navy Gold",
+  "description": "Deep navy with bright gold accents for high contrast monitoring.",
+  "base_mode": "dark",
+  "layers": ["colors", "effects"],
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#000814",
+      "bg-surface": "#001126",
+      "bg-card": "#001D3D",
+      "bg-elevated": "#002952",
+      "bg-hover": "rgba(255, 195, 0, 0.06)",
+      "bg-active": "rgba(255, 195, 0, 0.10)",
+      "bg-selected": "rgba(255, 195, 0, 0.08)"
+    },
+    "text": {
+      "text-primary": "#F0EDE5",
+      "text-secondary": "#8BA4C4",
+      "text-muted": "#4A6A8A",
+      "text-accent": "#FFC300",
+      "text-warm": "#FFD60A",
+      "text-inverse": "#000814"
+    },
+    "borders": {
+      "border-subtle": "rgba(255, 195, 0, 0.08)",
+      "border-default": "rgba(255, 195, 0, 0.15)",
+      "border-strong": "rgba(255, 195, 0, 0.25)",
+      "border-focus": "#FFC300"
+    },
+    "buttons": {
+      "btn-primary-bg": "#FFC300",
+      "btn-primary-hover": "#FFD60A",
+      "btn-primary-text": "#000814",
+      "btn-danger-bg": "#991b1b",
+      "btn-danger-hover": "#b91c1c",
+      "btn-danger-text": "#fecaca"
+    },
+    "inputs": {
+      "input-bg": "#000814",
+      "input-border": "rgba(255, 195, 0, 0.15)",
+      "input-focus": "#FFC300",
+      "input-text": "#F0EDE5",
+      "input-placeholder": "#4A6A8A"
+    },
+    "sidebar": {
+      "sidebar-bg": "#000814",
+      "sidebar-item": "#8BA4C4",
+      "sidebar-active": "#FFC300",
+      "sidebar-active-bg": "rgba(255, 195, 0, 0.10)"
+    },
+    "status": {
+      "status-online": "#4ade80",
+      "status-degraded": "#FFC300",
+      "status-offline": "#ef4444",
+      "status-unknown": "#4A6A8A"
+    },
+    "charts": {
+      "chart-green": "#4ade80",
+      "chart-amber": "#FFC300",
+      "chart-sage": "#8BA4C4",
+      "chart-red": "#ef4444",
+      "chart-blue": "#003566",
+      "chart-grid": "rgba(255, 195, 0, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.5)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.45)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.5)",
+      "shadow-glow": "0 0 20px rgba(255, 195, 0, 0.12)"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Navy Copper",
+  "description": "Dark navy theme with copper accents and a natural green palette.",
+  "base_mode": "dark",
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#0D2238",
+      "bg-surface": "#122E4E",
+      "bg-card": "#1A4674",
+      "bg-elevated": "#1E5080",
+      "bg-hover": "rgba(98, 203, 100, 0.06)",
+      "bg-active": "rgba(98, 203, 100, 0.10)",
+      "bg-selected": "rgba(98, 203, 100, 0.08)"
+    },
+    "text": {
+      "text-primary": "#E8EDF2",
+      "text-secondary": "#8BA87A",
+      "text-muted": "#658646",
+      "text-accent": "#62CB64",
+      "text-warm": "#D59958",
+      "text-inverse": "#0D2238"
+    },
+    "borders": {
+      "border-subtle": "rgba(98, 203, 100, 0.08)",
+      "border-default": "rgba(98, 203, 100, 0.15)",
+      "border-strong": "rgba(98, 203, 100, 0.25)",
+      "border-focus": "#62CB64"
+    },
+    "buttons": {
+      "btn-primary-bg": "#62CB64",
+      "btn-primary-hover": "#78D67A",
+      "btn-primary-text": "#0D2238",
+      "btn-danger-bg": "#991b1b",
+      "btn-danger-hover": "#b91c1c",
+      "btn-danger-text": "#fecaca"
+    },
+    "inputs": {
+      "input-bg": "#0D2238",
+      "input-border": "rgba(98, 203, 100, 0.15)",
+      "input-focus": "#62CB64",
+      "input-text": "#E8EDF2",
+      "input-placeholder": "#658646"
+    },
+    "sidebar": {
+      "sidebar-bg": "#0D2238",
+      "sidebar-item": "#8BA87A",
+      "sidebar-active": "#62CB64",
+      "sidebar-active-bg": "rgba(98, 203, 100, 0.10)"
+    },
+    "status": {
+      "status-online": "#62CB64",
+      "status-degraded": "#D59958",
+      "status-offline": "#ef4444",
+      "status-unknown": "#658646"
+    },
+    "charts": {
+      "chart-green": "#62CB64",
+      "chart-amber": "#D59958",
+      "chart-sage": "#658646",
+      "chart-red": "#ef4444",
+      "chart-blue": "#4A90D9",
+      "chart-grid": "rgba(98, 203, 100, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.35)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.4)",
+      "shadow-glow": "0 0 20px rgba(98, 203, 100, 0.12)"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Nordic",
+  "description": "Cool slate grays with bold red accents for alert-focused monitoring.",
+  "base_mode": "dark",
+  "layers": ["colors", "effects"],
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#1E1F30",
+      "bg-surface": "#242538",
+      "bg-card": "#2B2D42",
+      "bg-elevated": "#33354E",
+      "bg-hover": "rgba(141, 153, 174, 0.06)",
+      "bg-active": "rgba(141, 153, 174, 0.10)",
+      "bg-selected": "rgba(141, 153, 174, 0.08)"
+    },
+    "text": {
+      "text-primary": "#EDF2F4",
+      "text-secondary": "#8D99AE",
+      "text-muted": "#5A6278",
+      "text-accent": "#EF233C",
+      "text-warm": "#F8A825",
+      "text-inverse": "#1E1F30"
+    },
+    "borders": {
+      "border-subtle": "rgba(141, 153, 174, 0.08)",
+      "border-default": "rgba(141, 153, 174, 0.15)",
+      "border-strong": "rgba(141, 153, 174, 0.25)",
+      "border-focus": "#EF233C"
+    },
+    "buttons": {
+      "btn-primary-bg": "#EF233C",
+      "btn-primary-hover": "#F5405A",
+      "btn-primary-text": "#FFFFFF",
+      "btn-danger-bg": "#D90429",
+      "btn-danger-hover": "#EF233C",
+      "btn-danger-text": "#FDE8EA"
+    },
+    "inputs": {
+      "input-bg": "#1E1F30",
+      "input-border": "rgba(141, 153, 174, 0.15)",
+      "input-focus": "#EF233C",
+      "input-text": "#EDF2F4",
+      "input-placeholder": "#5A6278"
+    },
+    "sidebar": {
+      "sidebar-bg": "#1E1F30",
+      "sidebar-item": "#8D99AE",
+      "sidebar-active": "#EF233C",
+      "sidebar-active-bg": "rgba(239, 35, 60, 0.10)"
+    },
+    "status": {
+      "status-online": "#4ade80",
+      "status-degraded": "#F8A825",
+      "status-offline": "#D90429",
+      "status-unknown": "#8D99AE"
+    },
+    "charts": {
+      "chart-green": "#4ade80",
+      "chart-amber": "#F8A825",
+      "chart-sage": "#8D99AE",
+      "chart-red": "#D90429",
+      "chart-blue": "#60a5fa",
+      "chart-grid": "rgba(141, 153, 174, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.35)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.4)",
+      "shadow-glow": "0 0 20px rgba(239, 35, 60, 0.12)"
+    }
+  }
+}

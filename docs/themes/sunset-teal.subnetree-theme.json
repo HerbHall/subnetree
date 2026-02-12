@@ -1,0 +1,74 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Sunset Teal",
+  "description": "Dark teal backgrounds with warm gold and coral accents.",
+  "base_mode": "dark",
+  "layers": ["colors", "effects"],
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#1A2F36",
+      "bg-surface": "#1F3840",
+      "bg-card": "#264653",
+      "bg-elevated": "#2D5260",
+      "bg-hover": "rgba(42, 157, 143, 0.06)",
+      "bg-active": "rgba(42, 157, 143, 0.10)",
+      "bg-selected": "rgba(42, 157, 143, 0.08)"
+    },
+    "text": {
+      "text-primary": "#F0EDE5",
+      "text-secondary": "#A8C4BE",
+      "text-muted": "#5E8A82",
+      "text-accent": "#2A9D8F",
+      "text-warm": "#E9C46A",
+      "text-inverse": "#1A2F36"
+    },
+    "borders": {
+      "border-subtle": "rgba(42, 157, 143, 0.08)",
+      "border-default": "rgba(42, 157, 143, 0.15)",
+      "border-strong": "rgba(42, 157, 143, 0.25)",
+      "border-focus": "#2A9D8F"
+    },
+    "buttons": {
+      "btn-primary-bg": "#2A9D8F",
+      "btn-primary-hover": "#35B4A5",
+      "btn-primary-text": "#1A2F36",
+      "btn-danger-bg": "#C84B31",
+      "btn-danger-hover": "#E76F51",
+      "btn-danger-text": "#FDE8E0"
+    },
+    "inputs": {
+      "input-bg": "#1A2F36",
+      "input-border": "rgba(42, 157, 143, 0.15)",
+      "input-focus": "#2A9D8F",
+      "input-text": "#F0EDE5",
+      "input-placeholder": "#5E8A82"
+    },
+    "sidebar": {
+      "sidebar-bg": "#1A2F36",
+      "sidebar-item": "#A8C4BE",
+      "sidebar-active": "#2A9D8F",
+      "sidebar-active-bg": "rgba(42, 157, 143, 0.10)"
+    },
+    "status": {
+      "status-online": "#2A9D8F",
+      "status-degraded": "#E9C46A",
+      "status-offline": "#E76F51",
+      "status-unknown": "#5E8A82"
+    },
+    "charts": {
+      "chart-green": "#2A9D8F",
+      "chart-amber": "#E9C46A",
+      "chart-sage": "#A8C4BE",
+      "chart-red": "#E76F51",
+      "chart-blue": "#4A90D9",
+      "chart-grid": "rgba(42, 157, 143, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.35)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.4)",
+      "shadow-glow": "0 0 20px rgba(42, 157, 143, 0.12)"
+    }
+  }
+}

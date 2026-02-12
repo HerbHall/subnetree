@@ -350,6 +350,100 @@ func TestHandleSetActiveTheme(t *testing.T) {
 	}
 }
 
+func TestHandleListThemes_LayerFilter(t *testing.T) {
+	_, mux := setupHandlerEnv(t)
+
+	// List all themes to seed built-ins.
+	w := doRequest(mux, "GET", "/api/v1/settings/themes", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("ListThemes status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Filter by typography layer.
+	w2 := doRequest(mux, "GET", "/api/v1/settings/themes?layer=typography", nil)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("ListThemes?layer=typography status = %d, want %d", w2.Code, http.StatusOK)
+	}
+
+	var typoThemes []settings.ThemeDefinition
+	if err := json.NewDecoder(w2.Body).Decode(&typoThemes); err != nil {
+		t.Fatalf("Decode response: %v", err)
+	}
+
+	// Should include Forest Dark/Light (all layers) + 3 typography presets = at least 5.
+	if len(typoThemes) < 5 {
+		t.Errorf("expected at least 5 themes with typography layer, got %d", len(typoThemes))
+	}
+
+	// Filter by shape layer.
+	w3 := doRequest(mux, "GET", "/api/v1/settings/themes?layer=shape", nil)
+	if w3.Code != http.StatusOK {
+		t.Fatalf("ListThemes?layer=shape status = %d, want %d", w3.Code, http.StatusOK)
+	}
+
+	var shapeThemes []settings.ThemeDefinition
+	if err := json.NewDecoder(w3.Body).Decode(&shapeThemes); err != nil {
+		t.Fatalf("Decode response: %v", err)
+	}
+
+	// Should include Forest Dark/Light (all layers) + 3 shape presets = at least 5.
+	if len(shapeThemes) < 5 {
+		t.Errorf("expected at least 5 themes with shape layer, got %d", len(shapeThemes))
+	}
+}
+
+func TestHandleListThemes_BuiltInLayers(t *testing.T) {
+	_, mux := setupHandlerEnv(t)
+
+	w := doRequest(mux, "GET", "/api/v1/settings/themes", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("ListThemes status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var themes []settings.ThemeDefinition
+	if err := json.NewDecoder(w.Body).Decode(&themes); err != nil {
+		t.Fatalf("Decode response: %v", err)
+	}
+
+	// We should have at least 19 built-in themes (5 full + 5 palette + 3 typo + 3 shape + 3 effects).
+	if len(themes) < 19 {
+		t.Errorf("expected at least 19 built-in themes, got %d", len(themes))
+	}
+
+	// Verify specific themes have correct layers.
+	themeMap := make(map[string]settings.ThemeDefinition)
+	for i := range themes {
+		themeMap[themes[i].ID] = themes[i]
+	}
+
+	// Forest Dark should have all 4 layers.
+	if fd, ok := themeMap["builtin-forest-dark"]; ok {
+		if len(fd.Layers) != 4 {
+			t.Errorf("Forest Dark layers = %d, want 4", len(fd.Layers))
+		}
+	} else {
+		t.Error("missing builtin-forest-dark")
+	}
+
+	// Typography preset should have exactly 1 layer.
+	if ts, ok := themeMap["builtin-type-system"]; ok {
+		if len(ts.Layers) != 1 {
+			t.Errorf("System Default typography preset layers = %d, want 1", len(ts.Layers))
+		}
+	} else {
+		t.Error("missing builtin-type-system")
+	}
+
+	// Navy Copper should have colors + effects = 2 layers.
+	if nc, ok := themeMap["builtin-navy-copper"]; ok {
+		if len(nc.Layers) != 2 {
+			t.Errorf("Navy Copper layers = %d, want 2", len(nc.Layers))
+		}
+	} else {
+		t.Error("missing builtin-navy-copper")
+	}
+}
+
 func TestHandleCreateTheme_Validation(t *testing.T) {
 	_, mux := setupHandlerEnv(t)
 

@@ -19,6 +19,7 @@ import {
 import { useThemeStore } from '@/stores/theme'
 import {
   TOKEN_CATEGORIES,
+  LAYER_CATEGORIES,
   getDefault,
   flattenTokens,
   unflattenTokens,
@@ -222,67 +223,76 @@ export function ThemeEditor({ theme, onClose }: ThemeEditorProps) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Left: Token editors */}
         <div className="space-y-2">
-          {Object.entries(TOKEN_CATEGORIES).map(([catKey, catDef]) => {
-            const isExpanded = expandedSections.has(catKey)
-            const catOverrides = categoryValues[catKey]?.filter((t) => t.isOverridden).length ?? 0
-            const isColor = COLOR_CATEGORIES.includes(catKey)
+          {Object.entries(LAYER_CATEGORIES).map(([layerKey, layerDef]) => (
+            <div key={layerKey} className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                {layerDef.label}
+              </h4>
+              {layerDef.categories.map((catKey) => {
+                const catDef = TOKEN_CATEGORIES[catKey]
+                if (!catDef) return null
+                const isExpanded = expandedSections.has(catKey)
+                const catOverrides = categoryValues[catKey]?.filter((t) => t.isOverridden).length ?? 0
+                const isColor = COLOR_CATEGORIES.includes(catKey)
 
-            return (
-              <Card key={catKey}>
-                <button
-                  type="button"
-                  onClick={() => toggleSection(catKey)}
-                  className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="text-sm font-medium">{catDef.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({catDef.vars.length})
-                    </span>
-                  </div>
-                  {catOverrides > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                      {catOverrides} changed
-                    </span>
-                  )}
-                </button>
-                {isExpanded && (
-                  <CardContent className="pt-0 pb-3 px-3">
-                    <div className="space-y-0.5">
-                      {categoryValues[catKey]?.map((token) =>
-                        isColor ? (
-                          <ColorPicker
-                            key={token.varName}
-                            varName={token.varName}
-                            value={token.value}
-                            defaultValue={token.defaultValue}
-                            onChange={(v) => handleTokenChange(token.varName, v)}
-                            onReset={() => handleReset(token.varName)}
-                            isOverridden={token.isOverridden}
-                          />
+                return (
+                  <Card key={catKey}>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(catKey)}
+                      className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/30 transition-colors rounded-t-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <TextValueEditor
-                            key={token.varName}
-                            varName={token.varName}
-                            value={token.value}
-                            defaultValue={token.defaultValue}
-                            onChange={(v) => handleTokenChange(token.varName, v)}
-                            onReset={() => handleReset(token.varName)}
-                            isOverridden={token.isOverridden}
-                          />
-                        ),
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm font-medium">{catDef.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({catDef.vars.length})
+                        </span>
+                      </div>
+                      {catOverrides > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                          {catOverrides} changed
+                        </span>
                       )}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            )
-          })}
+                    </button>
+                    {isExpanded && (
+                      <CardContent className="pt-0 pb-3 px-3">
+                        <div className="space-y-0.5">
+                          {categoryValues[catKey]?.map((token) =>
+                            isColor ? (
+                              <ColorPicker
+                                key={token.varName}
+                                varName={token.varName}
+                                value={token.value}
+                                defaultValue={token.defaultValue}
+                                onChange={(v) => handleTokenChange(token.varName, v)}
+                                onReset={() => handleReset(token.varName)}
+                                isOverridden={token.isOverridden}
+                              />
+                            ) : (
+                              <TextValueEditor
+                                key={token.varName}
+                                varName={token.varName}
+                                value={token.value}
+                                defaultValue={token.defaultValue}
+                                onChange={(v) => handleTokenChange(token.varName, v)}
+                                onReset={() => handleReset(token.varName)}
+                                isOverridden={token.isOverridden}
+                              />
+                            ),
+                          )}
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Right: Live preview */}

@@ -1,0 +1,74 @@
+{
+  "subnetree_theme": true,
+  "version": 1,
+  "name": "Ocean Blue",
+  "description": "Clean light theme with an ocean-inspired blue gradient palette.",
+  "base_mode": "light",
+  "layers": ["colors", "effects"],
+  "tokens": {
+    "backgrounds": {
+      "bg-root": "#F0F9FC",
+      "bg-surface": "#E4F4F9",
+      "bg-card": "#FFFFFF",
+      "bg-elevated": "#FFFFFF",
+      "bg-hover": "rgba(0, 119, 182, 0.04)",
+      "bg-active": "rgba(0, 119, 182, 0.08)",
+      "bg-selected": "rgba(0, 119, 182, 0.06)"
+    },
+    "text": {
+      "text-primary": "#03045E",
+      "text-secondary": "#3A6B8C",
+      "text-muted": "#7BADC4",
+      "text-accent": "#0077B6",
+      "text-warm": "#B8860B",
+      "text-inverse": "#F0F9FC"
+    },
+    "borders": {
+      "border-subtle": "rgba(0, 119, 182, 0.06)",
+      "border-default": "rgba(0, 119, 182, 0.15)",
+      "border-strong": "rgba(0, 119, 182, 0.25)",
+      "border-focus": "#0077B6"
+    },
+    "buttons": {
+      "btn-primary-bg": "#0077B6",
+      "btn-primary-hover": "#005F8F",
+      "btn-primary-text": "#FFFFFF",
+      "btn-danger-bg": "#cf222e",
+      "btn-danger-hover": "#a40e26",
+      "btn-danger-text": "#FFFFFF"
+    },
+    "inputs": {
+      "input-bg": "#FFFFFF",
+      "input-border": "rgba(0, 119, 182, 0.15)",
+      "input-focus": "#0077B6",
+      "input-text": "#03045E",
+      "input-placeholder": "#7BADC4"
+    },
+    "sidebar": {
+      "sidebar-bg": "#E4F4F9",
+      "sidebar-item": "#3A6B8C",
+      "sidebar-active": "#0077B6",
+      "sidebar-active-bg": "rgba(0, 119, 182, 0.08)"
+    },
+    "status": {
+      "status-online": "#1a7f37",
+      "status-degraded": "#B8860B",
+      "status-offline": "#cf222e",
+      "status-unknown": "#7BADC4"
+    },
+    "charts": {
+      "chart-green": "#1a7f37",
+      "chart-amber": "#B8860B",
+      "chart-sage": "#7BADC4",
+      "chart-red": "#cf222e",
+      "chart-blue": "#0077B6",
+      "chart-grid": "rgba(0, 119, 182, 0.06)"
+    },
+    "effects": {
+      "shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.05)",
+      "shadow-md": "0 4px 6px rgba(0, 0, 0, 0.07)",
+      "shadow-lg": "0 10px 25px rgba(0, 0, 0, 0.1)",
+      "shadow-glow": "0 0 20px rgba(0, 119, 182, 0.08)"
+    }
+  }
+}

@@ -287,6 +287,18 @@ function ThemeCard({
               Active
             </span>
           )}
+          {theme.layers && theme.layers.length > 0 && theme.layers.length < 4 && (
+            <>
+              {theme.layers.map((layer) => (
+                <span
+                  key={layer}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 shrink-0 capitalize"
+                >
+                  {layer}
+                </span>
+              ))}
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-muted-foreground capitalize">

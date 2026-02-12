@@ -2522,7 +2522,7 @@ const docTemplate = `{
             }
         },
         "internal_settings.ThemeDefinition": {
-            "description": "A complete theme with metadata and CSS token overrides.",
+            "description": "A theme with metadata, layer declarations, and CSS token overrides.",
             "type": "object",
             "properties": {
                 "base_mode": {
@@ -2540,6 +2540,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "layers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_settings.ThemeLayer"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },
@@ -2553,6 +2559,21 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "internal_settings.ThemeLayer": {
+            "type": "string",
+            "enum": [
+                "colors",
+                "typography",
+                "shape",
+                "effects"
+            ],
+            "x-enum-varnames": [
+                "LayerColors",
+                "LayerTypography",
+                "LayerShape",
+                "LayerEffects"
+            ]
         },
         "internal_settings.ThemeTokens": {
             "description": "Customizable CSS design token overrides grouped by UI category.",

@@ -1,5 +1,7 @@
 import { api } from './client'
 
+export type ThemeLayer = 'colors' | 'typography' | 'shape' | 'effects'
+
 /**
  * CSS token overrides organized by category.
  * Only overridden tokens are stored -- missing keys use base mode defaults.
@@ -30,6 +32,7 @@ export interface ThemeDefinition {
   created_at: string
   updated_at: string
   built_in: boolean
+  layers?: ThemeLayer[]
   tokens: ThemeTokens
 }
 
@@ -40,6 +43,7 @@ export interface CreateThemeRequest {
   name: string
   description?: string
   base_mode: 'dark' | 'light'
+  layers?: ThemeLayer[]
   tokens: ThemeTokens
 }
 

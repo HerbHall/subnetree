@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   createTheme,
   type ThemeTokens,
+  type ThemeLayer,
 } from '@/api/themes'
 import { useThemeStore } from '@/stores/theme'
 
@@ -18,6 +19,7 @@ interface ExportedTheme {
   name: string
   description: string
   base_mode: 'dark' | 'light'
+  layers?: ThemeLayer[]
   tokens: ThemeTokens
 }
 
@@ -46,6 +48,7 @@ export function ThemeImportExport() {
         name: data.name,
         description: data.description || '',
         base_mode: data.base_mode,
+        layers: data.layers,
         tokens: data.tokens,
       }),
     onSuccess: (theme) => {
@@ -69,6 +72,7 @@ export function ThemeImportExport() {
       name: activeTheme.name,
       description: activeTheme.description || '',
       base_mode: activeTheme.base_mode,
+      layers: activeTheme.layers,
       tokens: activeTheme.tokens,
     }
 

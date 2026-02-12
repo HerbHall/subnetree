@@ -616,7 +616,7 @@ definitions:
         type: string
     type: object
   internal_settings.ThemeDefinition:
-    description: A complete theme with metadata and CSS token overrides.
+    description: A theme with metadata, layer declarations, and CSS token overrides.
     properties:
       base_mode:
         type: string
@@ -628,6 +628,10 @@ definitions:
         type: string
       id:
         type: string
+      layers:
+        items:
+          $ref: '#/definitions/internal_settings.ThemeLayer'
+        type: array
       name:
         type: string
       tokens:
@@ -637,6 +641,18 @@ definitions:
       version:
         type: integer
     type: object
+  internal_settings.ThemeLayer:
+    enum:
+    - colors
+    - typography
+    - shape
+    - effects
+    type: string
+    x-enum-varnames:
+    - LayerColors
+    - LayerTypography
+    - LayerShape
+    - LayerEffects
   internal_settings.ThemeTokens:
     description: Customizable CSS design token overrides grouped by UI category.
     properties:
