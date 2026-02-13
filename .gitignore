@@ -50,6 +50,9 @@ web/node_modules/
 web/dist/
 web/.env
 web/coverage/
+web/test-results/
+web/playwright-report/
+web/blob-report/
 *.tsbuildinfo
 
 # Embedded dashboard build (copied from web/dist/)
