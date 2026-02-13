@@ -20,7 +20,9 @@ const sections: { title: string; shortcuts: ShortcutEntry[] }[] = [
       { keys: ['1'], action: 'Dashboard' },
       { keys: ['2'], action: 'Devices' },
       { keys: ['3'], action: 'Topology' },
-      { keys: ['4'], action: 'Settings' },
+      { keys: ['4'], action: 'Agents' },
+      { keys: ['5'], action: 'Docs' },
+      { keys: ['6'], action: 'Settings' },
     ],
   },
   {

@@ -183,3 +183,111 @@ export interface ScanCompletedData {
 export interface ScanErrorData {
   error: string
 }
+
+// ============================================================================
+// Agent Types
+// ============================================================================
+
+/** Agent connection status. */
+export type AgentStatus = 'pending' | 'connected' | 'disconnected'
+
+/** Registered Scout agent as returned by the Dispatch module. */
+export interface AgentInfo {
+  id: string
+  hostname: string
+  platform: string
+  agent_version: string
+  proto_version: number
+  device_id: string
+  status: AgentStatus
+  last_check_in?: string
+  enrolled_at: string
+  cert_serial: string
+  cert_expires_at?: string
+  config_json: string
+}
+
+/** Request body for creating an enrollment token. */
+export interface CreateEnrollmentTokenRequest {
+  description: string
+  max_uses?: number
+  expires_in?: string
+}
+
+/** Response from creating an enrollment token (raw token only returned once). */
+export interface EnrollmentTokenResponse {
+  id: string
+  token: string
+  expires_at?: string
+  max_uses: number
+}
+
+/** Hardware profile reported by Scout agent. */
+export interface HardwareProfile {
+  cpu_model: string
+  cpu_cores: number
+  cpu_threads: number
+  ram_bytes: number
+  disks: DiskInfo[]
+  gpus: GPUInfo[]
+  nics: NICInfo[]
+  bios_version: string
+  system_manufacturer: string
+  system_model: string
+  serial_number: string
+}
+
+export interface DiskInfo {
+  name: string
+  size_bytes: number
+  disk_type: string
+  model: string
+  serial: string
+}
+
+export interface GPUInfo {
+  model: string
+  vram_bytes: number
+  driver_version: string
+}
+
+export interface NICInfo {
+  name: string
+  speed_mbps: number
+  mac_address: string
+  nic_type: string
+}
+
+/** Software inventory reported by Scout agent. */
+export interface SoftwareInventory {
+  os_name: string
+  os_version: string
+  os_build: string
+  packages: InstalledPackage[]
+  docker_containers: DockerContainer[]
+}
+
+export interface InstalledPackage {
+  name: string
+  version: string
+  publisher: string
+  install_date: string
+}
+
+export interface DockerContainer {
+  container_id: string
+  name: string
+  image: string
+  status: string
+}
+
+/** Service information reported by Scout agent. */
+export interface ServiceInfo {
+  name: string
+  display_name: string
+  status: string
+  start_type: string
+  cpu_percent: number
+  memory_bytes: number
+  ports: number[]
+}
