@@ -106,6 +106,57 @@ func (s *scoutServer) checkProtoVersion(v uint32) scoutpb.VersionStatus {
 	return scoutpb.VersionStatus_VERSION_REJECTED
 }
 
+func (s *scoutServer) ReportProfile(ctx context.Context, req *scoutpb.ProfileReport) (*scoutpb.Ack, error) {
+	if req.AgentId == "" {
+		return &scoutpb.Ack{Success: false}, fmt.Errorf("agent_id is required")
+	}
+
+	profile := req.GetProfile()
+	if profile == nil {
+		return &scoutpb.Ack{Success: false}, fmt.Errorf("profile is required")
+	}
+
+	hw := profile.GetHardware()
+	if hw == nil {
+		hw = &scoutpb.HardwareProfile{}
+	}
+	sw := profile.GetSoftware()
+	if sw == nil {
+		sw = &scoutpb.SoftwareInventory{}
+	}
+	services := profile.GetServices()
+
+	if err := s.store.UpsertFullProfile(ctx, req.AgentId, hw, sw, services); err != nil {
+		s.logger.Error("failed to store profile",
+			zap.String("agent_id", req.AgentId),
+			zap.Error(err),
+		)
+		return &scoutpb.Ack{Success: false}, fmt.Errorf("store profile: %w", err)
+	}
+
+	s.logger.Info("profile received",
+		zap.String("agent_id", req.AgentId),
+		zap.String("cpu_model", hw.GetCpuModel()),
+		zap.String("os_name", sw.GetOsName()),
+		zap.Int("services_count", len(services)),
+	)
+
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, plugin.Event{
+			Topic:     TopicDeviceProfiled,
+			Source:    "dispatch",
+			Timestamp: time.Now(),
+			Payload: map[string]string{
+				"agent_id":  req.AgentId,
+				"cpu_model": hw.GetCpuModel(),
+				"os_name":   sw.GetOsName(),
+			},
+		})
+	}
+
+	return &scoutpb.Ack{Success: true}, nil
+}
+
 func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInRequest) (string, error) {
 	// Hash the token.
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.EnrollToken)))

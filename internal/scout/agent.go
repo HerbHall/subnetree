@@ -12,9 +12,11 @@ import (
 
 	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
 	"github.com/HerbHall/subnetree/internal/scout/metrics"
+	"github.com/HerbHall/subnetree/internal/scout/profiler"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Agent is the Scout monitoring agent.
@@ -25,6 +27,7 @@ type Agent struct {
 	conn      *grpc.ClientConn
 	client    scoutpb.ScoutServiceClient
 	collector metrics.Collector
+	profiler  *profiler.Profiler
 }
 
 // NewAgent creates a new Scout agent instance.
@@ -33,6 +36,7 @@ func NewAgent(config *Config, logger *zap.Logger) *Agent {
 		config:    config,
 		logger:    logger,
 		collector: metrics.NewCollector(logger),
+		profiler:  profiler.NewProfiler(logger.Named("profiler")),
 	}
 }
 
@@ -72,8 +76,16 @@ func (a *Agent) Run(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(a.config.CheckInterval) * time.Second)
 	defer ticker.Stop()
 
+	// Profile collection: hardware at startup, full refresh periodically.
+	const profileInterval = 6 * time.Hour
+	profileTicker := time.NewTicker(profileInterval)
+	defer profileTicker.Stop()
+
 	// Initial check-in.
 	a.checkIn(ctx)
+
+	// Initial profile collection after startup.
+	a.collectAndSendProfile(ctx)
 
 	for {
 		select {
@@ -82,6 +94,8 @@ func (a *Agent) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			a.checkIn(ctx)
+		case <-profileTicker.C:
+			a.collectAndSendProfile(ctx)
 		}
 	}
 }
@@ -187,6 +201,32 @@ func (a *Agent) checkIn(ctx context.Context) {
 			zap.String("message", resp.UpgradeMessage),
 		)
 	}
+}
+
+func (a *Agent) collectAndSendProfile(ctx context.Context) {
+	if a.profiler == nil || a.client == nil {
+		return
+	}
+
+	profile, err := a.profiler.CollectProfile(ctx)
+	if err != nil {
+		a.logger.Warn("profile collection failed", zap.Error(err))
+		return
+	}
+
+	ack, err := a.client.ReportProfile(ctx, &scoutpb.ProfileReport{
+		AgentId:     a.config.AgentID,
+		CollectedAt: timestamppb.Now(),
+		Profile:     profile,
+	})
+	if err != nil {
+		a.logger.Warn("profile report failed", zap.Error(err))
+		return
+	}
+
+	a.logger.Info("profile reported",
+		zap.Bool("success", ack.GetSuccess()),
+	)
 }
 
 // Agent ID persistence -- simple JSON file in config directory.

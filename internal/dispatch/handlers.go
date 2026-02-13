@@ -20,6 +20,9 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/agents/{id}", Handler: m.handleGetAgent},
 		{Method: "POST", Path: "/enroll", Handler: m.handleCreateEnrollmentToken},
 		{Method: "DELETE", Path: "/agents/{id}", Handler: m.handleDeleteAgent},
+		{Method: "GET", Path: "/agents/{id}/hardware", Handler: m.handleGetHardwareProfile},
+		{Method: "GET", Path: "/agents/{id}/software", Handler: m.handleGetSoftwareInventory},
+		{Method: "GET", Path: "/agents/{id}/services", Handler: m.handleGetServices},
 	}
 }
 

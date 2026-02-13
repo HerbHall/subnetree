@@ -1044,6 +1044,83 @@ paths:
       summary: Get agent
       tags:
       - dispatch
+  /dispatch/agents/{id}/hardware:
+    get:
+      description: Returns the stored hardware profile for a specific agent.
+      parameters:
+      - description: Agent ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get agent hardware profile
+      tags:
+      - dispatch
+  /dispatch/agents/{id}/services:
+    get:
+      description: Returns the stored services list for a specific agent.
+      parameters:
+      - description: Agent ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get agent services
+      tags:
+      - dispatch
+  /dispatch/agents/{id}/software:
+    get:
+      description: Returns the stored software inventory for a specific agent.
+      parameters:
+      - description: Agent ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get agent software inventory
+      tags:
+      - dispatch
   /dispatch/enroll:
     post:
       consumes:

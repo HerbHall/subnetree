@@ -51,5 +51,21 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     2,
+			Description: "create dispatch device profiles table for system profiling",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.ExecContext(context.Background(), `
+					CREATE TABLE IF NOT EXISTS dispatch_device_profiles (
+						agent_id TEXT PRIMARY KEY REFERENCES dispatch_agents(id) ON DELETE CASCADE,
+						hardware_json TEXT NOT NULL DEFAULT '{}',
+						software_json TEXT NOT NULL DEFAULT '{}',
+						services_json TEXT NOT NULL DEFAULT '[]',
+						collected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+					)`)
+				return err
+			},
+		},
 	}
 }
