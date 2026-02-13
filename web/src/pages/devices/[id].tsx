@@ -37,6 +37,10 @@ import {
   MapPin,
   User,
   Briefcase,
+  Container,
+  Settings2,
+  AppWindow,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -51,7 +55,8 @@ import {
   getDeviceScanHistory,
   type DeviceStatusEvent,
 } from '@/api/devices'
-import type { DeviceType, DeviceStatus, Scan } from '@/api/types'
+import { getDeviceServices, getDeviceUtilization, updateDesiredState } from '@/api/services'
+import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState } from '@/api/types'
 import { cn } from '@/lib/utils'
 
 // Device type icons (shared with device-card)
@@ -142,6 +147,33 @@ export function DeviceDetailPage() {
     queryKey: ['device-scan-history', id],
     queryFn: () => getDeviceScanHistory(id!),
     enabled: !!id,
+  })
+
+  // Fetch device services (only for agent-managed devices)
+  const { data: deviceServices } = useQuery({
+    queryKey: ['device-services', id],
+    queryFn: () => getDeviceServices(id!),
+    enabled: !!id && !!device?.agent_id,
+  })
+
+  // Fetch device utilization (only for agent-managed devices)
+  const { data: deviceUtilization } = useQuery({
+    queryKey: ['device-utilization', id],
+    queryFn: () => getDeviceUtilization(id!),
+    enabled: !!id && !!device?.agent_id,
+  })
+
+  // Update desired state mutation
+  const desiredStateMutation = useMutation({
+    mutationFn: ({ serviceId, state }: { serviceId: string; state: DesiredState }) =>
+      updateDesiredState(serviceId, state),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-services', id] })
+      toast.success('Desired state updated')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update desired state')
+    },
   })
 
   // Update device mutation
@@ -606,6 +638,18 @@ export function DeviceDetailPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Services Section (only for agent-managed devices) */}
+      {device.agent_id && (
+        <DeviceServicesSection
+          services={deviceServices}
+          utilization={deviceUtilization}
+          onUpdateDesiredState={(serviceId, state) =>
+            desiredStateMutation.mutate({ serviceId, state })
+          }
+          isPending={desiredStateMutation.isPending}
+        />
       )}
 
       {/* Inventory Details */}
@@ -1156,6 +1200,178 @@ function ScanHistoryList({ scans }: { scans: Scan[] }) {
         </p>
       )}
     </div>
+  )
+}
+
+const svcTypeIcons: Record<ServiceType, React.ElementType> = {
+  'docker-container': Container,
+  'windows-service': Monitor,
+  'systemd-service': Settings2,
+  'application': AppWindow,
+}
+
+const svcTypeLabels: Record<ServiceType, string> = {
+  'docker-container': 'Docker',
+  'windows-service': 'Windows',
+  'systemd-service': 'Systemd',
+  'application': 'App',
+}
+
+const svcStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
+  running: { bg: 'bg-green-500', text: 'text-green-600 dark:text-green-400', label: 'Running' },
+  stopped: { bg: 'bg-gray-400', text: 'text-gray-600 dark:text-gray-400', label: 'Stopped' },
+  failed: { bg: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: 'Failed' },
+  unknown: { bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', label: 'Unknown' },
+}
+
+const gradeColors: Record<string, { text: string; bg: string }> = {
+  A: { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10' },
+  B: { text: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-500/10' },
+  C: { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-500/10' },
+  D: { text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10' },
+  F: { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10' },
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
+}
+
+function DeviceServicesSection({
+  services,
+  utilization,
+  onUpdateDesiredState,
+  isPending,
+}: {
+  services?: Service[]
+  utilization?: import('@/api/types').UtilizationSummary
+  onUpdateDesiredState: (serviceId: string, state: DesiredState) => void
+  isPending: boolean
+}) {
+  const grade = utilization?.grade || '-'
+  const gc = gradeColors[grade] || { text: 'text-muted-foreground', bg: 'bg-muted' }
+
+  // Sort: running first, then by name
+  const sorted = [...(services || [])].sort((a, b) => {
+    if (a.status === 'running' && b.status !== 'running') return -1
+    if (a.status !== 'running' && b.status === 'running') return 1
+    return a.name.localeCompare(b.name)
+  })
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Layers className="h-4 w-4 text-muted-foreground" />
+          Services
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Utilization Summary */}
+        {utilization && (
+          <div className="flex items-center gap-4 flex-wrap p-3 rounded-lg bg-muted/30">
+            <span className={cn('inline-flex items-center px-2.5 py-1 rounded-md text-sm font-bold', gc.bg, gc.text)}>
+              {grade}
+            </span>
+            <div className="flex items-center gap-4 text-sm">
+              <span>CPU: <strong>{utilization.cpu_percent.toFixed(1)}%</strong></span>
+              <span>Memory: <strong>{utilization.memory_percent.toFixed(1)}%</strong></span>
+              {utilization.disk_percent > 0 && (
+                <span>Disk: <strong>{utilization.disk_percent.toFixed(1)}%</strong></span>
+              )}
+            </div>
+            {utilization.headroom > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {utilization.headroom.toFixed(1)}% headroom
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Services Table */}
+        {sorted.length === 0 ? (
+          <div className="text-center py-6">
+            <Layers className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">No services discovered on this device yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Services are auto-populated from Scout agent data.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">Name</th>
+                  <th className="px-4 py-2 text-left font-medium">Type</th>
+                  <th className="px-4 py-2 text-left font-medium">Status</th>
+                  <th className="px-4 py-2 text-left font-medium">Desired</th>
+                  <th className="px-4 py-2 text-right font-medium">CPU</th>
+                  <th className="px-4 py-2 text-right font-medium">Memory</th>
+                  <th className="px-4 py-2 text-left font-medium">Ports</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {sorted.map((svc) => {
+                  const TypeIcon = svcTypeIcons[svc.service_type] || AppWindow
+                  const typeLabel = svcTypeLabels[svc.service_type] || 'Unknown'
+                  const ss = svcStatusConfig[svc.status] || svcStatusConfig.unknown
+
+                  return (
+                    <tr key={svc.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2">
+                        <span className="font-medium">{svc.display_name || svc.name}</span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs">{typeLabel}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn('h-1.5 w-1.5 rounded-full', ss.bg)} />
+                          <span className={cn('text-xs', ss.text)}>{ss.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <select
+                          value={svc.desired_state}
+                          onChange={(e) =>
+                            onUpdateDesiredState(svc.id, e.target.value as DesiredState)
+                          }
+                          disabled={isPending}
+                          className="h-7 px-1.5 rounded border bg-background text-xs"
+                        >
+                          <option value="should-run">Should Run</option>
+                          <option value="should-stop">Should Stop</option>
+                          <option value="monitoring-only">Monitor Only</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">
+                        {svc.cpu_percent > 0 ? `${svc.cpu_percent.toFixed(1)}%` : '-'}
+                      </td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">
+                        {svc.memory_bytes > 0 ? formatBytes(svc.memory_bytes) : '-'}
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">
+                        {svc.ports && svc.ports.length > 0 ? (
+                          <span className="text-xs font-mono">{svc.ports.join(', ')}</span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

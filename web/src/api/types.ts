@@ -291,3 +291,56 @@ export interface ServiceInfo {
   memory_bytes: number
   ports: number[]
 }
+
+// ============================================================================
+// Service Mapping Types
+// ============================================================================
+
+/** Service type classification. */
+export type ServiceType = 'docker-container' | 'systemd-service' | 'windows-service' | 'application'
+
+/** Service operational status. */
+export type ServiceStatus = 'running' | 'stopped' | 'failed' | 'unknown'
+
+/** Desired operational state for a service. */
+export type DesiredState = 'should-run' | 'should-stop' | 'monitoring-only'
+
+/** Tracked service on a device. */
+export interface Service {
+  id: string
+  name: string
+  display_name: string
+  service_type: ServiceType
+  device_id: string
+  application_id?: string
+  status: ServiceStatus
+  desired_state: DesiredState
+  ports?: string[]
+  cpu_percent: number
+  memory_bytes: number
+  first_seen: string
+  last_seen: string
+}
+
+/** Resource utilization summary for a single device. */
+export interface UtilizationSummary {
+  device_id: string
+  hostname: string
+  cpu_percent: number
+  memory_percent: number
+  disk_percent: number
+  service_count: number
+  grade: string
+  headroom: number
+}
+
+/** Fleet-wide utilization aggregation. */
+export interface FleetSummary {
+  total_devices: number
+  total_services: number
+  avg_cpu: number
+  avg_memory: number
+  by_grade: Record<string, number>
+  underutilized?: string[]
+  overloaded?: string[]
+}
