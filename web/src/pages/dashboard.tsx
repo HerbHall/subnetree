@@ -21,6 +21,8 @@ import {
   Pause,
   Rocket,
   Bot,
+  BarChart3,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +31,7 @@ import { DeviceCardCompact } from '@/components/device-card'
 import { ScanProgressPanel } from '@/components/scan-progress-panel'
 import { getTopology, triggerScan, listScans } from '@/api/devices'
 import { listAgents } from '@/api/agents'
+import { getFleetSummary } from '@/api/services'
 import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
@@ -103,6 +106,16 @@ export function DashboardPage() {
   } = useQuery({
     queryKey: ['agents'],
     queryFn: listAgents,
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  })
+
+  // Fetch fleet utilization with auto-refresh
+  const {
+    data: fleetSummary,
+    isLoading: fleetLoading,
+  } = useQuery({
+    queryKey: ['fleet-summary'],
+    queryFn: getFleetSummary,
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 
@@ -362,6 +375,103 @@ export function DashboardPage() {
               <div className="text-center">
                 <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{agentStats.pending}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Fleet Utilization Widget */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            Fleet Utilization
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
+            <Link to="/services">
+              View All
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {fleetLoading ? (
+            <div className="grid grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="text-center">
+                  <Skeleton className="h-8 w-12 mx-auto" />
+                  <Skeleton className="h-3 w-16 mx-auto mt-1" />
+                </div>
+              ))}
+            </div>
+          ) : !fleetSummary || fleetSummary.total_services === 0 ? (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                No service data -- services are auto-discovered from Scout agents
+              </p>
+              <Button variant="outline" size="sm" asChild className="gap-2 shrink-0">
+                <Link to="/agents">
+                  <Layers className="h-3.5 w-3.5" />
+                  Manage Agents
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{fleetSummary.total_services}</p>
+                  <p className="text-xs text-muted-foreground">Services</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{fleetSummary.avg_cpu.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Avg CPU</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{fleetSummary.avg_memory.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Avg Memory</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{fleetSummary.total_devices}</p>
+                  <p className="text-xs text-muted-foreground">Devices</p>
+                </div>
+              </div>
+              {/* Grade Distribution */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">Grades:</span>
+                {['A', 'B', 'C', 'D', 'F'].map((grade) => {
+                  const count = fleetSummary.by_grade?.[grade] ?? 0
+                  if (count === 0) return null
+                  const colors: Record<string, string> = {
+                    A: 'bg-green-500/10 text-green-600 dark:text-green-400',
+                    B: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+                    C: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+                    D: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+                    F: 'bg-red-500/10 text-red-600 dark:text-red-400',
+                  }
+                  return (
+                    <span
+                      key={grade}
+                      className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', colors[grade])}
+                    >
+                      {grade}: {count}
+                    </span>
+                  )
+                })}
+              </div>
+              {/* Underutilized / Overloaded counts */}
+              <div className="flex items-center gap-4 text-xs">
+                {(fleetSummary.underutilized?.length ?? 0) > 0 && (
+                  <span className="text-teal-600 dark:text-teal-400">
+                    {fleetSummary.underutilized?.length} underutilized
+                  </span>
+                )}
+                {(fleetSummary.overloaded?.length ?? 0) > 0 && (
+                  <span className="text-red-600 dark:text-red-400">
+                    {fleetSummary.overloaded?.length} overloaded
+                  </span>
+                )}
               </div>
             </div>
           )}
