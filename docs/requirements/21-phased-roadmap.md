@@ -188,7 +188,7 @@
 - [ ] GitHub Insights: establish baseline tracking cadence (weekly traffic review)
 - [ ] Release download tracking: GoReleaser generates checksums, GitHub Releases API provides download counts
 - [x] Docker image pull count tracking: publish to GitHub Container Registry (GHCR) or Docker Hub
-- [ ] README badges: CI build, coverage, Go Report Card, Go version, license, latest release, Docker pulls (see Success Metrics)
+- [x] README badges: CI build, coverage, Go Report Card, Go version, license, latest release (Docker pulls deferred until image published)
 
 #### Community & Launch Readiness
 
@@ -198,13 +198,13 @@
 - [x] Dockerfile: multi-stage build (builder + distroless/alpine runtime), multi-arch (`linux/amd64`, `linux/arm64`)
 - [x] docker-compose.yml: one-command deployment matching the spec in Deployment section
 - [x] README: "Why SubNetree?" section -- value proposition, feature comparison table (discovery + monitoring + remote access + vault + IoT in one tool), clear differentiation from Zabbix/LibreNMS/Uptime Kuma
-- [ ] README: status badges (CI build, Go version, license, latest release, Docker pulls)
+- [x] README: status badges (CI build, Go version, license, latest release, coverage, Go Report Card)
 - [x] README: Docker quickstart section (`docker run` one-liner + docker-compose snippet)
 - [x] README: screenshots/GIF of dashboard (added in PR #156)
 - [x] README: "Current Status" section -- honest about what works today vs. what's planned, links to roadmap
 - [x] README: clarify licensing wording to "free for personal, home-lab, and non-competing production use"
 - [x] Seed GitHub Issues: 5–10 issues labeled `good first issue` and `help wanted` (e.g., "add device type icon mapping", "write Prometheus exporter example plugin", "add ARM64 CI build target")
-- [ ] Seed GitHub Discussions: introductory post, roadmap discussion thread, "plugin ideas" thread, "show your setup" thread
+- [x] Seed GitHub Discussions: introductory post, roadmap discussion thread, "plugin ideas" thread, "show your setup" thread
 - [ ] Community channel: create Discord server (or Matrix space) for real-time contributor discussion, linked from README and CONTRIBUTING.md
 - [ ] Blog post / announcement: publish initial announcement on personal blog, r/homelab, r/selfhosted, Hacker News (after v0.1.0-alpha has working dashboard + discovery)
 - [x] CODE_OF_CONDUCT.md: Contributor Covenant (standard, expected by contributors and evaluators)

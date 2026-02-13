@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml/badge.svg)](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HerbHall/subnetree?include_prereleases)](https://github.com/HerbHall/subnetree/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/HerbHall/subnetree)](https://go.dev/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HerbHall/subnetree)](https://goreportcard.com/report/github.com/HerbHall/subnetree)
 [![codecov](https://codecov.io/gh/HerbHall/subnetree/branch/main/graph/badge.svg)](https://codecov.io/gh/HerbHall/subnetree)
 [![License](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
