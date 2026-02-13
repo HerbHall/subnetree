@@ -17,6 +17,7 @@ import {
   Trash2,
   Monitor,
   Wifi,
+  AlertCircle,
   AlertTriangle,
   MapPin,
   Tag,
@@ -26,6 +27,7 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DeviceCard, DeviceCardCompact } from '@/components/device-card'
 import { CreateDeviceDialog } from '@/components/create-device-dialog'
 import {
@@ -570,18 +572,53 @@ export function DevicesPage() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
-          <p className="text-sm text-red-400">
-            {error instanceof Error ? error.message : 'Failed to fetch devices'}
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+          <h3 className="text-lg font-medium">Failed to load devices</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            {error instanceof Error ? error.message : 'An unexpected error occurred while fetching device data.'}
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2">
+          <Button variant="outline" className="mt-4 gap-2" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>
         </div>
       )}
 
       {/* Loading state */}
-      {isLoading && !error && (
+      {isLoading && !error && viewMode === 'table' && (
+        <div className="rounded-lg border overflow-hidden">
+          <div className="bg-muted/50 px-4 py-3">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-4 w-4 rounded" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </div>
+          <div className="divide-y">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-28 font-mono" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {isLoading && !error && viewMode !== 'table' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[...Array(8)].map((_, i) => (
             <DeviceCardSkeleton key={i} />
@@ -1129,16 +1166,16 @@ function StatusPill({
 // Loading skeleton
 function DeviceCardSkeleton() {
   return (
-    <div className="rounded-lg border bg-card p-4 animate-pulse">
+    <div className="rounded-lg border bg-card p-4">
       <div className="flex items-start justify-between mb-3">
-        <div className="h-11 w-11 rounded-lg bg-muted" />
-        <div className="h-5 w-16 rounded bg-muted" />
+        <Skeleton className="h-11 w-11 rounded-lg" />
+        <Skeleton className="h-5 w-16 rounded-full" />
       </div>
-      <div className="h-4 w-3/4 rounded bg-muted mb-2" />
-      <div className="h-3 w-1/2 rounded bg-muted mb-3" />
+      <Skeleton className="h-4 w-3/4 mb-2" />
+      <Skeleton className="h-3 w-1/2 mb-3" />
       <div className="flex justify-between">
-        <div className="h-3 w-16 rounded bg-muted" />
-        <div className="h-3 w-20 rounded bg-muted" />
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-3 w-20" />
       </div>
     </div>
   )

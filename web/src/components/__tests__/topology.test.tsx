@@ -306,7 +306,7 @@ describe('TopologyPage', () => {
       await screen.findByText('Failed to load topology')
     ).toBeInTheDocument()
     expect(screen.getByText('Network unreachable')).toBeInTheDocument()
-    expect(screen.getByText('Retry')).toBeInTheDocument()
+    expect(screen.getByText('Try Again')).toBeInTheDocument()
   })
 
   it('renders React Flow canvas when data is available', async () => {
@@ -338,7 +338,7 @@ describe('TopologyPage', () => {
 
     renderWithProviders(<TopologyPage />)
 
-    const retryButton = await screen.findByText('Retry')
+    const retryButton = await screen.findByText('Try Again')
     expect(retryButton).toBeInTheDocument()
 
     // Clicking retry should trigger another fetch

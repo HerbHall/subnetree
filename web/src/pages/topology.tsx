@@ -17,9 +17,10 @@ import {
   type EdgeMouseHandler,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Loader2, AlertTriangle, Network } from 'lucide-react'
+import { Loader2, AlertCircle, Network, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { getTopology } from '@/api/devices'
 import {
   DeviceNode,
@@ -511,10 +512,39 @@ export function TopologyPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--nv-green-400)]" />
-          <p className="text-sm text-muted-foreground">Loading topology...</p>
+      <div className="h-[calc(100vh-4rem)] w-full relative rounded-lg border bg-muted/10">
+        {/* Toolbar skeleton */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+          <Skeleton className="h-10 w-64 rounded-lg" />
+        </div>
+        {/* Filter panel skeleton */}
+        <div className="absolute top-4 left-4 z-10 space-y-2">
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-6 w-36 rounded-lg" />
+        </div>
+        {/* Topology node skeletons arranged in a circle pattern */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative w-[400px] h-[400px]">
+            {[...Array(6)].map((_, i) => {
+              const angle = (2 * Math.PI * i) / 6 - Math.PI / 2
+              const x = 175 + 150 * Math.cos(angle)
+              const y = 175 + 150 * Math.sin(angle)
+              return (
+                <Skeleton
+                  key={i}
+                  className="absolute h-12 w-12 rounded-lg"
+                  style={{ left: `${x}px`, top: `${y}px` }}
+                />
+              )
+            })}
+            {/* Center loading indicator */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Loading topology...</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -526,12 +556,15 @@ export function TopologyPage() {
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <Card className="max-w-md border-red-500/50">
           <CardContent className="p-6 text-center">
-            <AlertTriangle className="h-10 w-10 mx-auto text-red-400 mb-3" />
+            <AlertCircle className="h-12 w-12 mx-auto text-red-400 mb-4" />
             <h2 className="text-lg font-semibold mb-2">Failed to load topology</h2>
             <p className="text-sm text-muted-foreground mb-4">
               {error instanceof Error ? error.message : 'An unexpected error occurred'}
             </p>
-            <Button onClick={() => refetch()}>Retry</Button>
+            <Button variant="outline" className="gap-2" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       </div>
