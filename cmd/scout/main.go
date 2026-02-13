@@ -12,11 +12,12 @@ import (
 )
 
 func main() {
-	serverAddr := flag.String("server", "localhost:9090", "SubNetree server address")
-	interval := flag.Int("interval", 30, "check-in interval in seconds")
+	serverAddr := flag.String("server", "localhost:9090", "SubNetree server gRPC address")
+	interval := flag.Int("interval", 30, "Check-in interval in seconds")
+	enrollToken := flag.String("enroll-token", "", "Enrollment token for initial registration")
+	agentID := flag.String("agent-id", "", "Agent ID (auto-assigned during enrollment if empty)")
 	flag.Parse()
 
-	// Initialize logger
 	logger, err := zap.NewProduction()
 	if err != nil {
 		os.Exit(1)
@@ -26,23 +27,22 @@ func main() {
 	config := &scout.Config{
 		ServerAddr:    *serverAddr,
 		CheckInterval: *interval,
+		AgentID:       *agentID,
+		EnrollToken:   *enrollToken,
 	}
 
-	agent := scout.NewAgent(config, logger)
-
-	// Set up signal handling
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
 		sig := <-sigCh
 		logger.Info("received shutdown signal", zap.String("signal", sig.String()))
 		cancel()
 	}()
 
+	agent := scout.NewAgent(config, logger)
 	if err := agent.Run(ctx); err != nil {
 		logger.Fatal("agent error", zap.Error(err))
 	}
