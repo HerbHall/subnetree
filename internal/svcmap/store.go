@@ -239,6 +239,43 @@ type DeviceServiceStats struct {
 	TotalMemory  int64
 }
 
+// ServiceFilter holds optional filter criteria for listing services.
+type ServiceFilter struct {
+	DeviceID    string
+	ServiceType string
+	Status      string
+}
+
+// ListServicesFiltered returns services matching the given filter criteria.
+func (s *Store) ListServicesFiltered(ctx context.Context, filter ServiceFilter) ([]models.Service, error) {
+	query := `SELECT id, name, display_name, service_type, device_id,
+		application_id, status, desired_state, ports_json,
+		cpu_percent, memory_bytes, first_seen, last_seen
+		FROM services WHERE 1=1`
+	var args []any
+
+	if filter.DeviceID != "" {
+		query += " AND device_id = ?"
+		args = append(args, filter.DeviceID)
+	}
+	if filter.ServiceType != "" {
+		query += " AND service_type = ?"
+		args = append(args, filter.ServiceType)
+	}
+	if filter.Status != "" {
+		query += " AND status = ?"
+		args = append(args, filter.Status)
+	}
+	query += " ORDER BY device_id, name"
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list services filtered: %w", err)
+	}
+	defer rows.Close()
+	return scanServices(rows)
+}
+
 // scanServices extracts services from database rows.
 func scanServices(rows *sql.Rows) ([]models.Service, error) {
 	var services []models.Service

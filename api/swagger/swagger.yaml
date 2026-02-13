@@ -168,6 +168,16 @@ definitions:
         example: 0.1.0
         type: string
     type: object
+  github_com_HerbHall_subnetree_pkg_models.DesiredState:
+    enum:
+    - should-run
+    - should-stop
+    - monitoring-only
+    type: string
+    x-enum-varnames:
+    - DesiredStateShouldRun
+    - DesiredStateShouldStop
+    - DesiredStateMonitoringOnly
   github_com_HerbHall_subnetree_pkg_models.Device:
     properties:
       agent_id:
@@ -300,6 +310,33 @@ definitions:
     - DiscoveryUPnP
     - DiscoveryMQTT
     - DiscoveryManual
+  github_com_HerbHall_subnetree_pkg_models.FleetSummary:
+    properties:
+      avg_cpu:
+        example: 35.4
+        type: number
+      avg_memory:
+        example: 52.1
+        type: number
+      by_grade:
+        additionalProperties:
+          type: integer
+        type: object
+      overloaded:
+        items:
+          type: string
+        type: array
+      total_devices:
+        example: 8
+        type: integer
+      total_services:
+        example: 42
+        type: integer
+      underutilized:
+        items:
+          type: string
+        type: array
+    type: object
   github_com_HerbHall_subnetree_pkg_models.ScanResult:
     properties:
       devices:
@@ -325,6 +362,103 @@ definitions:
         example: 192.168.1.0/24
         type: string
       total:
+        example: 12
+        type: integer
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.Service:
+    properties:
+      application_id:
+        example: app-001
+        type: string
+      cpu_percent:
+        example: 12.5
+        type: number
+      desired_state:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState'
+        example: should-run
+      device_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      display_name:
+        example: NGINX Web Server
+        type: string
+      first_seen:
+        example: "2026-01-10T08:00:00Z"
+        type: string
+      id:
+        example: svc-550e8400-e29b-41d4-a716-446655440000
+        type: string
+      last_seen:
+        example: "2026-02-13T10:30:00Z"
+        type: string
+      memory_bytes:
+        example: 134217728
+        type: integer
+      name:
+        example: nginx
+        type: string
+      ports:
+        items:
+          type: string
+        type: array
+      service_type:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.ServiceType'
+        example: docker-container
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.ServiceStatus'
+        example: running
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.ServiceStatus:
+    enum:
+    - running
+    - stopped
+    - failed
+    - unknown
+    type: string
+    x-enum-varnames:
+    - ServiceStatusRunning
+    - ServiceStatusStopped
+    - ServiceStatusFailed
+    - ServiceStatusUnknown
+  github_com_HerbHall_subnetree_pkg_models.ServiceType:
+    enum:
+    - docker-container
+    - systemd-service
+    - windows-service
+    - application
+    type: string
+    x-enum-varnames:
+    - ServiceTypeDockerContainer
+    - ServiceTypeSystemdService
+    - ServiceTypeWindowsService
+    - ServiceTypeApplication
+  github_com_HerbHall_subnetree_pkg_models.UtilizationSummary:
+    properties:
+      cpu_percent:
+        example: 45.2
+        type: number
+      device_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      disk_percent:
+        example: 38.1
+        type: number
+      grade:
+        example: B
+        type: string
+      headroom:
+        example: 37.2
+        type: number
+      hostname:
+        example: web-server-01
+        type: string
+      memory_percent:
+        example: 62.8
+        type: number
+      service_count:
         example: 12
         type: integer
     type: object
@@ -848,6 +982,11 @@ definitions:
         additionalProperties:
           type: string
         type: object
+    type: object
+  internal_svcmap.desiredStateRequest:
+    properties:
+      desired_state:
+        $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState'
     type: object
 info:
   contact: {}
@@ -2192,6 +2331,156 @@ paths:
       summary: Set active theme
       tags:
       - settings
+  /svcmap/devices/{device_id}/services:
+    get:
+      description: Returns all tracked services for a specific device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Service'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Device services
+      tags:
+      - svcmap
+  /svcmap/devices/{device_id}/utilization:
+    get:
+      description: Returns resource utilization summary and grade for a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.UtilizationSummary'
+      security:
+      - BearerAuth: []
+      summary: Device utilization
+      tags:
+      - svcmap
+  /svcmap/services:
+    get:
+      description: Returns all tracked services with optional filtering.
+      parameters:
+      - description: Filter by device ID
+        in: query
+        name: device_id
+        type: string
+      - description: Filter by service type
+        in: query
+        name: service_type
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Service'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List services
+      tags:
+      - svcmap
+  /svcmap/services/{id}:
+    get:
+      description: Returns a single tracked service by ID.
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Service'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get service
+      tags:
+      - svcmap
+    patch:
+      consumes:
+      - application/json
+      description: Updates the desired operational state for a service.
+      parameters:
+      - description: Service ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Desired state
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_svcmap.desiredStateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Service'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Update desired state
+      tags:
+      - svcmap
+  /svcmap/utilization/fleet:
+    get:
+      description: Returns fleet-wide utilization summary with grade distribution.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.FleetSummary'
+      security:
+      - BearerAuth: []
+      summary: Fleet summary
+      tags:
+      - svcmap
   /users:
     get:
       description: Returns all user accounts. Requires admin role.

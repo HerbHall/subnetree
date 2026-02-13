@@ -37,6 +37,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/services"
 	"github.com/HerbHall/subnetree/internal/settings"
 	"github.com/HerbHall/subnetree/internal/store"
+	"github.com/HerbHall/subnetree/internal/svcmap"
 	"github.com/HerbHall/subnetree/internal/vault"
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/internal/webhook"
@@ -168,6 +169,29 @@ func main() {
 		logger.Fatal("failed to start plugins", zap.Error(err))
 	}
 
+	// Create service mapping (svcmap) store, correlator, handler, and scheduler.
+	svcmapStore, err := svcmap.NewStore(db.DB())
+	if err != nil {
+		logger.Fatal("failed to initialize svcmap store", zap.Error(err))
+	}
+	logger.Info("svcmap store initialized", zap.String("component", "svcmap"))
+
+	dispatchProfileStore := dispatch.NewDispatchStore(db.DB())
+	svcCorrelator := svcmap.NewCorrelator(svcmapStore, logger.Named("svcmap"))
+
+	svcSourceAdapter := &serviceSourceAdapter{store: dispatchProfileStore}
+	hwAdapter := &hwSourceAdapter{store: dispatchProfileStore}
+	agentAdapter := &agentListerAdapter{store: dispatchProfileStore}
+
+	svcmapHandler := svcmap.NewHandler(svcmapStore, hwAdapter, logger.Named("svcmap"))
+
+	correlateInterval := viperCfg.GetDuration("svcmap.correlate_interval")
+	if correlateInterval == 0 {
+		correlateInterval = 60 * time.Second
+	}
+	svcmapScheduler := svcmap.NewScheduler(svcCorrelator, svcSourceAdapter, nil, agentAdapter, correlateInterval, logger.Named("svcmap"))
+	svcmapScheduler.Start(ctx)
+
 	// Create auth service
 	authStore, err := auth.NewUserStore(ctx, db)
 	if err != nil {
@@ -249,7 +273,7 @@ func main() {
 		return db.DB().PingContext(ctx)
 	})
 	dashboardHandler := dashboard.Handler()
-	extraRoutes := []server.SimpleRouteRegistrar{settingsHandler, wsHandler}
+	extraRoutes := []server.SimpleRouteRegistrar{settingsHandler, wsHandler, svcmapHandler}
 	if sshHandler != nil {
 		extraRoutes = append(extraRoutes, sshHandler)
 	}
@@ -275,6 +299,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
+	svcmapScheduler.Stop()
 	reg.StopAll(shutdownCtx)
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -296,4 +321,78 @@ func (a *tokenAdapter) ValidateAccessToken(token string) (*gateway.TokenClaims, 
 		return nil, err
 	}
 	return &gateway.TokenClaims{UserID: claims.UserID}, nil
+}
+
+// serviceSourceAdapter adapts dispatch.DispatchStore to svcmap.ServiceSource.
+type serviceSourceAdapter struct {
+	store *dispatch.DispatchStore
+}
+
+func (a *serviceSourceAdapter) GetServices(ctx context.Context, agentID string) ([]svcmap.ScoutService, error) {
+	protos, err := a.store.GetServices(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]svcmap.ScoutService, len(protos))
+	for i := range protos {
+		ports := make([]string, len(protos[i].Ports))
+		for j, p := range protos[i].Ports {
+			ports[j] = fmt.Sprintf("%d", p)
+		}
+		result[i] = svcmap.ScoutService{
+			Name:        protos[i].Name,
+			DisplayName: protos[i].DisplayName,
+			Status:      protos[i].Status,
+			StartType:   protos[i].StartType,
+			CPUPercent:  protos[i].CpuPercent,
+			MemoryBytes: protos[i].MemoryBytes,
+			Ports:       ports,
+		}
+	}
+	return result, nil
+}
+
+// hwSourceAdapter adapts dispatch.DispatchStore to svcmap.HardwareSource.
+type hwSourceAdapter struct {
+	store *dispatch.DispatchStore
+}
+
+func (a *hwSourceAdapter) GetHardwareProfile(ctx context.Context, agentID string) (*svcmap.HardwareInfo, error) {
+	hw, err := a.store.GetHardwareProfile(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	if hw == nil {
+		return nil, nil
+	}
+	var totalDisk int64
+	for i := range hw.Disks {
+		totalDisk += hw.Disks[i].SizeBytes
+	}
+	return &svcmap.HardwareInfo{
+		TotalMemoryBytes: hw.RamBytes,
+		TotalDiskBytes:   totalDisk,
+		CPUCores:         int(hw.CpuCores),
+	}, nil
+}
+
+// agentListerAdapter adapts dispatch.DispatchStore to svcmap.AgentLister.
+type agentListerAdapter struct {
+	store *dispatch.DispatchStore
+}
+
+func (a *agentListerAdapter) ListAgentsWithDevice(ctx context.Context) ([]svcmap.AgentRef, error) {
+	agents, err := a.store.ListAgents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	refs := make([]svcmap.AgentRef, len(agents))
+	for i := range agents {
+		refs[i] = svcmap.AgentRef{
+			AgentID:  agents[i].ID,
+			DeviceID: agents[i].DeviceID,
+			Hostname: agents[i].Hostname,
+		}
+	}
+	return refs, nil
 }

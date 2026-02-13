@@ -2081,6 +2081,246 @@
                 }
             }
         },
+        "/svcmap/devices/{device_id}/services": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all tracked services for a specific device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "Device services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/svcmap/devices/{device_id}/utilization": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns resource utilization summary and grade for a device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "Device utilization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.UtilizationSummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/svcmap/services": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all tracked services with optional filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "List services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by device ID",
+                        "name": "device_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by service type",
+                        "name": "service_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Service"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/svcmap/services/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single tracked service by ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "Get service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Service"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the desired operational state for a service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "Update desired state",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Desired state",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_svcmap.desiredStateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Service"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/svcmap/utilization/fleet": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns fleet-wide utilization summary with grade distribution.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "svcmap"
+                ],
+                "summary": "Fleet summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.FleetSummary"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -2553,6 +2793,19 @@
                 }
             }
         },
+        "github_com_HerbHall_subnetree_pkg_models.DesiredState": {
+            "type": "string",
+            "enum": [
+                "should-run",
+                "should-stop",
+                "monitoring-only"
+            ],
+            "x-enum-varnames": [
+                "DesiredStateShouldRun",
+                "DesiredStateShouldStop",
+                "DesiredStateMonitoringOnly"
+            ]
+        },
         "github_com_HerbHall_subnetree_pkg_models.Device": {
             "type": "object",
             "properties": {
@@ -2727,6 +2980,45 @@
                 "DiscoveryManual"
             ]
         },
+        "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {
+            "type": "object",
+            "properties": {
+                "avg_cpu": {
+                    "type": "number",
+                    "example": 35.4
+                },
+                "avg_memory": {
+                    "type": "number",
+                    "example": 52.1
+                },
+                "by_grade": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "overloaded": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total_devices": {
+                    "type": "integer",
+                    "example": 8
+                },
+                "total_services": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "underutilized": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "github_com_HerbHall_subnetree_pkg_models.ScanResult": {
             "type": "object",
             "properties": {
@@ -2761,6 +3053,144 @@
                     "example": "192.168.1.0/24"
                 },
                 "total": {
+                    "type": "integer",
+                    "example": 12
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_models.Service": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string",
+                    "example": "app-001"
+                },
+                "cpu_percent": {
+                    "type": "number",
+                    "example": 12.5
+                },
+                "desired_state": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState"
+                        }
+                    ],
+                    "example": "should-run"
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "NGINX Web Server"
+                },
+                "first_seen": {
+                    "type": "string",
+                    "example": "2026-01-10T08:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "svc-550e8400-e29b-41d4-a716-446655440000"
+                },
+                "last_seen": {
+                    "type": "string",
+                    "example": "2026-02-13T10:30:00Z"
+                },
+                "memory_bytes": {
+                    "type": "integer",
+                    "example": 134217728
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nginx"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "service_type": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.ServiceType"
+                        }
+                    ],
+                    "example": "docker-container"
+                },
+                "status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.ServiceStatus"
+                        }
+                    ],
+                    "example": "running"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_models.ServiceStatus": {
+            "type": "string",
+            "enum": [
+                "running",
+                "stopped",
+                "failed",
+                "unknown"
+            ],
+            "x-enum-varnames": [
+                "ServiceStatusRunning",
+                "ServiceStatusStopped",
+                "ServiceStatusFailed",
+                "ServiceStatusUnknown"
+            ]
+        },
+        "github_com_HerbHall_subnetree_pkg_models.ServiceType": {
+            "type": "string",
+            "enum": [
+                "docker-container",
+                "systemd-service",
+                "windows-service",
+                "application"
+            ],
+            "x-enum-varnames": [
+                "ServiceTypeDockerContainer",
+                "ServiceTypeSystemdService",
+                "ServiceTypeWindowsService",
+                "ServiceTypeApplication"
+            ]
+        },
+        "github_com_HerbHall_subnetree_pkg_models.UtilizationSummary": {
+            "type": "object",
+            "properties": {
+                "cpu_percent": {
+                    "type": "number",
+                    "example": 45.2
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "disk_percent": {
+                    "type": "number",
+                    "example": 38.1
+                },
+                "grade": {
+                    "type": "string",
+                    "example": "B"
+                },
+                "headroom": {
+                    "type": "number",
+                    "example": 37.2
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "web-server-01"
+                },
+                "memory_percent": {
+                    "type": "number",
+                    "example": 62.8
+                },
+                "service_count": {
                     "type": "integer",
                     "example": 12
                 }
@@ -3536,6 +3966,14 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_svcmap.desiredStateRequest": {
+            "type": "object",
+            "properties": {
+                "desired_state": {
+                    "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState"
                 }
             }
         }
