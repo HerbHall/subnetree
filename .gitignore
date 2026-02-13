@@ -59,8 +59,7 @@ web/blob-report/
 internal/dashboard/dist/
 !internal/dashboard/dist/.gitkeep
 
-# Generated protobuf
-api/proto/v1/*.pb.go
+# Generated protobuf (committed for CI; regenerate with `make proto`)
 
 # Build output
 /dist/
