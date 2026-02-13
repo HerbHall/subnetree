@@ -29,7 +29,7 @@ type Module struct {
 	bus       plugin.EventBus
 	plugins   plugin.PluginResolver
 	scheduler *Scheduler
-	checker   Checker
+	checkers map[string]Checker
 	alerter   *Alerter
 
 	ctx    context.Context
@@ -85,7 +85,11 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 func (m *Module) Start(_ context.Context) error {
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 
-	m.checker = NewICMPChecker(m.cfg.PingTimeout, m.cfg.PingCount)
+	m.checkers = map[string]Checker{
+		"icmp": NewICMPChecker(m.cfg.PingTimeout, m.cfg.PingCount),
+		"tcp":  NewTCPChecker(m.cfg.PingTimeout),
+		"http": NewHTTPChecker(m.cfg.PingTimeout),
+	}
 
 	if m.store != nil {
 		m.alerter = NewAlerter(m.store, m.bus, m.cfg.ConsecutiveFailures, m.logger)
@@ -118,9 +122,24 @@ func (m *Module) Stop(_ context.Context) error {
 	return nil
 }
 
-// executeCheck runs an ICMP check, stores the result, processes alerts, and publishes metrics.
+// executeCheck runs a check using the appropriate checker for the check type,
+// stores the result, processes alerts, and publishes metrics.
 func (m *Module) executeCheck(ctx context.Context, check Check) {
-	result, err := m.checker.Check(ctx, check.Target)
+	checkType := check.CheckType
+	if checkType == "" {
+		checkType = "icmp" // default for legacy checks
+	}
+
+	checker, ok := m.checkers[checkType]
+	if !ok {
+		m.logger.Warn("unknown check type",
+			zap.String("check_id", check.ID),
+			zap.String("check_type", checkType),
+		)
+		return
+	}
+
+	result, err := checker.Check(ctx, check.Target)
 	if err != nil {
 		m.logger.Debug("check returned error",
 			zap.String("check_id", check.ID),
@@ -164,10 +183,16 @@ func (m *Module) publishMetrics(ctx context.Context, check Check, result *CheckR
 		successVal = 1.0
 	}
 
+	// Use check type as metric prefix (icmp, tcp, http).
+	prefix := check.CheckType
+	if prefix == "" {
+		prefix = "ping" // backwards-compatible for legacy ICMP checks
+	}
+
 	metrics := []analytics.MetricPoint{
-		{DeviceID: check.DeviceID, MetricName: "ping_latency_ms", Value: result.LatencyMs, Timestamp: now},
-		{DeviceID: check.DeviceID, MetricName: "ping_packet_loss", Value: result.PacketLoss, Timestamp: now},
-		{DeviceID: check.DeviceID, MetricName: "ping_success", Value: successVal, Timestamp: now},
+		{DeviceID: check.DeviceID, MetricName: prefix + "_latency_ms", Value: result.LatencyMs, Timestamp: now},
+		{DeviceID: check.DeviceID, MetricName: prefix + "_packet_loss", Value: result.PacketLoss, Timestamp: now},
+		{DeviceID: check.DeviceID, MetricName: prefix + "_success", Value: successVal, Timestamp: now},
 	}
 
 	m.bus.PublishAsync(ctx, plugin.Event{
