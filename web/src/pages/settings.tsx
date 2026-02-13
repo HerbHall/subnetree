@@ -10,22 +10,28 @@ import {
   CheckCircle2,
   RotateCcw,
   Palette,
+  Key,
+  Copy,
+  Check,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   getNetworkInterfaces,
   getScanInterface,
   setScanInterface,
 } from '@/api/settings'
 import type { NetworkInterface } from '@/api/settings'
+import { createEnrollmentToken } from '@/api/agents'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ThemeImportExport } from '@/components/settings/theme-import-export'
 import { ThemeEditor } from '@/components/settings/theme-editor'
 import type { ThemeDefinition } from '@/api/themes'
 
-type SettingsTab = 'network' | 'appearance'
+type SettingsTab = 'network' | 'appearance' | 'agents'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('network')
@@ -54,11 +60,18 @@ export function SettingsPage() {
           icon={<Palette className="h-4 w-4" />}
           label="Appearance"
         />
+        <TabButton
+          active={activeTab === 'agents'}
+          onClick={() => setActiveTab('agents')}
+          icon={<Key className="h-4 w-4" />}
+          label="Agents"
+        />
       </div>
 
       {/* Tab content */}
       {activeTab === 'network' && <NetworkTab />}
       {activeTab === 'appearance' && <AppearanceTab />}
+      {activeTab === 'agents' && <AgentsTab />}
     </div>
   )
 }
@@ -110,6 +123,165 @@ function AppearanceTab() {
     <div className="space-y-6">
       <ThemeSelector onCustomize={handleCustomize} />
       <ThemeImportExport />
+    </div>
+  )
+}
+
+const EXPIRY_OPTIONS = [
+  { label: '1 hour', value: '1h' },
+  { label: '24 hours', value: '24h' },
+  { label: '7 days', value: '168h' },
+  { label: '30 days', value: '720h' },
+]
+
+function AgentsTab() {
+  const [description, setDescription] = useState('')
+  const [maxUses, setMaxUses] = useState(1)
+  const [expiresIn, setExpiresIn] = useState('24h')
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const tokenMutation = useMutation({
+    mutationFn: () =>
+      createEnrollmentToken({
+        description,
+        max_uses: maxUses,
+        expires_in: expiresIn,
+      }),
+    onSuccess: (data) => {
+      setGeneratedToken(data.token)
+      setDescription('')
+      setMaxUses(1)
+      setExpiresIn('24h')
+      toast.success('Enrollment token generated')
+    },
+    onError: () => {
+      toast.error('Failed to generate enrollment token')
+    },
+  })
+
+  const handleCopy = useCallback(() => {
+    if (!generatedToken) return
+    navigator.clipboard.writeText(generatedToken)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [generatedToken])
+
+  const handleDismiss = useCallback(() => {
+    setGeneratedToken(null)
+    setCopied(false)
+  }, [])
+
+  return (
+    <div className="space-y-4">
+      {/* Token display (shown after generation) */}
+      {generatedToken && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              Token Generated
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Copy this token now. It will not be shown again.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={generatedToken}
+                className="font-mono text-xs"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleDismiss}>
+              Done
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Enrollment form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Key className="h-4 w-4 text-muted-foreground" />
+            Agent Enrollment
+          </CardTitle>
+          <CardDescription>
+            Generate enrollment tokens for Scout agents to register with this server.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="token-description">Description</Label>
+              <Input
+                id="token-description"
+                placeholder="e.g., Lab server enrollment"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={tokenMutation.isPending}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="token-max-uses">Max Uses</Label>
+                <Input
+                  id="token-max-uses"
+                  type="number"
+                  min={1}
+                  value={maxUses}
+                  onChange={(e) => setMaxUses(Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={tokenMutation.isPending}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="token-expires">Expires In</Label>
+                <select
+                  id="token-expires"
+                  value={expiresIn}
+                  onChange={(e) => setExpiresIn(e.target.value)}
+                  disabled={tokenMutation.isPending}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {EXPIRY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => tokenMutation.mutate()}
+              disabled={!description.trim() || tokenMutation.isPending}
+              className="gap-2"
+            >
+              {tokenMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Key className="h-4 w-4" />
+              )}
+              {tokenMutation.isPending ? 'Generating...' : 'Generate Token'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

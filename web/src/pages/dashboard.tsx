@@ -20,6 +20,7 @@ import {
   Loader2,
   Pause,
   Rocket,
+  Bot,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DeviceCardCompact } from '@/components/device-card'
 import { ScanProgressPanel } from '@/components/scan-progress-panel'
 import { getTopology, triggerScan, listScans } from '@/api/devices'
+import { listAgents } from '@/api/agents'
 import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
@@ -94,6 +96,16 @@ export function DashboardPage() {
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 
+  // Fetch agents with auto-refresh
+  const {
+    data: agents,
+    isLoading: agentsLoading,
+  } = useQuery({
+    queryKey: ['agents'],
+    queryFn: listAgents,
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  })
+
   // Scan mutation
   const scanMutation = useMutation({
     mutationFn: () => triggerScan(),
@@ -126,6 +138,14 @@ export function DashboardPage() {
     },
     {} as Record<string, number>
   )
+
+  // Agent stats
+  const agentStats = {
+    total: agents?.length ?? 0,
+    connected: agents?.filter((a) => a.status === 'connected').length ?? 0,
+    disconnected: agents?.filter((a) => a.status === 'disconnected').length ?? 0,
+    pending: agents?.filter((a) => a.status === 'pending').length ?? 0,
+  }
 
   // Recent devices (first 5)
   const recentDevices = devices.slice(0, 5)
@@ -289,6 +309,64 @@ export function DashboardPage() {
           href="/devices?status=degraded"
         />
       </div>
+
+      {/* Scout Agents Widget */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Bot className="h-4 w-4 text-muted-foreground" />
+            Scout Agents
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
+            <Link to="/agents">
+              View All
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {agentsLoading ? (
+            <div className="grid grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="text-center">
+                  <Skeleton className="h-8 w-12 mx-auto" />
+                  <Skeleton className="h-3 w-16 mx-auto mt-1" />
+                </div>
+              ))}
+            </div>
+          ) : agentStats.total === 0 ? (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                No agents enrolled. Deploy Scout agents to monitor devices.
+              </p>
+              <Button variant="outline" size="sm" asChild className="gap-2 shrink-0">
+                <Link to="/settings">
+                  Enroll Agent
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{agentStats.total}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{agentStats.connected}</p>
+                <p className="text-xs text-muted-foreground">Connected</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{agentStats.disconnected}</p>
+                <p className="text-xs text-muted-foreground">Disconnected</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{agentStats.pending}</p>
+                <p className="text-xs text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
