@@ -30,6 +30,8 @@ HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 - **AI-Powered Analytics**: EWMA baselines, Z-score anomaly detection, CUSUM change-point detection, linear regression forecasting, natural language queries via Ollama
 - **Credential Vault**: AES-256-GCM envelope encryption, Argon2id key derivation, seal/unseal model, 7 credential types, key rotation
 - **Remote Access Gateway**: HTTP reverse proxy, SSH-in-browser via WebSocket, session management with audit trail
+- **Infrastructure Documentation**: Docker container discovery, config snapshots with versioning, LCS-based diff viewer
+- **Device Management**: Full CRUD (create, edit, delete), categorization, bulk operations, inventory summary
 - **Interactive Dashboard**: Device list, detail pages, topology visualization, dark mode, keyboard shortcuts
 - **Real-Time Updates**: WebSocket-powered scan progress with live device feed
 - **Authentication**: JWT-based auth with first-run setup wizard
@@ -105,6 +107,13 @@ docker-compose up -d
 - LAN scanning with ARP and ICMP (mDNS, SNMP, UPnP in Phase 2)
 - Automatic device identification (OS, manufacturer, type)
 - Network topology visualization
+- Full device inventory management with categorization and bulk operations
+
+### Infrastructure Documentation
+
+- Docker container discovery and config capture
+- Snapshot versioning with retention policies
+- Side-by-side diff viewer (LCS-based) for tracking configuration changes
 
 ### Monitoring
 
@@ -144,6 +153,7 @@ graph TD
     subgraph Server["SubNetree Server"]
         Recon["Recon"]
         Pulse["Pulse"]
+        Docs["Docs"]
         Insight["Insight"]
         LLM["LLM"]
         Dispatch["Dispatch"]
@@ -154,6 +164,7 @@ graph TD
 
         Recon --> EventBus
         Pulse --> EventBus
+        Docs --> EventBus
         Insight --> EventBus
         Webhook --> EventBus
     end
@@ -171,6 +182,7 @@ graph TD
 | --- | --- |
 | **Recon** | Network scanning and device discovery |
 | **Pulse** | Health monitoring, metrics, alerting |
+| **Docs** | Infrastructure documentation, config snapshots, diffing |
 | **Dispatch** | Scout agent enrollment and management |
 | **Vault** | Encrypted credential storage |
 | **Gateway** | Browser-based remote access (SSH, HTTP proxy) |
@@ -229,6 +241,7 @@ cmd/
 internal/
   recon/          Network discovery module
   pulse/          Monitoring module
+  docs/           Infrastructure documentation module
   dispatch/       Agent management module
   vault/          Credential management module
   gateway/        Remote access module
