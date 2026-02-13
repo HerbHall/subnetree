@@ -2,10 +2,8 @@ package dispatch
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
+	"fmt"
 
-	_ "github.com/HerbHall/subnetree/pkg/models" // swagger type reference
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
@@ -20,6 +18,9 @@ var (
 type Module struct {
 	logger *zap.Logger
 	config plugin.Config
+	cfg    DispatchConfig
+	store  *DispatchStore
+	bus    plugin.EventBus
 }
 
 // New creates a new Dispatch plugin instance.
@@ -37,60 +38,42 @@ func (m *Module) Info() plugin.PluginInfo {
 	}
 }
 
-func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
+func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 	m.config = deps.Config
 	m.logger = deps.Logger
-	m.logger.Info("dispatch module initialized")
+
+	m.cfg = DefaultConfig()
+	if deps.Config != nil {
+		if err := deps.Config.Unmarshal(&m.cfg); err != nil {
+			return fmt.Errorf("unmarshal dispatch config: %w", err)
+		}
+	}
+
+	if deps.Store != nil {
+		if err := deps.Store.Migrate(context.Background(), "dispatch", migrations()); err != nil {
+			return fmt.Errorf("dispatch migrations: %w", err)
+		}
+		m.store = NewDispatchStore(deps.Store.DB())
+	}
+
+	m.bus = deps.Bus
+
+	m.logger.Info("dispatch module initialized",
+		zap.String("grpc_addr", m.cfg.GRPCAddr),
+		zap.Duration("agent_timeout", m.cfg.AgentTimeout),
+		zap.Duration("enrollment_token_expiry", m.cfg.EnrollmentTokenExpiry),
+	)
 	return nil
 }
 
-func (m *Module) Start(ctx context.Context) error {
+func (m *Module) Start(_ context.Context) error {
 	m.logger.Info("dispatch module started")
 	return nil
 }
 
-func (m *Module) Stop(ctx context.Context) error {
+func (m *Module) Stop(_ context.Context) error {
 	m.logger.Info("dispatch module stopped")
 	return nil
 }
 
-// Routes implements plugin.HTTPProvider.
-func (m *Module) Routes() []plugin.Route {
-	return []plugin.Route{
-		{Method: "GET", Path: "/agents", Handler: m.handleListAgents},
-		{Method: "GET", Path: "/agents/{id}", Handler: m.handleGetAgent},
-	}
-}
-
-// handleListAgents returns all connected Scout agents.
-//
-//	@Summary		List agents
-//	@Description	Returns all registered Scout agents.
-//	@Tags			dispatch
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Success		200	{array}	models.AgentInfo
-//	@Router			/dispatch/agents [get]
-func (m *Module) handleListAgents(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode([]any{})
-}
-
-// handleGetAgent returns a single Scout agent by ID.
-//
-//	@Summary		Get agent
-//	@Description	Returns a single Scout agent by ID.
-//	@Tags			dispatch
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Param			id	path		string	true	"Agent ID"
-//	@Success		200	{object}	models.AgentInfo
-//	@Failure		404	{object}	models.APIProblem
-//	@Router			/dispatch/agents/{id} [get]
-func (m *Module) handleGetAgent(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status":  "not_implemented",
-		"message": "agent management will be implemented in Phase 1b",
-	})
-}
+// Routes is implemented in handlers.go.

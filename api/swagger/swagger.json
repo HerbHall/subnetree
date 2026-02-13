@@ -267,6 +267,83 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes a Scout agent by ID.",
+                "tags": [
+                    "dispatch"
+                ],
+                "summary": "Delete agent",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Agent ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/dispatch/enroll": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new enrollment token for agent registration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dispatch"
+                ],
+                "summary": "Create enrollment token",
+                "parameters": [
+                    {
+                        "description": "Token parameters",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_dispatch.enrollTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_dispatch.enrollTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
             }
         },
         "/health": {
@@ -2723,6 +2800,39 @@
                 "username": {
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "internal_dispatch.enrollTokenRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "description": "e.g. \"24h\", \"7d\"",
+                    "type": "string"
+                },
+                "max_uses": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_dispatch.enrollTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "max_uses": {
+                    "type": "integer"
+                },
+                "token": {
+                    "description": "raw token (only returned once)",
+                    "type": "string"
                 }
             }
         },

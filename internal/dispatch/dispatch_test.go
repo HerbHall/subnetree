@@ -90,8 +90,10 @@ func TestRoutes(t *testing.T) {
 
 	// Verify expected routes exist.
 	want := map[string]string{
-		"GET /agents":      "",
-		"GET /agents/{id}": "",
+		"GET /agents":         "",
+		"GET /agents/{id}":    "",
+		"POST /enroll":        "",
+		"DELETE /agents/{id}": "",
 	}
 	for _, r := range routes {
 		key := r.Method + " " + r.Path

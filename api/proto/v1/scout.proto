@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package subnetree.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/HerbHall/subnetree/api/proto/v1;scoutpb";
 
 // ScoutService defines the communication between Scout agents and the SubNetree server.
@@ -14,6 +16,17 @@ service ScoutService {
 
   // CommandStream establishes a bidirectional stream for server-to-agent commands.
   rpc CommandStream(stream CommandResponse) returns (stream Command);
+
+  // ReportProfile sends a full system profile snapshot from agent to server.
+  rpc ReportProfile(ProfileReport) returns (Ack);
+}
+
+// VersionStatus indicates the server's assessment of an agent's version.
+enum VersionStatus {
+  VERSION_OK = 0;
+  VERSION_DEPRECATED = 1;
+  VERSION_REJECTED = 2;
+  VERSION_UPDATE_AVAILABLE = 3;
 }
 
 message CheckInRequest {
@@ -22,12 +35,18 @@ message CheckInRequest {
   string platform = 3;
   string agent_version = 4;
   SystemMetrics metrics = 5;
+  uint32 proto_version = 6;
+  string enroll_token = 7;
 }
 
 message CheckInResponse {
   bool acknowledged = 1;
   int32 check_interval_seconds = 2;
   repeated string pending_commands = 3;
+  VersionStatus version_status = 4;
+  string server_version = 5;
+  string upgrade_message = 6;
+  string assigned_agent_id = 7;
 }
 
 message SystemMetrics {
@@ -73,4 +92,85 @@ message CommandResponse {
   bool success = 2;
   bytes output = 3;
   string error = 4;
+}
+
+// -- Profile reporting messages --
+
+message ProfileReport {
+  string agent_id = 1;
+  google.protobuf.Timestamp collected_at = 2;
+  SystemProfile profile = 3;
+}
+
+message SystemProfile {
+  HardwareProfile hardware = 1;
+  SoftwareInventory software = 2;
+  repeated ServiceInfo services = 3;
+}
+
+message HardwareProfile {
+  string cpu_model = 1;
+  int32 cpu_cores = 2;
+  int32 cpu_threads = 3;
+  int64 ram_bytes = 4;
+  repeated DiskInfo disks = 5;
+  repeated GPUInfo gpus = 6;
+  repeated NICInfo nics = 7;
+  string bios_version = 8;
+  string system_manufacturer = 9;
+  string system_model = 10;
+  string serial_number = 11;
+}
+
+message DiskInfo {
+  string name = 1;
+  int64 size_bytes = 2;
+  string disk_type = 3; // SSD, HDD, NVMe
+  string model = 4;
+  string serial = 5;
+}
+
+message GPUInfo {
+  string model = 1;
+  int64 vram_bytes = 2;
+  string driver_version = 3;
+}
+
+message NICInfo {
+  string name = 1;
+  int64 speed_mbps = 2;
+  string mac_address = 3;
+  string nic_type = 4; // ethernet, wifi, virtual
+}
+
+message SoftwareInventory {
+  string os_name = 1;
+  string os_version = 2;
+  string os_build = 3;
+  repeated InstalledPackage packages = 4;
+  repeated DockerContainer docker_containers = 5;
+}
+
+message InstalledPackage {
+  string name = 1;
+  string version = 2;
+  string publisher = 3;
+  string install_date = 4;
+}
+
+message DockerContainer {
+  string container_id = 1;
+  string name = 2;
+  string image = 3;
+  string status = 4;
+}
+
+message ServiceInfo {
+  string name = 1;
+  string display_name = 2;
+  string status = 3; // running, stopped, failed
+  string start_type = 4; // auto, manual, disabled
+  double cpu_percent = 5;
+  int64 memory_bytes = 6;
+  repeated int32 ports = 7;
 }
