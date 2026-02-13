@@ -8,6 +8,7 @@ import {
   Play,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   History,
   ArrowLeft,
   Trash2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   listApplications,
   listCollectors,
@@ -205,11 +207,14 @@ export function DocumentationPage() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
-          <p className="text-sm text-red-400">
-            {error instanceof Error ? error.message : 'Failed to load applications'}
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+          <h3 className="text-lg font-medium">Failed to load applications</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            {error instanceof Error ? error.message : 'An unexpected error occurred while loading application data.'}
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2">
+          <Button variant="outline" className="mt-4 gap-2" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>
         </div>
@@ -217,22 +222,82 @@ export function DocumentationPage() {
 
       {/* Loading state */}
       {isLoading && !error && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="h-8 w-12" />
+                    </div>
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-5 w-16 rounded" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Empty state */}
       {!isLoading && !error && applications.length === 0 && (
         <Card>
           <CardContent className="py-16">
-            <div className="text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <div className="flex flex-col items-center text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No applications tracked yet</h3>
-              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground mt-2 max-w-md">
                 Applications will appear here when collectors discover Docker containers
                 and other services on your network.
               </p>
+              {availableCollectors.length > 0 ? (
+                <Button
+                  className="mt-4 gap-2"
+                  onClick={() => collectMutation.mutate()}
+                  disabled={collectMutation.isPending}
+                >
+                  {collectMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  {collectMutation.isPending ? 'Collecting...' : 'Collect Now'}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-4">
+                  No collectors are currently available. Ensure Docker or systemd is running on a monitored host.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -445,8 +510,31 @@ function ApplicationHistoryView({
 
       {/* Loading state */}
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-5 w-12 rounded" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Skeleton className="h-3 w-3 rounded" />
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-8 w-24 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 

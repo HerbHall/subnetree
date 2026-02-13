@@ -6,6 +6,7 @@ import {
   Wifi,
   WifiOff,
   AlertTriangle,
+  AlertCircle,
   Radar,
   RefreshCw,
   ArrowRight,
@@ -18,9 +19,11 @@ import {
   XCircle,
   Loader2,
   Pause,
+  Rocket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DeviceCardCompact } from '@/components/device-card'
 import { ScanProgressPanel } from '@/components/scan-progress-panel'
 import { getTopology, triggerScan, listScans } from '@/api/devices'
@@ -193,8 +196,61 @@ export function DashboardPage() {
       {/* Error State */}
       {topologyError && (
         <Card className="border-red-500/50 bg-red-500/10">
-          <CardContent className="p-4 text-sm text-red-400">
-            Failed to load network data. Please try again.
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-400">Failed to load network data</p>
+                <p className="text-xs text-red-400/70 mt-0.5">
+                  {topologyError instanceof Error ? topologyError.message : 'An unexpected error occurred'}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetchTopology()} className="shrink-0">
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Welcome state when no devices and not loading */}
+      {!loading && !topologyError && stats.total === 0 && (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center text-center">
+              <Rocket className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">Welcome to SubNetree</h3>
+              <p className="text-sm text-muted-foreground mt-2 max-w-md">
+                Get started by scanning your network to discover devices, or add a device manually.
+              </p>
+              <ol className="text-sm text-muted-foreground mt-4 space-y-2 text-left">
+                <li className="flex items-start gap-2">
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0 mt-0.5">1</span>
+                  <span>Click <strong>Scan Network</strong> above to discover devices on your network</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0 mt-0.5">2</span>
+                  <span>Review discovered devices in the <Link to="/devices" className="text-primary hover:underline">Devices</Link> page</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0 mt-0.5">3</span>
+                  <span>Explore your <Link to="/topology" className="text-primary hover:underline">Network Map</Link> to see how devices connect</span>
+                </li>
+              </ol>
+              <Button
+                className="mt-6 gap-2"
+                onClick={() => scanMutation.mutate()}
+                disabled={scanMutation.isPending || !!wsScan}
+              >
+                {scanMutation.isPending || wsScan ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Radar className="h-4 w-4" />
+                )}
+                {wsScan ? 'Scanning...' : 'Scan Network'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -245,7 +301,7 @@ export function DashboardPage() {
             {scansLoading ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-12 rounded-lg bg-muted/30 animate-pulse" />
+                  <Skeleton key={i} className="h-12" />
                 ))}
               </div>
             ) : !recentScans || recentScans.length === 0 ? (
@@ -280,9 +336,12 @@ export function DashboardPage() {
             {loading ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="flex items-center justify-between animate-pulse">
-                    <div className="h-4 w-20 bg-muted rounded" />
-                    <div className="h-4 w-8 bg-muted rounded" />
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    <Skeleton className="h-4 w-8" />
                   </div>
                 ))}
               </div>
@@ -343,7 +402,15 @@ export function DashboardPage() {
             {loading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 rounded-lg border bg-muted/30 animate-pulse" />
+                  <div key={i} className="rounded-lg border p-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-9 w-9 rounded-lg" />
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : recentDevices.length === 0 ? (
@@ -444,7 +511,7 @@ function StatCard({
           <div>
             <p className="text-xs text-muted-foreground">{title}</p>
             {loading ? (
-              <div className="h-8 w-12 bg-muted rounded animate-pulse mt-1" />
+              <Skeleton className="h-8 w-12 mt-1" />
             ) : (
               <p className="text-2xl font-bold mt-1">{value}</p>
             )}

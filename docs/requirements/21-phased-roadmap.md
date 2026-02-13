@@ -68,7 +68,7 @@
 
 ### Phase 1: Foundation (Server + Dashboard + Discovery + Topology)
 
-**Status:** v0.2.0 shipped 2026-02-08. All core modules implemented: Recon, Pulse, Insight, LLM, Vault, Gateway. Dashboard polish and Tailscale guides complete. Post-release: Docs module (#132), Device CRUD (#162), modular themes (#158).
+**Status:** v0.2.0 shipped 2026-02-08. All core modules implemented: Recon, Pulse, Insight, LLM, Vault, Gateway. Dashboard polish and Tailscale guides complete. Post-release: Docs module (#132), Device CRUD + inventory (#162, #163), modular themes (#158), code splitting (#174), E2E tests (#175).
 
 **Goal:** Functional web-based network scanner with topology visualization. Validate architecture. Time to First Value under 10 minutes.
 
@@ -135,6 +135,8 @@
 - [x] Dark mode support
 - [x] Settings page (server config, user profile)
 - [x] About page with version info, license, and Community Supporters section
+- [x] Route-level code splitting with React.lazy (747KB -> 409KB main bundle)
+- [x] Modular theme layer system with 19 built-in themes (#158)
 
 #### Documentation
 
@@ -166,6 +168,7 @@
 - [x] Configuration tests: defaults, env overrides, YAML overrides, invalid values, `config_version` validation
 - [ ] Version compatibility tests: Plugin API, agent proto, config version, database schema version
 - [x] Graceful shutdown tests: SIGTERM/SIGINT handling, per-plugin timeout, connection draining
+- [x] E2E browser tests: Playwright infrastructure with 17 smoke tests (#95)
 - [x] Health endpoint tests: `/healthz`, `/readyz`, per-plugin health status
 - [ ] Fuzz tests: API input fuzzing, configuration fuzzing (Go `testing.F`)
 - [ ] Performance baselines: benchmark key operations, memory profile at 0/50 devices, startup time
@@ -236,8 +239,9 @@
 
 - [x] Device CRUD endpoints: GET/PUT/DELETE `/devices/{id}`, POST `/devices`
 - [x] Manual device creation (`discovery_method = "manual"`)
-- [ ] Device status history table and endpoint
-- [ ] Wire frontend device pages to backend (list, detail, edit, delete)
+- [x] Device status history table and endpoint
+- [x] Wire frontend device pages to backend (list, detail, edit, delete)
+- [x] Device inventory management: categorization, bulk updates, inventory summary (#163)
 
 #### Infrastructure Documentation (#132)
 
