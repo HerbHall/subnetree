@@ -18,6 +18,7 @@ import {
   Tablet,
   Camera,
   CircleHelp,
+  Bot,
   Globe,
   Clock,
   Tag,
@@ -581,6 +582,31 @@ export function DeviceDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Scout Agent Link */}
+      {device.agent_id && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Bot className="h-4 w-4 text-muted-foreground" />
+              Scout Agent
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                This device is managed by a Scout agent
+              </p>
+              <Button variant="outline" size="sm" asChild className="gap-2">
+                <Link to={`/agents/${device.agent_id}`}>
+                  <Bot className="h-3.5 w-3.5" />
+                  View Agent
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Inventory Details */}
       <Card>
