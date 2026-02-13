@@ -3,9 +3,12 @@ package dispatch
 import (
 	"context"
 	"fmt"
+	"net"
 
+	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // Compile-time interface guards.
@@ -16,11 +19,13 @@ var (
 
 // Module implements the Dispatch agent management plugin.
 type Module struct {
-	logger *zap.Logger
-	config plugin.Config
-	cfg    DispatchConfig
-	store  *DispatchStore
-	bus    plugin.EventBus
+	logger     *zap.Logger
+	config     plugin.Config
+	cfg        DispatchConfig
+	store      *DispatchStore
+	bus        plugin.EventBus
+	grpcServer *grpc.Server
+	grpcLis    net.Listener
 }
 
 // New creates a new Dispatch plugin instance.
@@ -67,11 +72,41 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 }
 
 func (m *Module) Start(_ context.Context) error {
+	if m.store == nil {
+		m.logger.Info("dispatch module started (no store, gRPC disabled)")
+		return nil
+	}
+
+	lis, err := net.Listen("tcp", m.cfg.GRPCAddr)
+	if err != nil {
+		return fmt.Errorf("listen gRPC %s: %w", m.cfg.GRPCAddr, err)
+	}
+	m.grpcLis = lis
+
+	m.grpcServer = grpc.NewServer()
+	scoutpb.RegisterScoutServiceServer(m.grpcServer, &scoutServer{
+		store:  m.store,
+		bus:    m.bus,
+		logger: m.logger.Named("grpc"),
+		cfg:    m.cfg,
+	})
+
+	go func() {
+		m.logger.Info("gRPC server listening", zap.String("addr", m.cfg.GRPCAddr))
+		if err := m.grpcServer.Serve(lis); err != nil {
+			m.logger.Error("gRPC server error", zap.Error(err))
+		}
+	}()
+
 	m.logger.Info("dispatch module started")
 	return nil
 }
 
 func (m *Module) Stop(_ context.Context) error {
+	if m.grpcServer != nil {
+		m.grpcServer.GracefulStop()
+		m.logger.Info("gRPC server stopped")
+	}
 	m.logger.Info("dispatch module stopped")
 	return nil
 }
