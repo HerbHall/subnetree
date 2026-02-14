@@ -603,8 +603,10 @@ export function TopologyPage() {
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        minZoom={0.1}
+        maxZoom={4}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         proOptions={{ hideAttribution: true }}
         className="rounded-lg"
         style={{ backgroundColor: 'var(--nv-bg-surface)' }}
