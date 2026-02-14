@@ -23,7 +23,7 @@ HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 
 ## Current Status
 
-> **v0.2.1** -- All core modules functional. 398 tests across 5 new modules.
+> All core modules functional. 398 tests across 5 new modules.
 
 ### What Works Today
 
@@ -71,43 +71,35 @@ See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full pl
 
 That's it. No databases, no config files, no dependencies to install.
 
-## Quick Start (Docker)
-
-```console
-docker run -d --name subnetree -p 8080:8080 -v subnetree-data:/data --cap-add NET_RAW --cap-add NET_ADMIN ghcr.io/herbhall/subnetree:latest
-```
-
-Open <http://localhost:8080> -- first-time setup will prompt you to create an admin account.
-
-For full network scanning capability on home networks:
+## Quick Start
 
 ```console
 docker run -d --name subnetree --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
 ```
 
-### Docker Compose
+Open `http://your-server-ip:8080` -- the setup wizard will guide you through creating an admin account.
 
-```yaml
-# docker-compose.yml
-services:
-  subnetree:
-    image: ghcr.io/herbhall/subnetree:latest
-    container_name: subnetree
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      - subnetree-data:/data
-    cap_add:
-      - NET_RAW
-      - NET_ADMIN
+> **Note:** Host networking gives SubNetree direct access to your LAN for device discovery. This is the recommended setup for home networks.
 
-volumes:
-  subnetree-data:
+<details>
+<summary>Using bridge networking instead</summary>
+
+If host networking is not available (e.g., macOS, Windows Docker Desktop):
+
+```console
+docker run -d --name subnetree -p 8080:8080 -v subnetree-data:/data --cap-add NET_RAW --cap-add NET_ADMIN ghcr.io/herbhall/subnetree:latest
 ```
 
-```bash
-docker-compose up -d
+Bridge mode requires `NET_RAW` and `NET_ADMIN` capabilities for network scanning. Discovery may be limited to the Docker bridge subnet.
+
+</details>
+
+### Docker Compose
+
+See [docker-compose.yml](docker-compose.yml) for a ready-to-use Compose file:
+
+```console
+docker compose up -d
 ```
 
 ## Features
