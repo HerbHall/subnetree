@@ -42,6 +42,7 @@ import {
   AppWindow,
   Layers,
   TrendingUp,
+  Key,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -59,6 +60,7 @@ import {
 import { getDeviceServices, getDeviceUtilization, updateDesiredState } from '@/api/services'
 import { getDeviceMetrics } from '@/api/pulse'
 import { getSNMPSystemInfo, getSNMPInterfaces } from '@/api/recon'
+import { listDeviceCredentials } from '@/api/vault'
 import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange } from '@/api/types'
 import { TimeSeriesChart } from '@/components/time-series-chart'
 import { cn } from '@/lib/utils'
@@ -175,6 +177,13 @@ export function DeviceDetailPage() {
     queryFn: () => getDeviceMetrics(id!, selectedMetric, selectedRange),
     enabled: !!id,
     refetchInterval: 60_000,
+  })
+
+  // Fetch device credentials
+  const { data: deviceCredentials } = useQuery({
+    queryKey: ['device-credentials', id],
+    queryFn: () => listDeviceCredentials(id!),
+    enabled: !!id,
   })
 
   // Update desired state mutation
@@ -1045,6 +1054,58 @@ export function DeviceDetailPage() {
         </CardHeader>
         <CardContent>
           <ScanHistoryList scans={scanHistory || []} />
+        </CardContent>
+      </Card>
+
+      {/* Credentials Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Key className="h-4 w-4 text-muted-foreground" />
+              Credentials
+            </CardTitle>
+            <Button variant="outline" size="sm" asChild className="gap-2">
+              <Link to="/vault">
+                <Key className="h-3.5 w-3.5" />
+                Manage in Vault
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!deviceCredentials || deviceCredentials.length === 0 ? (
+            <div className="text-center py-6">
+              <Key className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No credentials assigned to this device.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Assign credentials in the Vault to enable remote access.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-left font-medium">Type</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {deviceCredentials.map((cred) => (
+                    <tr key={cred.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2 font-medium">{cred.name}</td>
+                      <td className="px-4 py-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                          {cred.type.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
