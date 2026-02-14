@@ -28,9 +28,10 @@ type Module struct {
 	store     *PulseStore
 	bus       plugin.EventBus
 	plugins   plugin.PluginResolver
-	scheduler *Scheduler
-	checkers map[string]Checker
-	alerter   *Alerter
+	scheduler  *Scheduler
+	checkers   map[string]Checker
+	alerter    *Alerter
+	dispatcher *NotificationDispatcher
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -93,6 +94,7 @@ func (m *Module) Start(_ context.Context) error {
 
 	if m.store != nil {
 		m.alerter = NewAlerter(m.store, m.bus, m.cfg.ConsecutiveFailures, m.logger)
+		m.dispatcher = NewNotificationDispatcher(m.store, m.logger)
 
 		m.scheduler = NewScheduler(
 			m.store,
@@ -238,6 +240,15 @@ func (m *Module) Health(_ context.Context) plugin.HealthStatus {
 func (m *Module) Subscriptions() []plugin.Subscription {
 	return []plugin.Subscription{
 		{Topic: TopicDeviceDiscovered, Handler: m.handleDeviceDiscovered},
+		{Topic: TopicAlertTriggered, Handler: m.handleAlertNotification},
+		{Topic: TopicAlertResolved, Handler: m.handleAlertNotification},
+	}
+}
+
+// handleAlertNotification routes alert events to the notification dispatcher.
+func (m *Module) handleAlertNotification(ctx context.Context, event plugin.Event) {
+	if m.dispatcher != nil {
+		m.dispatcher.HandleAlertEvent(ctx, event)
 	}
 }
 

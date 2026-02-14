@@ -66,5 +66,21 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     3,
+			Description: "create notification channels table",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS pulse_notification_channels (
+					id TEXT PRIMARY KEY,
+					name TEXT NOT NULL,
+					type TEXT NOT NULL,
+					config TEXT NOT NULL,
+					enabled INTEGER NOT NULL DEFAULT 1,
+					created_at DATETIME NOT NULL,
+					updated_at DATETIME NOT NULL
+				)`)
+				return err
+			},
+		},
 	}
 }

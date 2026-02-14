@@ -145,14 +145,27 @@ func TestSubscriptions_ReturnsTopics(t *testing.T) {
 	m := New()
 
 	subs := m.Subscriptions()
-	if len(subs) != 1 {
-		t.Fatalf("Subscriptions() returned %d, want 1", len(subs))
+	if len(subs) != 3 {
+		t.Fatalf("Subscriptions() returned %d, want 3", len(subs))
 	}
 
-	if subs[0].Topic != TopicDeviceDiscovered {
-		t.Errorf("Subscriptions()[0].Topic = %q, want %q", subs[0].Topic, TopicDeviceDiscovered)
+	expectedTopics := map[string]bool{
+		TopicDeviceDiscovered: false,
+		TopicAlertTriggered:   false,
+		TopicAlertResolved:    false,
 	}
-	if subs[0].Handler == nil {
-		t.Error("Subscriptions()[0].Handler is nil, want non-nil")
+	for i := range subs {
+		if subs[i].Handler == nil {
+			t.Errorf("Subscriptions()[%d].Handler is nil, want non-nil", i)
+		}
+		if _, ok := expectedTopics[subs[i].Topic]; !ok {
+			t.Errorf("unexpected subscription topic: %q", subs[i].Topic)
+		}
+		expectedTopics[subs[i].Topic] = true
+	}
+	for topic, found := range expectedTopics {
+		if !found {
+			t.Errorf("missing subscription for topic %q", topic)
+		}
 	}
 }
