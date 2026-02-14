@@ -52,6 +52,10 @@ export function ThemeSelector({ onCustomize }: ThemeSelectorProps) {
     },
     onSuccess: (theme) => {
       setStoreTheme(theme)
+      // Update ThemeProvider's cached queries so its useEffect sees the new
+      // theme immediately and doesn't revert to the stale server value.
+      queryClient.setQueryData(['theme', 'active'], { theme_id: theme.id })
+      queryClient.setQueryData(['theme', theme.id], theme)
       toast.success(`Switched to "${theme.name}"`)
       queryClient.invalidateQueries({ queryKey: ['settings', 'themes'] })
     },
