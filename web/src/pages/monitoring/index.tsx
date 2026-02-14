@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
   HeartPulse,
@@ -34,7 +34,9 @@ import {
   createChannel,
   deleteChannel,
   testChannel,
+  getDeviceMetrics,
 } from '@/api/pulse'
+import { SparklineChart } from '@/components/sparkline-chart'
 import type {
   Check,
   Alert,
@@ -107,6 +109,30 @@ function ChecksTab() {
     queryKey: ['checks'],
     queryFn: listChecks,
   })
+
+  // Deduplicate device IDs for sparkline fetching
+  const uniqueDeviceIds = useMemo(
+    () => [...new Set((checks ?? []).map((c) => c.device_id))],
+    [checks]
+  )
+
+  const sparklineQueries = useQueries({
+    queries: uniqueDeviceIds.map((deviceId) => ({
+      queryKey: ['sparkline', deviceId],
+      queryFn: () => getDeviceMetrics(deviceId, 'latency', '24h'),
+      staleTime: 5 * 60 * 1000,
+      enabled: uniqueDeviceIds.length > 0,
+    })),
+  })
+
+  const sparklineData = useMemo(() => {
+    const map = new Map<string, Array<{ timestamp: string; value: number }>>()
+    uniqueDeviceIds.forEach((id, i) => {
+      const result = sparklineQueries[i]?.data
+      if (result?.points) map.set(id, result.points)
+    })
+    return map
+  }, [uniqueDeviceIds, sparklineQueries])
 
   const createMutation = useMutation({
     mutationFn: (req: CreateCheckRequest) => createCheck(req),
@@ -207,6 +233,7 @@ function ChecksTab() {
                   <th className="px-4 py-3 text-left font-medium">Device</th>
                   <th className="px-4 py-3 text-left font-medium">Type</th>
                   <th className="px-4 py-3 text-left font-medium">Target</th>
+                  <th className="px-4 py-3 text-left font-medium hidden md:table-cell">Trend</th>
                   <th className="px-4 py-3 text-left font-medium">Interval</th>
                   <th className="px-4 py-3 text-left font-medium">Enabled</th>
                   <th className="px-4 py-3 text-left font-medium w-24">Actions</th>
@@ -222,6 +249,9 @@ function ChecksTab() {
                       <CheckTypeBadge type={check.check_type} />
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{check.target}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <SparklineChart data={sparklineData.get(check.device_id) ?? []} />
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{check.interval_seconds}s</td>
                     <td className="px-4 py-3">
                       <button
