@@ -207,7 +207,7 @@ func main() {
 			logger.Fatal("failed to generate JWT secret", zap.Error(err))
 		}
 		jwtSecret = hex.EncodeToString(b)
-		logger.Warn("no auth.jwt_secret configured; using ephemeral secret (tokens will not survive restarts)",
+		logger.Info("using auto-generated JWT secret (normal for first run; set auth.jwt_secret in config to persist sessions across restarts)",
 			zap.String("component", "auth"),
 		)
 	} else {
@@ -304,6 +304,13 @@ func main() {
 	}()
 
 	logger.Info("SubNetree server ready", zap.String("addr", addr))
+
+	// Print human-readable banner for users watching docker logs.
+	port := viperCfg.GetString("server.port")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Fprintf(os.Stderr, "\n  SubNetree %s is ready!\n  Open http://localhost:%s in your browser.\n\n", version.Short(), port)
 
 	// Wait for shutdown signal
 	sigCh := make(chan os.Signal, 1)

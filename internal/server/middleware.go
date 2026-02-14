@@ -78,7 +78,13 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 
 // LoggingMiddleware logs each HTTP request with duration and status, and
 // records Prometheus metrics (request count and duration histogram).
-func LoggingMiddleware(logger *zap.Logger) Middleware {
+// Paths in skipPaths are excluded from logging but still recorded in metrics.
+func LoggingMiddleware(logger *zap.Logger, skipPaths []string) Middleware {
+	skip := make(map[string]bool, len(skipPaths))
+	for _, p := range skipPaths {
+		skip[p] = true
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -88,14 +94,16 @@ func LoggingMiddleware(logger *zap.Logger) Middleware {
 
 			duration := time.Since(start)
 
-			logger.Info("http request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.Int("status", sw.status),
-				zap.Duration("duration", duration),
-				zap.String("remote", r.RemoteAddr),
-				zap.String("request_id", RequestID(r.Context())),
-			)
+			if !skip[r.URL.Path] {
+				logger.Info("http request",
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+					zap.Int("status", sw.status),
+					zap.Duration("duration", duration),
+					zap.String("remote", r.RemoteAddr),
+					zap.String("request_id", RequestID(r.Context())),
+				)
+			}
 
 			httpRequestsTotal.WithLabelValues(
 				r.Method, r.URL.Path, strconv.Itoa(sw.status),

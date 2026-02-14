@@ -56,7 +56,7 @@ func TestLoggingMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	})
 
-	handler := LoggingMiddleware(logger)(inner)
+	handler := LoggingMiddleware(logger, nil)(inner)
 
 	req := httptest.NewRequest("GET", "/test", http.NoBody)
 	w := httptest.NewRecorder()

@@ -87,7 +87,7 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 	middlewares := []Middleware{
 		RecoveryMiddleware(logger),
 		RequestIDMiddleware,
-		LoggingMiddleware(logger),
+		LoggingMiddleware(logger, []string{"/healthz", "/readyz", "/metrics"}),
 		SecurityHeadersMiddleware,
 		VersionHeaderMiddleware,
 		RateLimitMiddleware(100, 200, []string{"/healthz", "/readyz", "/metrics"}),

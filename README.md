@@ -46,23 +46,21 @@ That's it. No databases, no config files, no dependencies to install.
 ## Quick Start
 
 ```console
+docker run -d --name subnetree -p 8080:8080 -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
+```
+
+Open [http://localhost:8080](http://localhost:8080) -- the setup wizard will guide you through creating an admin account.
+
+<details>
+<summary>Using host networking (Linux only -- recommended for full discovery)</summary>
+
+Host networking gives SubNetree direct access to your LAN for ARP/ICMP device discovery. This is the recommended setup for Linux home servers:
+
+```console
 docker run -d --name subnetree --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
 ```
 
-Open `http://your-server-ip:8080` -- the setup wizard will guide you through creating an admin account.
-
-> **Note:** Host networking gives SubNetree direct access to your LAN for device discovery. This is the recommended setup for home networks.
-
-<details>
-<summary>Using bridge networking instead</summary>
-
-If host networking is not available (e.g., macOS, Windows Docker Desktop):
-
-```console
-docker run -d --name subnetree -p 8080:8080 -v subnetree-data:/data --cap-add NET_RAW --cap-add NET_ADMIN ghcr.io/herbhall/subnetree:latest
-```
-
-Bridge mode requires `NET_RAW` and `NET_ADMIN` capabilities for network scanning. Discovery may be limited to the Docker bridge subnet.
+> **Note:** `--network host` is not supported on Docker Desktop (macOS/Windows). Use the default bridge command above instead.
 
 </details>
 
