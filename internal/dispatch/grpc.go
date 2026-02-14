@@ -13,6 +13,8 @@ import (
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 )
 
 // Compile-time guard.
@@ -57,6 +59,20 @@ func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) 
 		caCertDER = result.caCertDER
 	} else if agentID == "" {
 		return nil, fmt.Errorf("agent_id is required for check-in (use enroll_token for initial enrollment)")
+	}
+
+	// 2b. Verify client certificate identity matches agent_id when present.
+	if certCN, ok := extractAgentIDFromCert(ctx); ok && assignedID == "" {
+		if certCN != agentID {
+			s.logger.Warn("agent_id mismatch with client certificate",
+				zap.String("agent_id", agentID),
+				zap.String("cert_cn", certCN),
+			)
+			return nil, fmt.Errorf("agent_id %q does not match client certificate CN %q", agentID, certCN)
+		}
+		s.logger.Debug("client certificate identity verified",
+			zap.String("agent_id", agentID),
+		)
 	}
 
 	// 3. Handle certificate renewal for existing agents.
@@ -274,4 +290,19 @@ func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInReque
 	)
 
 	return result, nil
+}
+
+// extractAgentIDFromCert extracts the agent ID (CommonName) from the client's
+// TLS certificate presented during mTLS. Returns empty string and false if no
+// client certificate is present (e.g., during enrollment or insecure connections).
+func extractAgentIDFromCert(ctx context.Context) (string, bool) {
+	p, ok := peer.FromContext(ctx)
+	if !ok || p.AuthInfo == nil {
+		return "", false
+	}
+	tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+	if !ok || len(tlsInfo.State.PeerCertificates) == 0 {
+		return "", false
+	}
+	return tlsInfo.State.PeerCertificates[0].Subject.CommonName, true
 }

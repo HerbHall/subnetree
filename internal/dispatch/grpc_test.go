@@ -6,9 +6,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/ca"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -452,5 +455,250 @@ func TestGRPC_CheckIn_VersionNegotiation(t *testing.T) {
 				t.Errorf("acknowledged = %v, want %v", resp.Acknowledged, tc.wantAcked)
 			}
 		})
+	}
+}
+
+// testTLSServerWithCA creates a TLS-enabled gRPC server and returns a client connected over TLS.
+// The returned client does NOT present a client certificate (simulates enrollment).
+// Uses InsecureSkipVerify on the client since the test CA-signed server cert
+// lacks IP SANs (SignCSR doesn't copy SANs from the CSR).
+func testTLSServerWithCA(t *testing.T, authority *ca.Authority) (scoutpb.ScoutServiceClient, *DispatchStore) {
+	t.Helper()
+
+	store := testStore(t)
+	dir := t.TempDir()
+
+	// Generate server certificate signed by the CA.
+	serverKey, _, err := ca.GenerateKeypair()
+	if err != nil {
+		t.Fatalf("generate server key: %v", err)
+	}
+	serverCSR, err := ca.CreateCSR(serverKey, "dispatch-server", "localhost")
+	if err != nil {
+		t.Fatalf("create server CSR: %v", err)
+	}
+	serverCertDER, _, _, err := authority.SignCSR(serverCSR, "dispatch-server", 24*time.Hour)
+	if err != nil {
+		t.Fatalf("sign server cert: %v", err)
+	}
+
+	// Write server cert and key to temp files.
+	serverCertPath := filepath.Join(dir, "server.crt")
+	serverKeyPath := filepath.Join(dir, "server.key")
+	if err := ca.SavePEM(serverCertPath, "CERTIFICATE", serverCertDER); err != nil {
+		t.Fatalf("save server cert: %v", err)
+	}
+	serverKeyPEM, err := ca.EncodeKeyPEM(serverKey)
+	if err != nil {
+		t.Fatalf("encode server key: %v", err)
+	}
+	if err := os.WriteFile(serverKeyPath, serverKeyPEM, 0o600); err != nil {
+		t.Fatalf("write server key: %v", err)
+	}
+
+	// Create TLS-enabled gRPC server.
+	serverCert, err := tls.LoadX509KeyPair(serverCertPath, serverKeyPath)
+	if err != nil {
+		t.Fatalf("load server keypair: %v", err)
+	}
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(authority.CACertPEM())
+
+	serverTLS := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientCAs:    certPool,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	// Use a real TCP listener for TLS (bufconn doesn't support TLS handshake).
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { lis.Close() })
+	addr := lis.Addr().String()
+
+	srv := grpc.NewServer(grpc.Creds(credentials.NewTLS(serverTLS)))
+	scoutpb.RegisterScoutServiceServer(srv, &scoutServer{
+		store:     store,
+		logger:    zap.NewNop(),
+		cfg:       DefaultConfig(),
+		authority: authority,
+	})
+	t.Cleanup(func() { srv.Stop() })
+	go func() { _ = srv.Serve(lis) }()
+
+	// Client connects with TLS but WITHOUT a client certificate.
+	// InsecureSkipVerify is used in tests because the CA-signed server cert
+	// doesn't include IP SANs for 127.0.0.1 (SignCSR doesn't copy SANs).
+	clientTLS := &tls.Config{
+		InsecureSkipVerify: true, //nolint:gosec // G402: test-only, server cert lacks IP SANs
+		MinVersion:         tls.VersionTLS12,
+	}
+	conn, err := grpc.NewClient(addr,
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)),
+	)
+	if err != nil {
+		t.Fatalf("dial TLS: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	return scoutpb.NewScoutServiceClient(conn), store
+}
+
+func TestGRPC_TLS_EnrollmentWithoutClientCert(t *testing.T) {
+	authority := testCA(t)
+	client, store := testTLSServerWithCA(t, authority)
+	ctx := context.Background()
+
+	// Create enrollment token.
+	rawToken := "tls-enrollment-token"
+	tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(rawToken)))
+	now := time.Now().UTC()
+	expires := now.Add(24 * time.Hour)
+	if err := store.CreateEnrollmentToken(ctx, &EnrollmentToken{
+		ID:          "tok-tls",
+		TokenHash:   tokenHash,
+		Description: "TLS enrollment token",
+		CreatedAt:   now,
+		ExpiresAt:   &expires,
+		MaxUses:     1,
+	}); err != nil {
+		t.Fatalf("create token: %v", err)
+	}
+
+	// Enroll over TLS without a client cert (first connection).
+	resp, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		Hostname:     "tls-agent-host",
+		Platform:     "linux/amd64",
+		AgentVersion: "0.1.0",
+		ProtoVersion: 1,
+		EnrollToken:  rawToken,
+	})
+	if err != nil {
+		t.Fatalf("CheckIn (TLS enrollment): %v", err)
+	}
+
+	if !resp.Acknowledged {
+		t.Error("expected acknowledged=true")
+	}
+	if resp.AssignedAgentId == "" {
+		t.Fatal("expected non-empty assigned_agent_id")
+	}
+}
+
+func TestGRPC_TLS_EnrollmentWithCSR(t *testing.T) {
+	authority := testCA(t)
+	client, store := testTLSServerWithCA(t, authority)
+	ctx := context.Background()
+
+	// Create enrollment token.
+	rawToken := "tls-csr-enrollment-token"
+	tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(rawToken)))
+	now := time.Now().UTC()
+	expires := now.Add(24 * time.Hour)
+	if err := store.CreateEnrollmentToken(ctx, &EnrollmentToken{
+		ID:          "tok-tls-csr",
+		TokenHash:   tokenHash,
+		Description: "TLS CSR enrollment token",
+		CreatedAt:   now,
+		ExpiresAt:   &expires,
+		MaxUses:     1,
+	}); err != nil {
+		t.Fatalf("create token: %v", err)
+	}
+
+	csrDER := testCSR(t, "pending-tls-agent")
+
+	// Enroll over TLS with CSR.
+	resp, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		Hostname:           "tls-csr-agent",
+		Platform:           "linux/amd64",
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		EnrollToken:        rawToken,
+		CertificateRequest: csrDER,
+	})
+	if err != nil {
+		t.Fatalf("CheckIn (TLS enrollment with CSR): %v", err)
+	}
+
+	if !resp.Acknowledged {
+		t.Error("expected acknowledged=true")
+	}
+	if resp.AssignedAgentId == "" {
+		t.Fatal("expected non-empty assigned_agent_id")
+	}
+	if len(resp.SignedCertificate) == 0 {
+		t.Fatal("expected signed certificate from TLS enrollment with CSR")
+	}
+	if len(resp.CaCertificate) == 0 {
+		t.Fatal("expected CA certificate from TLS enrollment with CSR")
+	}
+}
+
+func TestModule_EnsureServerCert(t *testing.T) {
+	dir := t.TempDir()
+	authority := testCA(t)
+
+	m := &Module{
+		logger:    zap.NewNop(),
+		authority: authority,
+		cfg: DispatchConfig{
+			TLSEnabled:     true,
+			ServerCertPath: filepath.Join(dir, "server.crt"),
+			ServerKeyPath:  filepath.Join(dir, "server.key"),
+			CAConfig: ca.Config{
+				CertPath: filepath.Join(dir, "ca.crt"),
+				KeyPath:  filepath.Join(dir, "ca.key"),
+			},
+		},
+	}
+
+	if err := m.ensureServerCert(); err != nil {
+		t.Fatalf("ensureServerCert: %v", err)
+	}
+
+	// Verify cert and key were created.
+	if _, err := os.Stat(m.cfg.ServerCertPath); err != nil {
+		t.Errorf("server cert not created: %v", err)
+	}
+	if _, err := os.Stat(m.cfg.ServerKeyPath); err != nil {
+		t.Errorf("server key not created: %v", err)
+	}
+
+	// Verify the cert can be loaded.
+	_, err := tls.LoadX509KeyPair(m.cfg.ServerCertPath, m.cfg.ServerKeyPath)
+	if err != nil {
+		t.Fatalf("load generated server keypair: %v", err)
+	}
+
+	// Calling again should be a no-op (cert already exists).
+	if err := m.ensureServerCert(); err != nil {
+		t.Fatalf("ensureServerCert (second call): %v", err)
+	}
+}
+
+func TestModule_CreateGRPCServer_InsecureFallback(t *testing.T) {
+	m := &Module{
+		logger: zap.NewNop(),
+		cfg: DispatchConfig{
+			TLSEnabled: false,
+		},
+	}
+
+	srv := m.createGRPCServer()
+	if srv == nil {
+		t.Fatal("expected non-nil gRPC server")
+	}
+	srv.Stop()
+}
+
+func TestExtractAgentIDFromCert_NoPeer(t *testing.T) {
+	ctx := context.Background()
+	cn, ok := extractAgentIDFromCert(ctx)
+	if ok {
+		t.Errorf("expected ok=false for context without peer, got cn=%q", cn)
 	}
 }
