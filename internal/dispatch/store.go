@@ -161,6 +161,25 @@ func (s *DispatchStore) UpdateCheckIn(ctx context.Context, agentID, hostname, pl
 	return nil
 }
 
+// UpdateAgentCert updates the certificate serial and expiry for an agent.
+// Used during certificate renewal for existing agents.
+func (s *DispatchStore) UpdateAgentCert(ctx context.Context, agentID, certSerial string, certExpires time.Time) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE dispatch_agents SET
+			cert_serial = ?, cert_expires_at = ?
+		WHERE id = ?`,
+		certSerial, certExpires, agentID,
+	)
+	if err != nil {
+		return fmt.Errorf("update agent cert: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent %q not found", agentID)
+	}
+	return nil
+}
+
 // DeleteAgent removes an agent by ID. Returns an error if the agent does not exist.
 func (s *DispatchStore) DeleteAgent(ctx context.Context, id string) error {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM dispatch_agents WHERE id = ?`, id)

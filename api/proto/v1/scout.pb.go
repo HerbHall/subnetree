@@ -76,16 +76,17 @@ func (VersionStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type CheckInRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
-	Hostname      string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	Platform      string                 `protobuf:"bytes,3,opt,name=platform,proto3" json:"platform,omitempty"`
-	AgentVersion  string                 `protobuf:"bytes,4,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
-	Metrics       *SystemMetrics         `protobuf:"bytes,5,opt,name=metrics,proto3" json:"metrics,omitempty"`
-	ProtoVersion  uint32                 `protobuf:"varint,6,opt,name=proto_version,json=protoVersion,proto3" json:"proto_version,omitempty"`
-	EnrollToken   string                 `protobuf:"bytes,7,opt,name=enroll_token,json=enrollToken,proto3" json:"enroll_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	AgentId            string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Hostname           string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	Platform           string                 `protobuf:"bytes,3,opt,name=platform,proto3" json:"platform,omitempty"`
+	AgentVersion       string                 `protobuf:"bytes,4,opt,name=agent_version,json=agentVersion,proto3" json:"agent_version,omitempty"`
+	Metrics            *SystemMetrics         `protobuf:"bytes,5,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	ProtoVersion       uint32                 `protobuf:"varint,6,opt,name=proto_version,json=protoVersion,proto3" json:"proto_version,omitempty"`
+	EnrollToken        string                 `protobuf:"bytes,7,opt,name=enroll_token,json=enrollToken,proto3" json:"enroll_token,omitempty"`
+	CertificateRequest []byte                 `protobuf:"bytes,8,opt,name=certificate_request,json=certificateRequest,proto3" json:"certificate_request,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CheckInRequest) Reset() {
@@ -167,6 +168,13 @@ func (x *CheckInRequest) GetEnrollToken() string {
 	return ""
 }
 
+func (x *CheckInRequest) GetCertificateRequest() []byte {
+	if x != nil {
+		return x.CertificateRequest
+	}
+	return nil
+}
+
 type CheckInResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Acknowledged         bool                   `protobuf:"varint,1,opt,name=acknowledged,proto3" json:"acknowledged,omitempty"`
@@ -176,6 +184,8 @@ type CheckInResponse struct {
 	ServerVersion        string                 `protobuf:"bytes,5,opt,name=server_version,json=serverVersion,proto3" json:"server_version,omitempty"`
 	UpgradeMessage       string                 `protobuf:"bytes,6,opt,name=upgrade_message,json=upgradeMessage,proto3" json:"upgrade_message,omitempty"`
 	AssignedAgentId      string                 `protobuf:"bytes,7,opt,name=assigned_agent_id,json=assignedAgentId,proto3" json:"assigned_agent_id,omitempty"`
+	SignedCertificate    []byte                 `protobuf:"bytes,8,opt,name=signed_certificate,json=signedCertificate,proto3" json:"signed_certificate,omitempty"`
+	CaCertificate        []byte                 `protobuf:"bytes,9,opt,name=ca_certificate,json=caCertificate,proto3" json:"ca_certificate,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -257,6 +267,20 @@ func (x *CheckInResponse) GetAssignedAgentId() string {
 		return x.AssignedAgentId
 	}
 	return ""
+}
+
+func (x *CheckInResponse) GetSignedCertificate() []byte {
+	if x != nil {
+		return x.SignedCertificate
+	}
+	return nil
+}
+
+func (x *CheckInResponse) GetCaCertificate() []byte {
+	if x != nil {
+		return x.CaCertificate
+	}
+	return nil
 }
 
 type SystemMetrics struct {
@@ -1459,7 +1483,7 @@ var File_api_proto_v1_scout_proto protoreflect.FileDescriptor
 
 const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/proto/v1/scout.proto\x12\fsubnetree.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x87\x02\n" +
+	"\x18api/proto/v1/scout.proto\x12\fsubnetree.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb8\x02\n" +
 	"\x0eCheckInRequest\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1a\n" +
 	"\bhostname\x18\x02 \x01(\tR\bhostname\x12\x1a\n" +
@@ -1467,7 +1491,7 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\ragent_version\x18\x04 \x01(\tR\fagentVersion\x125\n" +
 	"\ametrics\x18\x05 \x01(\v2\x1b.subnetree.v1.SystemMetricsR\ametrics\x12#\n" +
 	"\rproto_version\x18\x06 \x01(\rR\fprotoVersion\x12!\n" +
-	"\fenroll_token\x18\a \x01(\tR\venrollToken\"\xd6\x02\n" +
+	"\fenroll_token\x18\a \x01(\tR\venrollToken\x12/\n\x13certificate_request\x18\b \x01(\x0cR\x12certificateRequest\"\xac\x03\n" +
 	"\x0fCheckInResponse\x12\"\n" +
 	"\facknowledged\x18\x01 \x01(\bR\facknowledged\x124\n" +
 	"\x16check_interval_seconds\x18\x02 \x01(\x05R\x14checkIntervalSeconds\x12)\n" +
@@ -1475,7 +1499,7 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\x0eversion_status\x18\x04 \x01(\x0e2\x1b.subnetree.v1.VersionStatusR\rversionStatus\x12%\n" +
 	"\x0eserver_version\x18\x05 \x01(\tR\rserverVersion\x12'\n" +
 	"\x0fupgrade_message\x18\x06 \x01(\tR\x0eupgradeMessage\x12*\n" +
-	"\x11assigned_agent_id\x18\a \x01(\tR\x0fassignedAgentId\"\x9a\x02\n" +
+	"\x11assigned_agent_id\x18\a \x01(\tR\x0fassignedAgentId\x12-\n\x12signed_certificate\x18\b \x01(\x0cR\x11signedCertificate\x12%\n\x0eca_certificate\x18\t \x01(\x0cR\rcaCertificate\"\x9a\x02\n" +
 	"\rSystemMetrics\x12\x1f\n" +
 	"\vcpu_percent\x18\x01 \x01(\x01R\n" +
 	"cpuPercent\x12%\n" +

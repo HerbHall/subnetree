@@ -2,10 +2,12 @@ package dispatch
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 
 	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
+	"github.com/HerbHall/subnetree/internal/ca"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -24,6 +26,7 @@ type Module struct {
 	cfg        DispatchConfig
 	store      *DispatchStore
 	bus        plugin.EventBus
+	authority  *ca.Authority
 	grpcServer *grpc.Server
 	grpcLis    net.Listener
 }
@@ -63,10 +66,29 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 	m.bus = deps.Bus
 
+	// Initialize the internal CA for agent certificate management.
+	// CA is optional -- enrollment works without it (no mTLS certs issued).
+	if m.cfg.CAConfig.CertPath != "" && m.cfg.CAConfig.KeyPath != "" {
+		authority, err := ca.LoadOrGenerate(m.cfg.CAConfig, m.logger.Named("ca"))
+		if err != nil {
+			m.logger.Warn("CA initialization failed; mTLS certificate issuance disabled",
+				zap.Error(err),
+			)
+		} else {
+			m.authority = authority
+			caCert := m.authority.CACert()
+			m.logger.Info("CA initialized",
+				zap.String("ca_serial", hex.EncodeToString(caCert.SerialNumber.Bytes())),
+				zap.Time("ca_expires", caCert.NotAfter),
+			)
+		}
+	}
+
 	m.logger.Info("dispatch module initialized",
 		zap.String("grpc_addr", m.cfg.GRPCAddr),
 		zap.Duration("agent_timeout", m.cfg.AgentTimeout),
 		zap.Duration("enrollment_token_expiry", m.cfg.EnrollmentTokenExpiry),
+		zap.Bool("ca_enabled", m.authority != nil),
 	)
 	return nil
 }
@@ -85,10 +107,11 @@ func (m *Module) Start(_ context.Context) error {
 
 	m.grpcServer = grpc.NewServer()
 	scoutpb.RegisterScoutServiceServer(m.grpcServer, &scoutServer{
-		store:  m.store,
-		bus:    m.bus,
-		logger: m.logger.Named("grpc"),
-		cfg:    m.cfg,
+		store:     m.store,
+		bus:       m.bus,
+		logger:    m.logger.Named("grpc"),
+		cfg:       m.cfg,
+		authority: m.authority,
 	})
 
 	go func() {

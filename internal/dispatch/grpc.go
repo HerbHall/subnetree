@@ -8,6 +8,7 @@ import (
 	"time"
 
 	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
+	"github.com/HerbHall/subnetree/internal/ca"
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/google/uuid"
@@ -22,10 +23,11 @@ const currentProtoVersion uint32 = 1
 
 type scoutServer struct {
 	scoutpb.UnimplementedScoutServiceServer
-	store  *DispatchStore
-	bus    plugin.EventBus
-	logger *zap.Logger
-	cfg    DispatchConfig
+	store     *DispatchStore
+	bus       plugin.EventBus
+	logger    *zap.Logger
+	cfg       DispatchConfig
+	authority *ca.Authority
 }
 
 func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) (*scoutpb.CheckInResponse, error) {
@@ -43,23 +45,53 @@ func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) 
 	// 2. Handle enrollment if no agent_id but enroll_token is present.
 	agentID := req.AgentId
 	assignedID := ""
+	var certDER, caCertDER []byte
 	if agentID == "" && req.EnrollToken != "" {
-		newID, err := s.enrollAgent(ctx, req)
+		result, err := s.enrollAgent(ctx, req)
 		if err != nil {
 			return nil, fmt.Errorf("enrollment failed: %w", err)
 		}
-		agentID = newID
-		assignedID = newID
+		agentID = result.agentID
+		assignedID = result.agentID
+		certDER = result.certDER
+		caCertDER = result.caCertDER
 	} else if agentID == "" {
 		return nil, fmt.Errorf("agent_id is required for check-in (use enroll_token for initial enrollment)")
 	}
 
-	// 3. Update check-in in store.
+	// 3. Handle certificate renewal for existing agents.
+	if assignedID == "" && len(req.CertificateRequest) > 0 && s.authority != nil {
+		renewedCert, serial, expiresAt, signErr := s.authority.SignCSR(
+			req.CertificateRequest, agentID, s.cfg.CAConfig.Validity,
+		)
+		if signErr != nil {
+			s.logger.Error("failed to sign renewal CSR",
+				zap.String("agent_id", agentID),
+				zap.Error(signErr),
+			)
+		} else {
+			certDER = renewedCert
+			caCertDER = s.authority.CACertDER()
+			if err := s.store.UpdateAgentCert(ctx, agentID, serial, expiresAt); err != nil {
+				s.logger.Warn("failed to update agent cert fields",
+					zap.String("agent_id", agentID),
+					zap.Error(err),
+				)
+			}
+			s.logger.Info("renewed agent certificate",
+				zap.String("agent_id", agentID),
+				zap.String("cert_serial", serial),
+				zap.Time("cert_expires", expiresAt),
+			)
+		}
+	}
+
+	// 4. Update check-in in store.
 	if err := s.store.UpdateCheckIn(ctx, agentID, req.Hostname, req.Platform, req.AgentVersion, int(req.ProtoVersion)); err != nil {
 		s.logger.Warn("check-in update failed", zap.String("agent_id", agentID), zap.Error(err))
 	}
 
-	// 4. Log and publish metrics if present.
+	// 5. Log and publish metrics if present.
 	payload := map[string]string{
 		"agent_id": agentID,
 		"hostname": req.Hostname,
@@ -93,6 +125,8 @@ func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) 
 		VersionStatus:        versionStatus,
 		ServerVersion:        version.Version,
 		AssignedAgentId:      assignedID,
+		SignedCertificate:    certDER,
+		CaCertificate:        caCertDER,
 	}, nil
 }
 
@@ -157,14 +191,21 @@ func (s *scoutServer) ReportProfile(ctx context.Context, req *scoutpb.ProfileRep
 	return &scoutpb.Ack{Success: true}, nil
 }
 
-func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInRequest) (string, error) {
+// enrollResult holds the outcome of an enrollment including optional certificate data.
+type enrollResult struct {
+	agentID       string
+	certDER       []byte
+	caCertDER     []byte
+}
+
+func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInRequest) (*enrollResult, error) {
 	// Hash the token.
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.EnrollToken)))
 
 	// Validate the token.
 	_, err := s.store.ValidateEnrollmentToken(ctx, hash)
 	if err != nil {
-		return "", fmt.Errorf("invalid enrollment token: %w", err)
+		return nil, fmt.Errorf("invalid enrollment token: %w", err)
 	}
 
 	// Create agent record.
@@ -182,8 +223,30 @@ func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInReque
 		ConfigJSON:   "{}",
 	}
 
+	result := &enrollResult{agentID: agentID}
+
+	// Sign CSR if provided (mTLS-capable agent).
+	if len(req.CertificateRequest) > 0 && s.authority != nil {
+		certDER, serial, expiresAt, signErr := s.authority.SignCSR(
+			req.CertificateRequest, agentID, s.cfg.CAConfig.Validity,
+		)
+		if signErr != nil {
+			return nil, fmt.Errorf("sign agent CSR: %w", signErr)
+		}
+		agent.CertSerial = serial
+		agent.CertExpires = &expiresAt
+		result.certDER = certDER
+		result.caCertDER = s.authority.CACertDER()
+
+		s.logger.Info("signed agent certificate during enrollment",
+			zap.String("agent_id", agentID),
+			zap.String("cert_serial", serial),
+			zap.Time("cert_expires", expiresAt),
+		)
+	}
+
 	if err := s.store.UpsertAgent(ctx, agent); err != nil {
-		return "", fmt.Errorf("create agent: %w", err)
+		return nil, fmt.Errorf("create agent: %w", err)
 	}
 
 	// Consume the token.
@@ -210,5 +273,5 @@ func (s *scoutServer) enrollAgent(ctx context.Context, req *scoutpb.CheckInReque
 		zap.String("platform", req.Platform),
 	)
 
-	return agentID, nil
+	return result, nil
 }
