@@ -1,35 +1,195 @@
+# =============================================================================
 # SubNetree Server Configuration
+# =============================================================================
+#
+# Copy this file to subnetree.yaml and customize as needed.
+# All settings show their default values unless noted otherwise.
+#
+# Configuration file search order (when no --config flag is given):
+#   1. ./subnetree.yaml
+#   2. ./configs/subnetree.yaml
+#   3. /etc/subnetree/subnetree.yaml
+#
+# Environment variables override file settings using the NV_ prefix:
+#   NV_SERVER_PORT=9090  overrides  server.port
+#   NV_LOGGING_LEVEL=debug  overrides  logging.level
+#
+# Nested keys use underscores: NV_PLUGINS_RECON_CONCURRENCY=32
+#
+# Exception: The vault passphrase uses its own env var:
+#   SUBNETREE_VAULT_PASSPHRASE (read directly, not through Viper)
+#
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Server
+# -----------------------------------------------------------------------------
 server:
-  host: "0.0.0.0"
-  port: 8080
-  data_dir: "./data"
-  # dev_mode: true  # Enables Swagger UI at /swagger/
+  host: "0.0.0.0"           # Listen address ("0.0.0.0" = all interfaces, "127.0.0.1" = local only)
+  port: 8080                 # HTTP port for web UI and REST API
+  data_dir: "./data"         # Directory for database, logs, and temporary files
+  # dev_mode: false          # Enable Swagger UI at /swagger/ (do NOT enable in production)
 
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
 logging:
-  level: "info"    # debug, info, warn, error
-  format: "json"   # json, console
+  level: "info"              # Log level: debug, info, warn, error
+  format: "json"             # Output format: json (structured) or console (human-readable)
 
-# Enabled plugins (all enabled by default)
+# -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+database:
+  driver: "sqlite"           # Database driver (only "sqlite" supported currently)
+  dsn: "./data/subnetree.db" # SQLite database file path
+  # Note: main.go also reads "database.path" as a fallback; dsn is the canonical key.
+
+# -----------------------------------------------------------------------------
+# Authentication
+# -----------------------------------------------------------------------------
+# auth:
+#   jwt_secret: ""           # JWT signing secret. Auto-generated if empty, but tokens
+#                            # will NOT survive server restarts. Set a stable 64+ char
+#                            # hex string for production / multi-instance deployments.
+#                            # Env: NV_AUTH_JWT_SECRET
+#                            # SECURITY: Keep this value secret. Never commit it to git.
+#   access_token_ttl: "15m"  # Access token lifetime (default: 15 minutes)
+#   refresh_token_ttl: "168h" # Refresh token lifetime (default: 7 days / 168 hours)
+
+# -----------------------------------------------------------------------------
+# Service Mapping (svcmap)
+# -----------------------------------------------------------------------------
+# svcmap:
+#   correlate_interval: "60s" # How often to correlate Scout agent data into service map
+
+# -----------------------------------------------------------------------------
+# Plugins
+# -----------------------------------------------------------------------------
+# Each plugin runs as an independent module. Disable any plugin by setting
+# enabled: false. Disabled plugins consume no resources.
+
 plugins:
+
+  # ---------------------------------------------------------------------------
+  # Recon -- Network Discovery & Scanning
+  # ---------------------------------------------------------------------------
   recon:
     enabled: true
-    # scan_timeout: "5m"        # Maximum duration for a single scan
-    # ping_timeout: "2s"        # ICMP ping timeout per host
-    # ping_count: 3             # Number of ping attempts per host
-    # concurrency: 64           # Max concurrent ping probes
-    # arp_enabled: true         # Read ARP table for MAC addresses
-    # device_lost_after: "24h"  # Mark device offline after this duration
+    scan_timeout: "5m"         # Maximum duration for a single network scan
+    ping_timeout: "2s"         # ICMP ping timeout per host
+    ping_count: 3              # Number of ping attempts per host
+    concurrency: 64            # Max concurrent ping probes
+                               # Reduce on low-memory systems (Raspberry Pi: 16-32)
+    arp_enabled: true          # Read ARP table for MAC address resolution
+    device_lost_after: "24h"   # Mark device offline after this duration without response
+    mdns_enabled: true         # Enable mDNS/Bonjour service discovery
+    mdns_interval: "60s"       # Interval between mDNS discovery sweeps
+
+  # ---------------------------------------------------------------------------
+  # Pulse -- Uptime Monitoring & Health Checks
+  # ---------------------------------------------------------------------------
   pulse:
     enabled: true
+    check_interval: "30s"      # Default interval between monitoring checks
+    ping_timeout: "5s"         # ICMP ping timeout per check
+    ping_count: 3              # Number of ping attempts per check
+    consecutive_failures: 3    # Failures before alerting (avoids flapping)
+    retention_period: "720h"   # How long to keep check results (default: 30 days)
+    max_workers: 10            # Maximum concurrent check workers
+    maintenance_interval: "1h" # How often to run retention cleanup
+
+  # ---------------------------------------------------------------------------
+  # Dispatch -- Scout Agent Management & gRPC
+  # ---------------------------------------------------------------------------
   dispatch:
     enabled: true
+    # grpc_addr: ":9090"              # gRPC listen address for Scout agent communication
+    # agent_timeout: "5m"             # Consider agent offline after this duration
+    # enrollment_token_expiry: "24h"  # Agent enrollment token validity
+    # tls_enabled: false              # Enable mTLS for agent connections
+    # server_cert_path: ""            # Path to server TLS certificate (PEM)
+    # server_key_path: ""             # Path to server TLS private key (PEM)
+    # ca:
+    #   cert_path: ""                 # Path to CA certificate for agent mTLS
+    #   key_path: ""                  # Path to CA private key for signing agent certs
+    #   validity: "2160h"             # Agent certificate validity (default: 90 days)
+    #   organization: "SubNetree"     # O= field in issued certificates
+
+  # ---------------------------------------------------------------------------
+  # Vault -- Credential Storage & Encryption
+  # ---------------------------------------------------------------------------
   vault:
     enabled: true
+    audit_retention_period: "2160h"  # How long to keep audit logs (default: 90 days)
+    maintenance_interval: "1h"       # How often to run audit log cleanup
+    #
+    # Vault Passphrase:
+    # The vault passphrase is NOT configured in this file for security reasons.
+    # Set it via environment variable:
+    #   SUBNETREE_VAULT_PASSPHRASE=your-secure-passphrase
+    #
+    # On first run, the passphrase initializes encryption. On subsequent runs,
+    # it unseals the vault automatically. If no passphrase is provided, the
+    # vault starts sealed and must be unsealed via the API (POST /api/v1/vault/unseal).
+    #
+    # SECURITY: Use a strong passphrase (16+ characters). If lost, encrypted
+    # credentials cannot be recovered.
+
+  # ---------------------------------------------------------------------------
+  # Gateway -- Remote Access & SSH Proxy
+  # ---------------------------------------------------------------------------
   gateway:
     enabled: true
+    session_timeout: "30m"       # Idle session timeout
+    max_sessions: 100            # Maximum concurrent remote sessions
+    audit_retention_days: 90     # How long to keep session audit logs (days)
+    maintenance_interval: "5m"   # How often to clean up expired sessions
+    default_proxy_port: 80       # Default port for HTTP proxy connections
 
-# Database configuration
-database:
-  driver: "sqlite"
-  dsn: "./data/subnetree.db"
+  # ---------------------------------------------------------------------------
+  # Webhook -- Event Notifications
+  # ---------------------------------------------------------------------------
+  webhook:
+    enabled: true
+    # url: ""                    # Webhook endpoint URL (empty = disabled)
+    # timeout: "10s"             # HTTP request timeout for webhook delivery
+
+  # ---------------------------------------------------------------------------
+  # LLM -- AI/Analytics (Ollama Integration)
+  # ---------------------------------------------------------------------------
+  # Connects to a local Ollama instance for AI-powered analysis.
+  # Requires Ollama running separately (https://ollama.com).
+  # llm:
+  #   url: "http://localhost:11434"  # Ollama API endpoint
+  #   model: "qwen2.5:32b"          # Model name (must be pulled in Ollama first)
+  #   timeout: "5m"                  # Request timeout for LLM inference
+
+  # ---------------------------------------------------------------------------
+  # Insight -- Anomaly Detection & Forecasting
+  # ---------------------------------------------------------------------------
+  # Statistical analysis engine for monitoring data. Detects anomalies using
+  # EWMA (Exponentially Weighted Moving Average) and CUSUM (Cumulative Sum)
+  # algorithms. Requires Pulse data to be meaningful.
+  # insight:
+  #   ewma_alpha: 0.1              # EWMA smoothing factor (0-1; lower = smoother)
+  #   learning_period: "168h"      # Baseline learning period (default: 7 days)
+  #   min_samples_stable: 168      # Minimum samples before declaring baseline stable
+  #   zscore_threshold: 3.0        # Z-score threshold for anomaly detection
+  #   cusum_drift: 0.5             # CUSUM allowable drift parameter
+  #   cusum_threshold: 5.0         # CUSUM decision threshold (higher = less sensitive)
+  #   forecast_window: "168h"      # How far ahead to forecast (default: 7 days)
+  #   anomaly_retention: "720h"    # How long to keep anomaly records (default: 30 days)
+  #   maintenance_interval: "1h"   # How often to run anomaly data cleanup
+
+  # ---------------------------------------------------------------------------
+  # Docs -- Application Documentation Collector
+  # ---------------------------------------------------------------------------
+  # Automatically collects and tracks documentation for applications running
+  # on monitored devices (Docker containers, systemd services, etc.).
+  # docs:
+  #   retention_period: "2160h"      # How long to keep doc snapshots (default: 90 days)
+  #   maintenance_interval: "1h"     # How often to run retention cleanup
+  #   max_snapshots_per_app: 100     # Maximum snapshots retained per application
+  #   docker_socket: ""              # Docker socket path (auto-detected if empty)
+  #   collect_interval: "6h"         # How often to collect documentation snapshots
