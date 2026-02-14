@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -130,19 +131,29 @@ func GenerateCA(cfg Config, logger *zap.Logger) (*Authority, error) {
 		return nil, fmt.Errorf("create CA certificate: %w", err)
 	}
 
-	// Save key to disk.
+	// Save key to disk (create parent directories if needed).
 	keyPEM, err := EncodeKeyPEM(key)
 	if err != nil {
 		return nil, fmt.Errorf("encode CA key: %w", err)
+	}
+	if dir := filepath.Dir(cfg.KeyPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("create CA key directory: %w", err)
+		}
 	}
 	if err := os.WriteFile(cfg.KeyPath, keyPEM, 0o600); err != nil {
 		return nil, fmt.Errorf("write CA key: %w", err)
 	}
 
-	// Save cert to disk.
+	// Save cert to disk (create parent directories if needed).
 	certPEM, err := EncodeCertPEM(certDER)
 	if err != nil {
 		return nil, fmt.Errorf("encode CA cert: %w", err)
+	}
+	if dir := filepath.Dir(cfg.CertPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("create CA cert directory: %w", err)
+		}
 	}
 	if err := SavePEM(cfg.CertPath, "CERTIFICATE", certDER); err != nil {
 		return nil, fmt.Errorf("write CA cert: %w", err)
@@ -181,6 +192,14 @@ func LoadOrGenerate(cfg Config, logger *zap.Logger) (*Authority, error) {
 func (a *Authority) CACertPEM() []byte {
 	out := make([]byte, len(a.certPEM))
 	copy(out, a.certPEM)
+	return out
+}
+
+// CACertDER returns the DER-encoded CA certificate.
+// Used for proto bytes fields where DER is the expected encoding.
+func (a *Authority) CACertDER() []byte {
+	out := make([]byte, len(a.cert.Raw))
+	copy(out, a.cert.Raw)
 	return out
 }
 

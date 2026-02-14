@@ -37,6 +37,7 @@ message CheckInRequest {
   SystemMetrics metrics = 5;
   uint32 proto_version = 6;
   string enroll_token = 7;
+  bytes certificate_request = 8;  // DER-encoded PKCS#10 CSR (sent during enrollment/renewal)
 }
 
 message CheckInResponse {
@@ -47,6 +48,8 @@ message CheckInResponse {
   string server_version = 5;
   string upgrade_message = 6;
   string assigned_agent_id = 7;
+  bytes signed_certificate = 8;   // DER-encoded X.509 certificate (returned after CSR signing)
+  bytes ca_certificate = 9;       // DER-encoded CA root certificate (agent needs for TLS verification)
 }
 
 message SystemMetrics {

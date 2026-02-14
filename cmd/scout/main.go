@@ -16,6 +16,10 @@ func main() {
 	interval := flag.Int("interval", 30, "Check-in interval in seconds")
 	enrollToken := flag.String("enroll-token", "", "Enrollment token for initial registration")
 	agentID := flag.String("agent-id", "", "Agent ID (auto-assigned during enrollment if empty)")
+	certPath := flag.String("cert", "", "Path to agent TLS certificate")
+	keyPath := flag.String("key", "", "Path to agent TLS private key")
+	caCert := flag.String("ca-cert", "", "Path to CA certificate for TLS verification")
+	insecureFlag := flag.Bool("insecure", false, "Use insecure gRPC transport (dev/testing only)")
 	flag.Parse()
 
 	logger, err := zap.NewProduction()
@@ -24,11 +28,21 @@ func main() {
 	}
 	defer func() { _ = logger.Sync() }()
 
+	// Default to insecure when no TLS paths are configured.
+	useInsecure := *insecureFlag
+	if *certPath == "" && *keyPath == "" && *caCert == "" && !*insecureFlag {
+		useInsecure = true
+	}
+
 	config := &scout.Config{
 		ServerAddr:    *serverAddr,
 		CheckInterval: *interval,
 		AgentID:       *agentID,
 		EnrollToken:   *enrollToken,
+		CertPath:      *certPath,
+		KeyPath:       *keyPath,
+		CACertPath:    *caCert,
+		Insecure:      useInsecure,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
