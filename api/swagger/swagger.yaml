@@ -654,6 +654,25 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_pulse.NotificationChannel:
+    properties:
+      config:
+        description: JSON blob
+        type: string
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        description: '"webhook", "email"'
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_pulse.createCheckRequest:
     properties:
       check_type:
@@ -665,6 +684,15 @@ definitions:
       target:
         type: string
     type: object
+  internal_pulse.createNotificationRequest:
+    properties:
+      config:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
   internal_pulse.updateCheckRequest:
     properties:
       check_type:
@@ -674,6 +702,15 @@ definitions:
       interval_seconds:
         type: integer
       target:
+        type: string
+    type: object
+  internal_pulse.updateNotificationRequest:
+    properties:
+      config:
+        type: string
+      enabled:
+        type: boolean
+      name:
         type: string
     type: object
   internal_recon.BulkUpdateRequest:
@@ -1828,6 +1865,189 @@ paths:
       security:
       - BearerAuth: []
       summary: Toggle check
+      tags:
+      - pulse
+  /pulse/notifications:
+    get:
+      description: Returns all notification channels with sensitive fields masked.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.NotificationChannel'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List notification channels
+      tags:
+      - pulse
+    post:
+      consumes:
+      - application/json
+      description: Creates a new notification channel (webhook or email).
+      parameters:
+      - description: Channel definition
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_pulse.createNotificationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_pulse.NotificationChannel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create notification channel
+      tags:
+      - pulse
+  /pulse/notifications/{id}:
+    delete:
+      description: Deletes a notification channel by ID.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete notification channel
+      tags:
+      - pulse
+    get:
+      description: Returns a single notification channel by ID with sensitive fields
+        masked.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_pulse.NotificationChannel'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get notification channel
+      tags:
+      - pulse
+    put:
+      consumes:
+      - application/json
+      description: Updates fields on an existing notification channel.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_pulse.updateNotificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_pulse.NotificationChannel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update notification channel
+      tags:
+      - pulse
+  /pulse/notifications/{id}/test:
+    post:
+      description: Sends a test notification through the specified channel.
+      parameters:
+      - description: Channel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Test notification channel
       tags:
       - pulse
   /pulse/results/{device_id}:
