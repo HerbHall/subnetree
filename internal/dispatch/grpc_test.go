@@ -638,6 +638,267 @@ func TestGRPC_TLS_EnrollmentWithCSR(t *testing.T) {
 	}
 }
 
+func TestGRPC_FullEnrollmentThenRenewal(t *testing.T) {
+	authority := testCA(t)
+	client, store := testGRPCServerWithCA(t, authority)
+	ctx := context.Background()
+
+	// --- Step 1: Enrollment with CSR ---
+	rawToken := "full-flow-enrollment-token"
+	tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(rawToken)))
+	now := time.Now().UTC()
+	expires := now.Add(24 * time.Hour)
+	if err := store.CreateEnrollmentToken(ctx, &EnrollmentToken{
+		ID:          "tok-full-flow",
+		TokenHash:   tokenHash,
+		Description: "full flow enrollment token",
+		CreatedAt:   now,
+		ExpiresAt:   &expires,
+		MaxUses:     1,
+	}); err != nil {
+		t.Fatalf("create token: %v", err)
+	}
+
+	enrollCSR := testCSR(t, "pending-agent")
+
+	enrollResp, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		Hostname:           "full-flow-host",
+		Platform:           "linux/amd64",
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		EnrollToken:        rawToken,
+		CertificateRequest: enrollCSR,
+	})
+	if err != nil {
+		t.Fatalf("enrollment CheckIn: %v", err)
+	}
+	if !enrollResp.Acknowledged {
+		t.Fatal("enrollment not acknowledged")
+	}
+	if enrollResp.AssignedAgentId == "" {
+		t.Fatal("expected non-empty assigned_agent_id from enrollment")
+	}
+	if len(enrollResp.SignedCertificate) == 0 {
+		t.Fatal("expected signed certificate from enrollment")
+	}
+
+	agentID := enrollResp.AssignedAgentId
+
+	// Parse and record initial certificate details.
+	initialCert, err := x509.ParseCertificate(enrollResp.SignedCertificate)
+	if err != nil {
+		t.Fatalf("parse initial cert: %v", err)
+	}
+	initialSerial := initialCert.SerialNumber.String()
+
+	// Verify agent record.
+	agent, err := store.GetAgent(ctx, agentID)
+	if err != nil {
+		t.Fatalf("GetAgent after enrollment: %v", err)
+	}
+	if agent.CertSerial == "" {
+		t.Error("cert_serial should be populated after enrollment")
+	}
+	if agent.CertExpires == nil {
+		t.Error("cert_expires should be populated after enrollment")
+	}
+	enrollSerial := agent.CertSerial
+
+	// --- Step 2: Renewal with new CSR ---
+	renewCSR := testCSR(t, agentID)
+
+	renewResp, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		AgentId:            agentID,
+		Hostname:           "full-flow-host",
+		Platform:           "linux/amd64",
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		CertificateRequest: renewCSR,
+	})
+	if err != nil {
+		t.Fatalf("renewal CheckIn: %v", err)
+	}
+	if !renewResp.Acknowledged {
+		t.Fatal("renewal not acknowledged")
+	}
+	// Renewal should NOT assign a new agent ID.
+	if renewResp.AssignedAgentId != "" {
+		t.Errorf("assigned_agent_id = %q, want empty for renewal", renewResp.AssignedAgentId)
+	}
+	if len(renewResp.SignedCertificate) == 0 {
+		t.Fatal("expected signed certificate from renewal")
+	}
+	if len(renewResp.CaCertificate) == 0 {
+		t.Fatal("expected CA certificate from renewal")
+	}
+
+	// Parse renewal certificate.
+	renewedCert, err := x509.ParseCertificate(renewResp.SignedCertificate)
+	if err != nil {
+		t.Fatalf("parse renewed cert: %v", err)
+	}
+
+	// Verify serial numbers differ.
+	renewedSerial := renewedCert.SerialNumber.String()
+	if initialSerial == renewedSerial {
+		t.Errorf("renewed cert serial (%s) should differ from initial (%s)", renewedSerial, initialSerial)
+	}
+
+	// Verify CN matches agent ID.
+	if renewedCert.Subject.CommonName != agentID {
+		t.Errorf("renewed cert CN = %q, want %q", renewedCert.Subject.CommonName, agentID)
+	}
+
+	// Verify renewed cert chains to CA.
+	caCert, err := x509.ParseCertificate(renewResp.CaCertificate)
+	if err != nil {
+		t.Fatalf("parse CA cert: %v", err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(caCert)
+	if _, verifyErr := renewedCert.Verify(x509.VerifyOptions{
+		Roots:     roots,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}); verifyErr != nil {
+		t.Errorf("renewed cert does not chain to CA: %v", verifyErr)
+	}
+
+	// Verify store was updated.
+	agentAfter, err := store.GetAgent(ctx, agentID)
+	if err != nil {
+		t.Fatalf("GetAgent after renewal: %v", err)
+	}
+	if agentAfter.CertSerial == enrollSerial {
+		t.Error("cert_serial should be different after renewal")
+	}
+	if agentAfter.CertSerial == "" {
+		t.Error("cert_serial should not be empty after renewal")
+	}
+	if agentAfter.CertExpires == nil {
+		t.Fatal("cert_expires should not be nil after renewal")
+	}
+	if agent.CertExpires != nil && !agentAfter.CertExpires.After(*agent.CertExpires) {
+		t.Errorf("cert_expires after renewal (%v) should be after enrollment (%v)",
+			agentAfter.CertExpires, agent.CertExpires)
+	}
+}
+
+func TestGRPC_RenewalSerialDiffers(t *testing.T) {
+	authority := testCA(t)
+	client, store := testGRPCServerWithCA(t, authority)
+	ctx := context.Background()
+
+	// Pre-create an agent.
+	now := time.Now().UTC()
+	oldExpiry := now.Add(24 * time.Hour)
+	if err := store.UpsertAgent(ctx, &Agent{
+		ID:           "agent-serial-test",
+		Hostname:     "serial-host",
+		Platform:     "linux/amd64",
+		AgentVersion: "0.1.0",
+		ProtoVersion: 1,
+		Status:       "connected",
+		EnrolledAt:   now,
+		CertSerial:   "initial-serial",
+		CertExpires:  &oldExpiry,
+		ConfigJSON:   "{}",
+	}); err != nil {
+		t.Fatalf("setup agent: %v", err)
+	}
+
+	// First renewal.
+	csr1 := testCSR(t, "agent-serial-test")
+	resp1, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		AgentId:            "agent-serial-test",
+		Hostname:           "serial-host",
+		Platform:           "linux/amd64",
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		CertificateRequest: csr1,
+	})
+	if err != nil {
+		t.Fatalf("first renewal: %v", err)
+	}
+	if len(resp1.SignedCertificate) == 0 {
+		t.Fatal("expected cert from first renewal")
+	}
+
+	cert1, err := x509.ParseCertificate(resp1.SignedCertificate)
+	if err != nil {
+		t.Fatalf("parse first renewal cert: %v", err)
+	}
+
+	// Second renewal.
+	csr2 := testCSR(t, "agent-serial-test")
+	resp2, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		AgentId:            "agent-serial-test",
+		Hostname:           "serial-host",
+		Platform:           "linux/amd64",
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		CertificateRequest: csr2,
+	})
+	if err != nil {
+		t.Fatalf("second renewal: %v", err)
+	}
+	if len(resp2.SignedCertificate) == 0 {
+		t.Fatal("expected cert from second renewal")
+	}
+
+	cert2, err := x509.ParseCertificate(resp2.SignedCertificate)
+	if err != nil {
+		t.Fatalf("parse second renewal cert: %v", err)
+	}
+
+	// Verify serials differ between the two renewals.
+	if cert1.SerialNumber.Cmp(cert2.SerialNumber) == 0 {
+		t.Error("serial numbers from two consecutive renewals should differ")
+	}
+}
+
+func TestGRPC_CheckInWithoutCSR_NoCertReturned(t *testing.T) {
+	authority := testCA(t)
+	client, store := testGRPCServerWithCA(t, authority)
+	ctx := context.Background()
+
+	// Pre-create an agent (already enrolled, no CSR in check-in).
+	now := time.Now().UTC()
+	if err := store.UpsertAgent(ctx, &Agent{
+		ID:           "agent-no-csr",
+		Hostname:     "no-csr-host",
+		Platform:     "linux/amd64",
+		AgentVersion: "0.1.0",
+		ProtoVersion: 1,
+		Status:       "connected",
+		EnrolledAt:   now,
+		ConfigJSON:   "{}",
+	}); err != nil {
+		t.Fatalf("setup agent: %v", err)
+	}
+
+	// Normal check-in without CSR.
+	resp, err := client.CheckIn(ctx, &scoutpb.CheckInRequest{
+		AgentId:      "agent-no-csr",
+		Hostname:     "no-csr-host",
+		Platform:     "linux/amd64",
+		AgentVersion: "0.1.0",
+		ProtoVersion: 1,
+	})
+	if err != nil {
+		t.Fatalf("CheckIn: %v", err)
+	}
+
+	if !resp.Acknowledged {
+		t.Error("expected acknowledged=true")
+	}
+	if len(resp.SignedCertificate) != 0 {
+		t.Errorf("expected no signed_certificate for normal check-in, got %d bytes", len(resp.SignedCertificate))
+	}
+	if len(resp.CaCertificate) != 0 {
+		t.Errorf("expected no ca_certificate for normal check-in, got %d bytes", len(resp.CaCertificate))
+	}
+}
+
 func TestModule_EnsureServerCert(t *testing.T) {
 	dir := t.TempDir()
 	authority := testCA(t)
