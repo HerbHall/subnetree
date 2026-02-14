@@ -298,25 +298,25 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. SNMP discovery (PRs #204-205), TCP/HTTP checks (#196, #202), webhook notifications (#203), monitoring dashboard (#206), and service mapping (#193-195) shipped. Remaining: mDNS/UPnP discovery, Tailscale plugin, multi-tenancy, metrics graphs, dependency-aware alerting.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). Remaining: UPnP discovery, Tailscale plugin, multi-tenancy, maintenance windows, device inventory.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
 #### Pre-Phase Tooling Research
 
 - [ ] Evaluate PostgreSQL + TimescaleDB: migration tooling (golang-migrate), hypertable performance, connection pooling
-- [ ] Research Docker multi-arch build pipeline (buildx, QEMU, manifest lists)
+- [x] Research Docker multi-arch build pipeline (buildx, QEMU, manifest lists) (GoReleaser + buildx in v0.1.0-alpha)
 - [ ] Scaffold MkDocs Material documentation site, configure GitHub Pages deployment (see Cross-Cutting section)
 - [ ] Evaluate Plausible Analytics: self-hosted vs cloud, deployment requirements
 - [ ] Research OpenTelemetry Go SDK integration patterns for tracing
-- [ ] Evaluate SBOM generation tooling (Syft) and signing (Cosign) for release pipeline
+- [x] Evaluate SBOM generation tooling (Syft) and signing (Cosign) for release pipeline (Syft in GoReleaser since v0.1.0-alpha)
 - [x] Research SNMP Go libraries (gosnmp) and MIB parsing (gosnmp adopted -- PR #204)
-- [ ] Evaluate mDNS/UPnP discovery libraries (hashicorp/mdns, huin/goupnp)
+- [x] Evaluate mDNS/UPnP discovery libraries (hashicorp/mdns, huin/goupnp) (hashicorp/mdns adopted -- PR #248)
 
 #### Discovery Enhancements
 
 - [x] SNMP v2c/v3 discovery (gosnmp, credential-based -- PRs #204, #205)
-- [ ] mDNS/Bonjour discovery
+- [x] mDNS/Bonjour discovery (PR #248, issue #234)
 - [ ] UPnP/SSDP discovery
 - [ ] Tailscale plugin: tailnet device discovery via Tailscale API
 - [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
@@ -332,9 +332,9 @@
 
 - [x] Uptime monitoring (ICMP, TCP port, HTTP/HTTPS) (ICMP in v0.2.0; TCP/HTTP in PRs #196, #202)
 - [x] Sensible default thresholds (avoid alert fatigue)
-- [ ] Dependency-aware alerting (router down suppresses downstream alerts)
+- [x] Dependency-aware alerting (router down suppresses downstream alerts) (PR #261, issue #236)
 - [x] Alert notifications: webhook with HMAC-SHA256 signing (PR #203; email, Slack, PagerDuty TODO)
-- [ ] Metrics history and time-series graphs
+- [x] Metrics history and time-series graphs (PR #243, issue #235)
 - [ ] Maintenance windows (suppress alerts during scheduled work)
 
 #### Multi-Tenancy
@@ -385,7 +385,7 @@
 #### Infrastructure
 
 - [ ] PostgreSQL + TimescaleDB support (with hypertables for metrics and continuous aggregates for analytics feature engineering)
-- [ ] Scout: Linux agent (x64, ARM64)
+- [x] Scout: Linux agent (x64, ARM64) (PR #262, issue #240)
 - [ ] Agent auto-update with binary signing (Cosign) and staged rollout
 - [ ] `nvbuild` tool for custom binaries with third-party modules
 - [ ] OpenTelemetry tracing
@@ -393,7 +393,7 @@
 - [ ] Interface Catalog: document all plugin interface types (API, Event, Config, Data) with versioning policy
 - [x] Dashboard: monitoring views, alert management (PR #206; metric graphs TODO)
 - [ ] MFA/TOTP authentication support
-- [ ] SBOM generation (Syft) and SLSA provenance for releases
+- [x] SBOM generation (Syft) and SLSA provenance for releases (Syft in GoReleaser since v0.1.0-alpha; Cosign signing TODO)
 - [ ] Cosign signing for Docker images
 - [x] govulncheck in CI pipeline (Trivy TODO)
 - [ ] IPv6 scanning and agent communication support
