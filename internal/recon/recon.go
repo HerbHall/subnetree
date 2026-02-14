@@ -19,16 +19,18 @@ var (
 
 // Module implements the Recon network discovery plugin.
 type Module struct {
-	logger       *zap.Logger
-	cfg          ReconConfig
-	store        *ReconStore
-	bus          plugin.EventBus
-	oui          *OUITable
-	orchestrator *ScanOrchestrator
-	activeScans  sync.Map // scanID -> context.CancelFunc
-	wg           sync.WaitGroup
-	scanCtx      context.Context
-	scanCancel   context.CancelFunc
+	logger        *zap.Logger
+	cfg           ReconConfig
+	store         *ReconStore
+	bus           plugin.EventBus
+	oui           *OUITable
+	orchestrator  *ScanOrchestrator
+	snmpCollector *SNMPCollector
+	credAccessor  CredentialAccessor
+	activeScans   sync.Map // scanID -> context.CancelFunc
+	wg            sync.WaitGroup
+	scanCtx       context.Context
+	scanCancel    context.CancelFunc
 }
 
 // New creates a new Recon plugin instance.
@@ -97,12 +99,21 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 func (m *Module) Start(_ context.Context) error {
 	m.scanCtx, m.scanCancel = context.WithCancel(context.Background())
 
+	// Initialize SNMP collector.
+	m.snmpCollector = NewSNMPCollector(m.logger.Named("snmp"))
+
 	// Start device-lost checker background goroutine.
 	m.wg.Add(1)
 	go m.runDeviceLostChecker()
 
 	m.logger.Info("recon module started")
 	return nil
+}
+
+// SetCredentialAccessor sets the credential accessor used for SNMP discovery.
+// Called from the composition root after all plugins are initialized.
+func (m *Module) SetCredentialAccessor(ca CredentialAccessor) {
+	m.credAccessor = ca
 }
 
 func (m *Module) Stop(_ context.Context) error {

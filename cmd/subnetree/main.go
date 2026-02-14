@@ -244,6 +244,22 @@ func main() {
 	wsHandler := ws.NewHandler(tokens, bus, logger.Named("ws"))
 	logger.Info("websocket handler initialized", zap.String("component", "ws"))
 
+	// Wire SNMP credential adapter: recon -> vault.
+	var reconMod *recon.Module
+	var vaultMod *vault.Module
+	for _, m := range modules {
+		switch mod := m.(type) {
+		case *recon.Module:
+			reconMod = mod
+		case *vault.Module:
+			vaultMod = mod
+		}
+	}
+	if reconMod != nil && vaultMod != nil {
+		reconMod.SetCredentialAccessor(recon.NewVaultCredentialAdapter(&vaultDecryptAdapter{vault: vaultMod}))
+		logger.Info("SNMP credential adapter wired", zap.String("component", "recon"))
+	}
+
 	// Create Gateway SSH WebSocket handler.
 	// Find the gateway module in the registered plugins for SSH handler wiring.
 	var gw *gateway.Module
@@ -307,6 +323,16 @@ func main() {
 	}
 
 	logger.Info("SubNetree server stopped")
+}
+
+// vaultDecryptAdapter adapts vault.Module to the recon.CredentialDecrypter interface.
+// Lives in the composition root to avoid coupling recon -> vault.
+type vaultDecryptAdapter struct {
+	vault *vault.Module
+}
+
+func (a *vaultDecryptAdapter) DecryptCredential(ctx context.Context, id string) (map[string]any, error) {
+	return a.vault.DecryptCredentialData(ctx, id)
 }
 
 // tokenAdapter adapts auth.TokenService to the gateway.TokenValidator interface.

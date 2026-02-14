@@ -3,6 +3,7 @@ package vault
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -198,6 +199,48 @@ func (m *Module) CredentialsForDevice(ctx context.Context, deviceID string) ([]r
 		}
 	}
 	return result, nil
+}
+
+// DecryptCredentialData decrypts and returns the credential data for the given ID.
+// Returns an error if the vault is sealed or the credential doesn't exist.
+func (m *Module) DecryptCredentialData(ctx context.Context, id string) (map[string]any, error) {
+	if m.store == nil {
+		return nil, fmt.Errorf("vault store not available")
+	}
+	if m.km.IsSealed() {
+		return nil, fmt.Errorf("vault is sealed")
+	}
+
+	rec, err := m.store.GetCredential(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get credential: %w", err)
+	}
+	if rec == nil {
+		return nil, fmt.Errorf("credential not found: %s", id)
+	}
+
+	key, err := m.store.GetKey(ctx, id)
+	if err != nil || key == nil {
+		return nil, fmt.Errorf("encryption key not found for credential %s", id)
+	}
+
+	dek, err := m.km.UnwrapDEK(key.WrappedKey)
+	if err != nil {
+		return nil, fmt.Errorf("unwrap DEK: %w", err)
+	}
+	defer ZeroBytes(dek)
+
+	plaintext, err := Decrypt(dek, rec.EncryptedData)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt credential: %w", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(plaintext, &data); err != nil {
+		return nil, fmt.Errorf("unmarshal credential data: %w", err)
+	}
+
+	return data, nil
 }
 
 // tryUnseal attempts to unseal the vault using env var or interactive prompt.
