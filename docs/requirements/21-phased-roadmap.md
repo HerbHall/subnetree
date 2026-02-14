@@ -211,7 +211,7 @@
 
 ### Phase 1b: Windows Scout Agent
 
-**Status:** Core agent functionality shipped 2026-02-13 (PRs #179-182, #190-192). Scout reports metrics and system profiles to Dispatch via gRPC. Dashboard shows agent list, detail, and enrollment tokens. mTLS and certificate management deferred.
+**Status:** Complete. Core agent shipped 2026-02-13 (PRs #179-182, #190-192). mTLS + CA shipped 2026-02-14 (PRs #207-212). Scout reports metrics and system profiles to Dispatch via gRPC with mTLS.
 
 **Goal:** First agent reporting metrics to server.
 
@@ -220,19 +220,19 @@
 - [ ] Evaluate gRPC tooling: buf vs protoc, connect-go vs grpc-go
 - [ ] Research Windows cross-compilation CI (GitHub Actions Windows runners, MSYS2 in CI)
 - [ ] Evaluate agent packaging: MSI (WiX Toolset), NSIS, or Go-native installer
-- [ ] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns)
+- [x] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns -- internal/ca/ package, PRs #207-208)
 - [ ] Evaluate Windows service management (golang.org/x/sys/windows/svc)
 
 #### Scout Agent Implementation
 
 - [x] Scout agent binary for Windows (functional: metrics, profiling, enrollment -- PRs #179-182)
-- [ ] Internal CA for mTLS certificate management
-- [x] Token-based enrollment (enrollment tokens with max uses and expiry -- PRs #180, #192; mTLS cert signing deferred)
-- [x] gRPC communication (insecure transport -- PR #180; mTLS deferred)
+- [x] Internal CA for mTLS certificate management (PRs #207-208)
+- [x] Token-based enrollment (enrollment tokens with max uses and expiry -- PRs #180, #192; mTLS cert issued on enrollment -- PR #209)
+- [x] gRPC communication (mTLS -- PRs #209-210)
 - [x] System metrics: CPU, memory, disk, network (PR #181)
 - [x] System profiling: hardware specs, installed software, running services (#164, PR #182)
 - [ ] Exponential backoff reconnection
-- [ ] Certificate auto-renewal (90-day certs, renew at day 60)
+- [x] Certificate auto-renewal (90-day certs, renew at day 60 -- PR #211)
 - [x] Dispatch module: agent list, status, check-in tracking (full implementation -- PR #179)
 - [x] Dashboard: agent status view, enrollment flow (PRs #190, #191, #192)
 - [ ] Proto management via buf (replace protoc)
@@ -256,7 +256,7 @@
 
 ### Documentation and UX (Cross-Cutting)
 
-**Status:** Three-tier model adopted 2026-02-14. Issues #213-#225 created. MkDocs site not yet scaffolded.
+**Status:** Three-tier model adopted 2026-02-14. P0/P1 items shipped in v0.3.0 (PRs #225-232). MkDocs site not yet scaffolded.
 
 **Goal:** Follow the three-tier documentation model (README landing page, MkDocs docs site, in-repo contributor docs). Remove barriers for first-time homelab users while keeping experienced users efficient.
 
@@ -268,15 +268,15 @@
 
 - [ ] Set up MkDocs Material scaffolding (`mkdocs.yml`, `docs-site/` directory)
 - [ ] Deploy docs site to GitHub Pages (`herbhall.github.io/subnetree`)
-- [ ] Verify Docker image is pullable on GHCR (#215)
-- [ ] Simplify Quick Start to single recommended Docker path (#214)
+- [x] Verify Docker image is pullable on GHCR (#215, PR #225)
+- [x] Simplify Quick Start to single recommended Docker path (#214, PR #231)
 
 #### P1 - README and First Experience
 
-- [ ] Trim README to ~2,000 words landing page with docs site links (#219)
-- [ ] Add "What You'll Need" prerequisites section to README (#213)
-- [ ] Replace jargon with user-benefit language in README (#220)
-- [ ] Separate user vs dev docker-compose files (#217)
+- [x] Restructure README with user-first information hierarchy (#219, PR #232)
+- [x] Add "What You'll Need" prerequisites section to README (#213, PR #230)
+- [x] Replace jargon with user-benefit language in README (#220, PR #232)
+- [x] Separate user vs dev docker-compose files (#217, PR #226)
 
 #### P2 - Docs Site Content
 
@@ -288,7 +288,7 @@
 - [ ] Operations: Platform-specific notes (#223)
 - [ ] User Guide: Common tasks for day-2 operations (#221)
 - [ ] Expand example config with novice-friendly comments (#222)
-- [ ] Add .env.example for Docker Compose users (#224)
+- [x] Add .env.example for Docker Compose users (#224, PR #227)
 
 #### P3 - Polish
 
@@ -298,7 +298,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Active development as of 2026-02-14. SNMP discovery (PRs #204-205), TCP/HTTP checks (#196, #202), webhook notifications (#203), monitoring dashboard (#206), and service mapping (#193-195) shipped. Multi-tenancy, Tailscale plugin, and PostgreSQL not yet started.
+**Status:** Core monitoring shipped in v0.3.0. SNMP discovery (PRs #204-205), TCP/HTTP checks (#196, #202), webhook notifications (#203), monitoring dashboard (#206), and service mapping (#193-195) shipped. Remaining: mDNS/UPnP discovery, Tailscale plugin, multi-tenancy, metrics graphs, dependency-aware alerting.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
