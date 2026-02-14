@@ -31,6 +31,7 @@ import { DeviceCardCompact } from '@/components/device-card'
 import { ScanProgressPanel } from '@/components/scan-progress-panel'
 import { getTopology, triggerScan, listScans } from '@/api/devices'
 import { listAgents } from '@/api/agents'
+import { listAlerts } from '@/api/pulse'
 import { getFleetSummary } from '@/api/services'
 import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
@@ -116,6 +117,16 @@ export function DashboardPage() {
   } = useQuery({
     queryKey: ['fleet-summary'],
     queryFn: getFleetSummary,
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  })
+
+  // Fetch active alerts with auto-refresh
+  const {
+    data: activeAlerts,
+    isLoading: alertsLoading,
+  } = useQuery({
+    queryKey: ['active-alerts'],
+    queryFn: () => listAlerts({ active: true, limit: 5 }),
     refetchInterval: autoRefresh ? refreshInterval : false,
   })
 
@@ -376,6 +387,60 @@ export function DashboardPage() {
                 <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{agentStats.pending}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Active Alerts Widget */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            Active Alerts
+          </CardTitle>
+          <Button variant="ghost" size="sm" asChild className="gap-1 text-xs">
+            <Link to="/monitoring">
+              View All
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {alertsLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-10" />
+              ))}
+            </div>
+          ) : !activeAlerts || activeAlerts.length === 0 ? (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <span>All clear -- no active alerts</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {activeAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
+                  <AlertCircle className={cn('h-4 w-4 shrink-0',
+                    alert.severity === 'critical' ? 'text-red-500' :
+                    alert.severity === 'warning' ? 'text-amber-500' : 'text-blue-500'
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{alert.message}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(alert.triggered_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className={cn('text-xs px-1.5 py-0.5 rounded',
+                    alert.severity === 'critical' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                    alert.severity === 'warning' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                    'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                  )}>
+                    {alert.severity}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
