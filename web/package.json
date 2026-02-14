@@ -1,5 +1,22 @@
 {
   "name": "subnetree-dashboard",
+  "description": "SubNetree Dashboard - Network monitoring and management web interface",
+  "keywords": [
+    "network-monitoring",
+    "homelab",
+    "dashboard",
+    "react",
+    "typescript",
+    "self-hosted"
+  ],
+  "homepage": "https://github.com/HerbHall/subnetree",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HerbHall/subnetree.git",
+    "directory": "web"
+  },
+  "license": "BSL-1.1",
+  "author": "Herb Hall",
   "private": true,
   "version": "0.0.0",
   "type": "module",
