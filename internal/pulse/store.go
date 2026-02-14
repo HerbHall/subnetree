@@ -507,3 +507,115 @@ func (s *PulseStore) DeleteOldAlerts(ctx context.Context, before time.Time) (int
 	}
 	return result.RowsAffected()
 }
+
+// -- Notification Channels --
+
+// InsertChannel inserts a new notification channel.
+func (s *PulseStore) InsertChannel(ctx context.Context, ch *NotificationChannel) error {
+	enabled := 0
+	if ch.Enabled {
+		enabled = 1
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO pulse_notification_channels (id, name, type, config, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		ch.ID, ch.Name, ch.Type, ch.Config, enabled, ch.CreatedAt, ch.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert notification channel: %w", err)
+	}
+	return nil
+}
+
+// GetChannel returns a notification channel by ID. Returns nil, nil if not found.
+func (s *PulseStore) GetChannel(ctx context.Context, id string) (*NotificationChannel, error) {
+	var ch NotificationChannel
+	var enabledInt int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, name, type, config, enabled, created_at, updated_at
+		FROM pulse_notification_channels WHERE id = ?`,
+		id,
+	).Scan(&ch.ID, &ch.Name, &ch.Type, &ch.Config, &enabledInt, &ch.CreatedAt, &ch.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get notification channel: %w", err)
+	}
+	ch.Enabled = enabledInt != 0
+	return &ch, nil
+}
+
+// ListChannels returns all notification channels.
+func (s *PulseStore) ListChannels(ctx context.Context) ([]NotificationChannel, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, name, type, config, enabled, created_at, updated_at
+		FROM pulse_notification_channels ORDER BY created_at`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list notification channels: %w", err)
+	}
+	defer rows.Close()
+
+	var channels []NotificationChannel
+	for rows.Next() {
+		var ch NotificationChannel
+		var enabledInt int
+		if err := rows.Scan(&ch.ID, &ch.Name, &ch.Type, &ch.Config, &enabledInt, &ch.CreatedAt, &ch.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan notification channel row: %w", err)
+		}
+		ch.Enabled = enabledInt != 0
+		channels = append(channels, ch)
+	}
+	return channels, rows.Err()
+}
+
+// ListEnabledChannels returns only enabled notification channels.
+func (s *PulseStore) ListEnabledChannels(ctx context.Context) ([]NotificationChannel, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, name, type, config, enabled, created_at, updated_at
+		FROM pulse_notification_channels WHERE enabled = 1 ORDER BY created_at`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list enabled notification channels: %w", err)
+	}
+	defer rows.Close()
+
+	var channels []NotificationChannel
+	for rows.Next() {
+		var ch NotificationChannel
+		var enabledInt int
+		if err := rows.Scan(&ch.ID, &ch.Name, &ch.Type, &ch.Config, &enabledInt, &ch.CreatedAt, &ch.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan notification channel row: %w", err)
+		}
+		ch.Enabled = enabledInt != 0
+		channels = append(channels, ch)
+	}
+	return channels, rows.Err()
+}
+
+// UpdateChannel updates a notification channel.
+func (s *PulseStore) UpdateChannel(ctx context.Context, ch *NotificationChannel) error {
+	enabled := 0
+	if ch.Enabled {
+		enabled = 1
+	}
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE pulse_notification_channels SET name = ?, config = ?, enabled = ?, updated_at = ?
+		WHERE id = ?`,
+		ch.Name, ch.Config, enabled, ch.UpdatedAt, ch.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("update notification channel: %w", err)
+	}
+	return nil
+}
+
+// DeleteChannel deletes a notification channel by ID.
+func (s *PulseStore) DeleteChannel(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM pulse_notification_channels WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete notification channel: %w", err)
+	}
+	return nil
+}

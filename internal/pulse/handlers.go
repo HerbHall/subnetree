@@ -30,6 +30,20 @@ type updateCheckRequest struct {
 	Enabled         *bool  `json:"enabled,omitempty"`
 }
 
+// createNotificationRequest is the JSON body for POST /notifications.
+type createNotificationRequest struct {
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Config string `json:"config"`
+}
+
+// updateNotificationRequest is the JSON body for PUT /notifications/{id}.
+type updateNotificationRequest struct {
+	Name    string `json:"name,omitempty"`
+	Config  string `json:"config,omitempty"`
+	Enabled *bool  `json:"enabled,omitempty"`
+}
+
 // Routes implements plugin.HTTPProvider.
 func (m *Module) Routes() []plugin.Route {
 	return []plugin.Route{
@@ -45,6 +59,12 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "POST", Path: "/alerts/{id}/acknowledge", Handler: m.handleAcknowledgeAlert},
 		{Method: "POST", Path: "/alerts/{id}/resolve", Handler: m.handleResolveAlert},
 		{Method: "GET", Path: "/status/{device_id}", Handler: m.handleDeviceStatus},
+		{Method: "GET", Path: "/notifications", Handler: m.handleListNotifications},
+		{Method: "GET", Path: "/notifications/{id}", Handler: m.handleGetNotification},
+		{Method: "POST", Path: "/notifications", Handler: m.handleCreateNotification},
+		{Method: "PUT", Path: "/notifications/{id}", Handler: m.handleUpdateNotification},
+		{Method: "DELETE", Path: "/notifications/{id}", Handler: m.handleDeleteNotification},
+		{Method: "POST", Path: "/notifications/{id}/test", Handler: m.handleTestNotification},
 	}
 }
 
@@ -595,6 +615,341 @@ func pulseParseLimit(r *http.Request, defaultLimit int) int {
 		}
 	}
 	return defaultLimit
+}
+
+// -- Notification channel handlers --
+
+// handleListNotifications returns all notification channels.
+//
+//	@Summary		List notification channels
+//	@Description	Returns all notification channels with sensitive fields masked.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200 {array} NotificationChannel
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications [get]
+func (m *Module) handleListNotifications(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	channels, err := m.store.ListChannels(r.Context())
+	if err != nil {
+		m.logger.Warn("failed to list notification channels", zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to list channels")
+		return
+	}
+	if channels == nil {
+		channels = []NotificationChannel{}
+	}
+	for i := range channels {
+		channels[i].Config = maskChannelConfig(channels[i].Config)
+	}
+	pulseWriteJSON(w, http.StatusOK, channels)
+}
+
+// handleGetNotification returns a single notification channel.
+//
+//	@Summary		Get notification channel
+//	@Description	Returns a single notification channel by ID with sensitive fields masked.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id path string true "Channel ID"
+//	@Success		200 {object} NotificationChannel
+//	@Failure		404 {object} map[string]any
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications/{id} [get]
+func (m *Module) handleGetNotification(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	ch, err := m.store.GetChannel(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get notification channel", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get channel")
+		return
+	}
+	if ch == nil {
+		pulseWriteError(w, http.StatusNotFound, "channel not found")
+		return
+	}
+	ch.Config = maskChannelConfig(ch.Config)
+	pulseWriteJSON(w, http.StatusOK, ch)
+}
+
+// handleCreateNotification creates a new notification channel.
+//
+//	@Summary		Create notification channel
+//	@Description	Creates a new notification channel (webhook or email).
+//	@Tags			pulse
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body body createNotificationRequest true "Channel definition"
+//	@Success		201 {object} NotificationChannel
+//	@Failure		400 {object} map[string]any
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications [post]
+func (m *Module) handleCreateNotification(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	var req createNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.Name == "" {
+		pulseWriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.Type != "webhook" && req.Type != "email" {
+		pulseWriteError(w, http.StatusBadRequest, "type must be webhook or email")
+		return
+	}
+	if req.Config == "" {
+		pulseWriteError(w, http.StatusBadRequest, "config is required")
+		return
+	}
+	// Validate config is valid JSON.
+	if !json.Valid([]byte(req.Config)) {
+		pulseWriteError(w, http.StatusBadRequest, "config must be valid JSON")
+		return
+	}
+
+	now := time.Now().UTC()
+	ch := &NotificationChannel{
+		ID:        fmt.Sprintf("notif-%s-%d", req.Type, now.UnixMilli()),
+		Name:      req.Name,
+		Type:      req.Type,
+		Config:    req.Config,
+		Enabled:   true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if err := m.store.InsertChannel(r.Context(), ch); err != nil {
+		m.logger.Warn("failed to create notification channel", zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to create channel")
+		return
+	}
+
+	ch.Config = maskChannelConfig(ch.Config)
+	pulseWriteJSON(w, http.StatusCreated, ch)
+}
+
+// handleUpdateNotification updates an existing notification channel.
+//
+//	@Summary		Update notification channel
+//	@Description	Updates fields on an existing notification channel.
+//	@Tags			pulse
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id path string true "Channel ID"
+//	@Param			body body updateNotificationRequest true "Fields to update"
+//	@Success		200 {object} NotificationChannel
+//	@Failure		400 {object} map[string]any
+//	@Failure		404 {object} map[string]any
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications/{id} [put]
+func (m *Module) handleUpdateNotification(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	existing, err := m.store.GetChannel(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get channel for update", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get channel")
+		return
+	}
+	if existing == nil {
+		pulseWriteError(w, http.StatusNotFound, "channel not found")
+		return
+	}
+
+	var req updateNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if req.Name != "" {
+		existing.Name = req.Name
+	}
+	if req.Config != "" {
+		if !json.Valid([]byte(req.Config)) {
+			pulseWriteError(w, http.StatusBadRequest, "config must be valid JSON")
+			return
+		}
+		existing.Config = req.Config
+	}
+	if req.Enabled != nil {
+		existing.Enabled = *req.Enabled
+	}
+	existing.UpdatedAt = time.Now().UTC()
+
+	if err := m.store.UpdateChannel(r.Context(), existing); err != nil {
+		m.logger.Warn("failed to update channel", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to update channel")
+		return
+	}
+
+	existing.Config = maskChannelConfig(existing.Config)
+	pulseWriteJSON(w, http.StatusOK, existing)
+}
+
+// handleDeleteNotification deletes a notification channel.
+//
+//	@Summary		Delete notification channel
+//	@Description	Deletes a notification channel by ID.
+//	@Tags			pulse
+//	@Security		BearerAuth
+//	@Param			id path string true "Channel ID"
+//	@Success		204
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications/{id} [delete]
+func (m *Module) handleDeleteNotification(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	if err := m.store.DeleteChannel(r.Context(), id); err != nil {
+		m.logger.Warn("failed to delete channel", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to delete channel")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleTestNotification sends a synthetic test alert through a notification channel.
+//
+//	@Summary		Test notification channel
+//	@Description	Sends a test notification through the specified channel.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id path string true "Channel ID"
+//	@Success		200 {object} map[string]any
+//	@Failure		404 {object} map[string]any
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/notifications/{id}/test [post]
+func (m *Module) handleTestNotification(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	ch, err := m.store.GetChannel(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get channel for test", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get channel")
+		return
+	}
+	if ch == nil {
+		pulseWriteError(w, http.StatusNotFound, "channel not found")
+		return
+	}
+
+	// Build a synthetic test alert.
+	testAlert := &Alert{
+		ID:                  "test-alert",
+		CheckID:             "test-check",
+		DeviceID:            "test-device",
+		Severity:            "warning",
+		Message:             "This is a test notification from SubNetree",
+		TriggeredAt:         time.Now().UTC(),
+		ConsecutiveFailures: 1,
+	}
+
+	notifier, err := buildNotifier(*ch)
+	if err != nil {
+		m.logger.Warn("failed to build notifier for test", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to build notifier: "+err.Error())
+		return
+	}
+	if notifier == nil {
+		pulseWriteJSON(w, http.StatusOK, map[string]any{
+			"status":  "skipped",
+			"message": ch.Type + " notifications are not yet implemented",
+		})
+		return
+	}
+
+	if err := notifier.Notify(r.Context(), testAlert, "test"); err != nil {
+		m.logger.Warn("test notification failed", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "test notification failed: "+err.Error())
+		return
+	}
+
+	pulseWriteJSON(w, http.StatusOK, map[string]any{
+		"status":  "sent",
+		"message": "Test notification delivered successfully",
+	})
+}
+
+// maskChannelConfig replaces sensitive values (secret, password) with "****" in config JSON.
+func maskChannelConfig(cfgJSON string) string {
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(cfgJSON), &raw); err != nil {
+		return cfgJSON
+	}
+	for _, key := range []string{"secret", "password"} {
+		if _, ok := raw[key]; ok {
+			if v, isStr := raw[key].(string); isStr && v != "" {
+				raw[key] = "****"
+			}
+		}
+	}
+	masked, err := json.Marshal(raw)
+	if err != nil {
+		return cfgJSON
+	}
+	return string(masked)
+}
+
+// buildNotifier creates a Notifier from a NotificationChannel configuration.
+func buildNotifier(ch NotificationChannel) (Notifier, error) {
+	switch ch.Type {
+	case "webhook":
+		var cfg WebhookConfig
+		if err := json.Unmarshal([]byte(ch.Config), &cfg); err != nil {
+			return nil, fmt.Errorf("unmarshal webhook config: %w", err)
+		}
+		if cfg.URL == "" {
+			return nil, fmt.Errorf("webhook URL is required")
+		}
+		return NewWebhookNotifier(cfg), nil
+	case "email":
+		// Email notifications are stubbed for future implementation.
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported notification type: %s", ch.Type)
+	}
 }
 
 // validateTarget validates a check target based on the check type.
