@@ -8,7 +8,7 @@
 [![Docker Image](https://img.shields.io/badge/docker-ghcr.io%2Fherbhall%2Fsubnetree-blue?logo=docker)](https://github.com/HerbHall/subnetree/pkgs/container/subnetree)
 [![License](https://img.shields.io/badge/license-BSL%201.1-blue)](LICENSE)
 
-> **v0.2.1**: All core modules are functional. Discovery, monitoring, analytics, credential vault, and remote access all work. Contributions and feedback welcome!
+> All core modules are functional. Discovery, monitoring, analytics, credential vault, and remote access all work. Contributions and feedback welcome!
 
 **Your HomeLab command center.** SubNetree discovers devices on your network, monitors their status, and gives you one-click access to everything -- without typing passwords a thousand times a day.
 
@@ -62,6 +62,14 @@ See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full pl
 ### Network Topology
 
 ![Interactive network topology visualization with grid layout](docs/images/topology-visualization.png)
+
+## What You'll Need
+
+- **A computer on your network** running Docker (Linux, macOS, or Windows)
+- **Docker** installed and running ([Get Docker](https://docs.docker.com/get-docker/))
+- **5 minutes** for initial setup
+
+That's it. No databases, no config files, no dependencies to install.
 
 ## Quick Start (Docker)
 
