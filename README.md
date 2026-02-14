@@ -21,34 +21,6 @@ HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home As
 - **Launches anything** with one click -- web UIs, SSH -- credentials handled
 - **Extends via plugins** to monitor whatever you need
 
-## Current Status
-
-> All core modules functional. 398 tests across 5 new modules.
-
-### What Works Today
-
-- **Network Discovery**: ARP + ICMP scanning with OUI manufacturer lookup and reverse DNS
-- **Device Monitoring**: ICMP health checks, alert state machine (OK/Warning/Critical), data retention
-- **AI-Powered Analytics**: EWMA baselines, Z-score anomaly detection, CUSUM change-point detection, linear regression forecasting, natural language queries via Ollama
-- **Credential Vault**: AES-256-GCM envelope encryption, Argon2id key derivation, seal/unseal model, 7 credential types, key rotation
-- **Remote Access Gateway**: HTTP reverse proxy, SSH-in-browser via WebSocket, session management with audit trail
-- **Infrastructure Documentation**: Docker container discovery, config snapshots with versioning, LCS-based diff viewer
-- **Device Management**: Full CRUD (create, edit, delete), categorization, bulk operations, inventory summary
-- **Interactive Dashboard**: Device list, detail pages, topology visualization, dark mode, keyboard shortcuts
-- **Real-Time Updates**: WebSocket-powered scan progress with live device feed
-- **Authentication**: JWT-based auth with first-run setup wizard
-- **Backup/Restore**: CLI commands for data safety
-- **Docker**: Multi-stage builds with health checks
-
-### Coming Next
-
-- Enhanced discovery: mDNS, UPnP, LLDP/CDP
-- Additional LLM providers: OpenAI, Anthropic
-- Multi-tenant support for MSPs
-- Tailscale integration
-
-See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
-
 ## Screenshots
 
 ### Dashboard Overview
@@ -104,30 +76,86 @@ docker compose up -d
 
 ## Features
 
-### Discovery & Mapping
+### Discovery and Mapping
 
-- LAN scanning with ARP and ICMP (mDNS, SNMP, UPnP in Phase 2)
-- Automatic device identification (OS, manufacturer, type)
-- Network topology visualization
-- Full device inventory management with categorization and bulk operations
+- Finds every device on your network automatically (ARP + ICMP scanning with manufacturer identification)
+- Identifies device type, operating system, and brand from MAC addresses (OUI lookup + reverse DNS)
+- Interactive network topology map showing how devices connect
+- Full device inventory with search, categorization, and bulk operations
+
+### Monitoring and Alerts
+
+- Tracks device health in real time with automatic alerting (OK / Warning / Critical states)
+- Alerts you when device behavior changes (statistical anomaly detection with EWMA baselines, Z-score, and CUSUM)
+- Predicts trends before problems happen (linear regression forecasting)
+- Ask questions about your network in plain English via local AI (Ollama integration)
+- Plugin-extensible -- monitor anything
+
+### Secure Credential Storage
+
+- Bank-level encryption for stored credentials (AES-256-GCM envelope encryption, Argon2id key derivation)
+- Supports 7 credential types with automatic key rotation
+- Seal/unseal model -- credentials are locked until you unlock the vault
+
+### Remote Access
+
+- Launch any device's web UI or SSH session with one click -- no re-typing passwords
+- Browse remote services through a built-in reverse proxy (HTTP)
+- SSH-in-browser via WebSocket with full session audit trail
 
 ### Infrastructure Documentation
 
-- Docker container discovery and config capture
-- Snapshot versioning with retention policies
-- Side-by-side diff viewer (LCS-based) for tracking configuration changes
+- Discovers Docker containers and captures their configuration automatically
+- Tracks configuration changes over time with snapshot versioning and retention policies
+- Side-by-side diff viewer for spotting exactly what changed (LCS-based comparison)
 
-### Monitoring
+### Dashboard and Authentication
 
-- Device health and status tracking
-- Scout agents for detailed host metrics (coming in v0.3.0)
-- Plugin-extensible -- monitor anything
+- Modern, responsive dashboard with device list, detail pages, and topology view
+- Dark mode, keyboard shortcuts, and real-time scan progress via WebSocket
+- Secure login with automatic session management (JWT-based authentication)
+- First-run setup wizard -- no manual configuration needed
+- Backup and restore your data with a single CLI command
+- Ready-to-run Docker image with health checks
 
-### Quick Access
+### Coming Next
 
-- One-click launch to web UIs and SSH sessions
-- Credential vault so you don't re-type passwords
-- HTTP reverse proxy and SSH-in-browser via WebSocket
+- Enhanced discovery: mDNS, UPnP, LLDP/CDP
+- Additional LLM providers: OpenAI, Anthropic
+- Multi-tenant support for MSPs
+- Tailscale integration
+
+See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
+
+## Guides
+
+- [Development Setup](docs/guides/development-setup.md) -- local dev environment
+- [Tailscale Deployment](docs/guides/tailscale-deployment.md) -- running SubNetree + Scout over Tailscale
+- [Tailscale Serve & Funnel](docs/guides/tailscale-funnel.md) -- exposing the dashboard without port forwarding
+
+## Troubleshooting
+
+**Docker: Scanning finds no devices** --
+Use host networking for full ARP/ICMP access:
+
+```bash
+docker run -d --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
+```
+
+Or ensure `NET_RAW` and `NET_ADMIN` capabilities are set.
+
+**First-time setup** --
+Navigate to `http://localhost:8080` -- the setup wizard will prompt you to create an admin account.
+
+**Backup your data** --
+
+```bash
+# Create backup
+subnetree backup --data-dir /data --output my-backup.tar.gz
+
+# Restore from backup
+subnetree restore --input my-backup.tar.gz --data-dir /data --force
+```
 
 ## How SubNetree Compares
 
@@ -144,7 +172,31 @@ docker compose up -d
 
 *BSL 1.1 converts to Apache 2.0 after 4 years. Free for personal/HomeLab use.
 
-## Architecture
+## Community
+
+- [GitHub Discussions](https://github.com/HerbHall/subnetree/discussions) -- questions, ideas, and general chat
+- [Issue Tracker](https://github.com/HerbHall/subnetree/issues) -- bug reports and feature requests
+- [Contributing Guide](CONTRIBUTING.md) -- how to get involved
+
+New here? Check out the [Welcome thread](https://github.com/HerbHall/subnetree/discussions/114) or share your setup in [Show Your Setup](https://github.com/HerbHall/subnetree/discussions/117).
+
+## Support the Project
+
+SubNetree is **free for personal, HomeLab, and non-competing production use**. If you find it useful:
+
+- [GitHub Sponsors](https://github.com/sponsors/HerbHall)
+- [Ko-fi](https://ko-fi.com/herbhall)
+- [Buy Me a Coffee](https://buymeacoffee.com/herbhall)
+
+You can also contribute by [reporting bugs](https://github.com/HerbHall/subnetree/issues), [requesting features](https://github.com/HerbHall/subnetree/discussions), testing alpha releases, or building plugins.
+
+---
+
+<!-- Everything below this line is for contributors and developers -->
+
+## Development
+
+### Architecture
 
 ```mermaid
 graph TD
@@ -192,15 +244,9 @@ graph TD
 | **LLM** | AI provider integration (Ollama, optional) |
 | **Insight** | Statistical analytics, anomaly detection, NL queries |
 
-## Building from Source
+### Building from Source
 
-### Prerequisites
-
-- Go 1.25+
-- Node.js 22+ (for frontend)
-- Make (optional)
-
-### Build
+**Prerequisites:** Go 1.25+, Node.js 22+, Make (optional)
 
 ```bash
 # Build everything (server + frontend)
@@ -209,21 +255,13 @@ make build
 # Or build separately
 make build-server
 cd web && pnpm install --frozen-lockfile && pnpm run build
-```
 
-### Run
-
-```bash
 # Start server (serves dashboard at :8080)
 ./bin/subnetree
 
 # With config file
 ./bin/subnetree -config configs/subnetree.example.yaml
-```
 
-### Development
-
-```bash
 # Run tests
 make test
 
@@ -234,7 +272,7 @@ make lint
 make proto
 ```
 
-## Project Structure
+### Project Structure
 
 ```text
 cmd/
@@ -260,60 +298,12 @@ api/
   proto/v1/       gRPC service definitions
 ```
 
-## Roadmap
+### Roadmap
 
 - **v0.2.1** (shipped): Core modules -- monitoring, analytics, vault, gateway, LLM
 - **v0.3.0** (next): Scout agents, mTLS, SNMP discovery, service mapping, monitoring dashboard
 - **v0.4.0**: Enhanced discovery (mDNS, UPnP, LLDP/CDP), multi-tenant support
 - **v1.0.0**: PostgreSQL, MFA, OIDC, HomeLab integrations
-
-## Troubleshooting
-
-**Docker: Scanning finds no devices** --
-Use host networking for full ARP/ICMP access:
-
-```bash
-docker run -d --network host -v subnetree-data:/data ghcr.io/herbhall/subnetree:latest
-```
-
-Or ensure `NET_RAW` and `NET_ADMIN` capabilities are set.
-
-**First-time setup** --
-Navigate to `http://localhost:8080` -- the setup wizard will prompt you to create an admin account.
-
-**Backup your data** --
-
-```bash
-# Create backup
-subnetree backup --data-dir /data --output my-backup.tar.gz
-
-# Restore from backup
-subnetree restore --input my-backup.tar.gz --data-dir /data --force
-```
-
-## Guides
-
-- [Development Setup](docs/guides/development-setup.md) -- local dev environment
-- [Tailscale Deployment](docs/guides/tailscale-deployment.md) -- running SubNetree + Scout over Tailscale
-- [Tailscale Serve & Funnel](docs/guides/tailscale-funnel.md) -- exposing the dashboard without port forwarding
-
-## Community
-
-- [GitHub Discussions](https://github.com/HerbHall/subnetree/discussions) -- questions, ideas, and general chat
-- [Issue Tracker](https://github.com/HerbHall/subnetree/issues) -- bug reports and feature requests
-- [Contributing Guide](CONTRIBUTING.md) -- how to get involved
-
-New here? Check out the [Welcome thread](https://github.com/HerbHall/subnetree/discussions/114) or share your setup in [Show Your Setup](https://github.com/HerbHall/subnetree/discussions/117).
-
-## Support the Project
-
-SubNetree is **free for personal, HomeLab, and non-competing production use**. If you find it useful:
-
-- [GitHub Sponsors](https://github.com/sponsors/HerbHall)
-- [Ko-fi](https://ko-fi.com/herbhall)
-- [Buy Me a Coffee](https://buymeacoffee.com/herbhall)
-
-You can also contribute by [reporting bugs](https://github.com/HerbHall/subnetree/issues), [requesting features](https://github.com/HerbHall/subnetree/discussions), testing alpha releases, or building plugins.
 
 ## License
 
