@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Monitor, Network, Bot, Layers, FileText, Settings, Info, LogOut } from 'lucide-react'
+import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, FileText, Settings, Info, LogOut } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/devices', label: 'Devices', icon: Monitor },
   { to: '/topology', label: 'Topology', icon: Network },
   { to: '/agents', label: 'Agents', icon: Bot },
+  { to: '/monitoring', label: 'Monitoring', icon: Activity },
   { to: '/services', label: 'Services', icon: Layers },
   { to: '/documentation', label: 'Docs', icon: FileText },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -28,6 +29,7 @@ export function AppLayout() {
   const goToDevices = useCallback(() => navigate('/devices'), [navigate])
   const goToTopology = useCallback(() => navigate('/topology'), [navigate])
   const goToAgents = useCallback(() => navigate('/agents'), [navigate])
+  const goToMonitoring = useCallback(() => navigate('/monitoring'), [navigate])
   const goToServices = useCallback(() => navigate('/services'), [navigate])
   const goToDocs = useCallback(() => navigate('/documentation'), [navigate])
   const goToSettings = useCallback(() => navigate('/settings'), [navigate])
@@ -39,11 +41,12 @@ export function AppLayout() {
       { key: '2', handler: goToDevices, description: 'Go to Devices' },
       { key: '3', handler: goToTopology, description: 'Go to Topology' },
       { key: '4', handler: goToAgents, description: 'Go to Agents' },
-      { key: '5', handler: goToServices, description: 'Go to Services' },
-      { key: '6', handler: goToDocs, description: 'Go to Docs' },
-      { key: '7', handler: goToSettings, description: 'Go to Settings' },
+      { key: '5', handler: goToMonitoring, description: 'Go to Monitoring' },
+      { key: '6', handler: goToServices, description: 'Go to Services' },
+      { key: '7', handler: goToDocs, description: 'Go to Docs' },
+      { key: '8', handler: goToSettings, description: 'Go to Settings' },
     ],
-    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToAgents, goToServices, goToDocs, goToSettings]
+    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToAgents, goToMonitoring, goToServices, goToDocs, goToSettings]
   )
 
   useKeyboardShortcuts(shortcuts)

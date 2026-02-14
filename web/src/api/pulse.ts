@@ -6,6 +6,9 @@ import type {
   CreateCheckRequest,
   UpdateCheckRequest,
   MonitoringStatus,
+  NotificationChannel,
+  CreateNotificationRequest,
+  UpdateNotificationRequest,
 } from './types'
 
 /**
@@ -112,4 +115,50 @@ export async function getDeviceStatus(
   deviceId: string
 ): Promise<MonitoringStatus> {
   return api.get<MonitoringStatus>(`/pulse/status/${deviceId}`)
+}
+
+// ============================================================================
+// Notification Channels
+// ============================================================================
+
+/**
+ * List notification channels.
+ */
+export async function listChannels(): Promise<NotificationChannel[]> {
+  return api.get<NotificationChannel[]>('/pulse/notifications')
+}
+
+/**
+ * Get a single notification channel by ID.
+ */
+export async function getChannel(id: string): Promise<NotificationChannel> {
+  return api.get<NotificationChannel>(`/pulse/notifications/${id}`)
+}
+
+/**
+ * Create a notification channel.
+ */
+export async function createChannel(req: CreateNotificationRequest): Promise<NotificationChannel> {
+  return api.post<NotificationChannel>('/pulse/notifications', req)
+}
+
+/**
+ * Update a notification channel.
+ */
+export async function updateChannel(id: string, req: UpdateNotificationRequest): Promise<NotificationChannel> {
+  return api.put<NotificationChannel>(`/pulse/notifications/${id}`, req)
+}
+
+/**
+ * Delete a notification channel.
+ */
+export async function deleteChannel(id: string): Promise<void> {
+  return api.delete<void>(`/pulse/notifications/${id}`)
+}
+
+/**
+ * Test a notification channel by sending a test alert.
+ */
+export async function testChannel(id: string): Promise<void> {
+  return api.post<void>(`/pulse/notifications/${id}/test`, {})
 }

@@ -413,6 +413,31 @@ export interface MonitoringStatus {
   checked_at?: string
 }
 
+/** Notification delivery channel configuration. */
+export interface NotificationChannel {
+  id: string
+  name: string
+  type: string // "webhook" | "email"
+  config: string // JSON blob
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** Request body for creating a notification channel. */
+export interface CreateNotificationRequest {
+  name: string
+  type: string
+  config: string
+}
+
+/** Request body for updating a notification channel. */
+export interface UpdateNotificationRequest {
+  name?: string
+  config?: string
+  enabled?: boolean
+}
+
 // ============================================================================
 // SNMP Types
 // ============================================================================
