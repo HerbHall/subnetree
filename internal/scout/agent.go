@@ -2,6 +2,7 @@ package scout
 
 import (
 	"context"
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -348,14 +349,28 @@ func (a *Agent) checkIn(ctx context.Context) {
 		}
 	}
 
-	resp, err := a.client.CheckIn(ctx, &scoutpb.CheckInRequest{
-		AgentId:      a.config.AgentID,
-		Hostname:     hostname(),
-		Platform:     agentPlatform(),
-		AgentVersion: "0.1.0",
-		ProtoVersion: 1,
-		Metrics:      sysMetrics,
-	})
+	// Check if certificate renewal is needed before check-in.
+	var renewalCSR []byte
+	var renewalKey crypto.PrivateKey
+	csrDER, newKey, renewErr := a.checkCertificateRenewal()
+	if renewErr != nil {
+		a.logger.Warn("certificate renewal check failed", zap.Error(renewErr))
+	} else if csrDER != nil {
+		renewalCSR = csrDER
+		renewalKey = newKey
+	}
+
+	req := &scoutpb.CheckInRequest{
+		AgentId:            a.config.AgentID,
+		Hostname:           hostname(),
+		Platform:           agentPlatform(),
+		AgentVersion:       "0.1.0",
+		ProtoVersion:       1,
+		Metrics:            sysMetrics,
+		CertificateRequest: renewalCSR,
+	}
+
+	resp, err := a.client.CheckIn(ctx, req)
 	if err != nil {
 		a.logger.Warn("check-in failed", zap.Error(err))
 		return
@@ -367,6 +382,106 @@ func (a *Agent) checkIn(ctx context.Context) {
 			zap.String("message", resp.UpgradeMessage),
 		)
 	}
+
+	// Handle certificate renewal response.
+	if renewalKey != nil && len(resp.SignedCertificate) > 0 {
+		// Save new private key first (atomic swap: key then cert).
+		if err := a.saveRenewalKey(renewalKey); err != nil {
+			a.logger.Error("failed to save renewal key, keeping old certificate", zap.Error(err))
+			return
+		}
+
+		// Save new certificate and CA cert.
+		if err := a.saveCertificates(resp.SignedCertificate, resp.CaCertificate); err != nil {
+			a.logger.Error("failed to save renewal certificates", zap.Error(err))
+			return
+		}
+
+		// Log the new certificate details.
+		if newCert, parseErr := x509.ParseCertificate(resp.SignedCertificate); parseErr == nil {
+			a.logger.Info("certificate renewed",
+				zap.Time("expires", newCert.NotAfter),
+			)
+		}
+
+		// Reconnect with the new credentials.
+		if err := a.reconnectWithNewCerts(ctx); err != nil {
+			a.logger.Error("failed to reconnect with new certificates", zap.Error(err))
+		}
+	}
+}
+
+// checkCertificateRenewal checks if the current certificate is expiring soon
+// and generates a new CSR if renewal is needed. Returns nil values if no renewal
+// is needed or if the agent is in insecure mode.
+func (a *Agent) checkCertificateRenewal() (csrDER []byte, newKey crypto.PrivateKey, err error) {
+	// Only attempt renewal when TLS is configured and credentials exist.
+	if a.config.Insecure || !a.hasTLSCredentials() {
+		return nil, nil, nil
+	}
+
+	// Load current certificate from disk.
+	certDER, loadErr := ca.LoadPEM(a.config.CertPath, "CERTIFICATE")
+	if loadErr != nil {
+		return nil, nil, fmt.Errorf("load current certificate: %w", loadErr)
+	}
+
+	cert, parseErr := x509.ParseCertificate(certDER)
+	if parseErr != nil {
+		return nil, nil, fmt.Errorf("parse current certificate: %w", parseErr)
+	}
+
+	// Check if the certificate is expiring soon.
+	if !ca.IsCertificateExpiringSoon(cert, a.config.RenewalThreshold) {
+		return nil, nil, nil
+	}
+
+	a.logger.Info("certificate expiring soon, initiating renewal",
+		zap.Time("expires", cert.NotAfter),
+		zap.Duration("threshold", a.config.RenewalThreshold),
+	)
+
+	// Generate new keypair and CSR.
+	key, _, genErr := ca.GenerateKeypair()
+	if genErr != nil {
+		return nil, nil, fmt.Errorf("generate renewal keypair: %w", genErr)
+	}
+
+	csr, csrErr := ca.CreateCSR(key, a.config.AgentID, hostname())
+	if csrErr != nil {
+		return nil, nil, fmt.Errorf("create renewal CSR: %w", csrErr)
+	}
+
+	return csr, key, nil
+}
+
+// reconnectWithNewCerts closes the existing gRPC connection and reconnects
+// using the newly saved TLS credentials.
+func (a *Agent) reconnectWithNewCerts(ctx context.Context) error {
+	if a.conn != nil {
+		a.conn.Close()
+	}
+	return a.connectWithBackoff(ctx)
+}
+
+// saveRenewalKey saves the new private key to disk, replacing the old key.
+// This should only be called after the server has returned a signed certificate.
+func (a *Agent) saveRenewalKey(newKey crypto.PrivateKey) error {
+	keyPEM, err := ca.EncodeKeyPEM(newKey)
+	if err != nil {
+		return fmt.Errorf("encode renewal key: %w", err)
+	}
+
+	keyDir := filepath.Dir(a.config.KeyPath)
+	if err := os.MkdirAll(keyDir, 0o700); err != nil {
+		return fmt.Errorf("create key directory: %w", err)
+	}
+
+	if err := os.WriteFile(a.config.KeyPath, keyPEM, 0o600); err != nil {
+		return fmt.Errorf("write renewal key: %w", err)
+	}
+
+	return nil
 }
 
 func (a *Agent) collectAndSendProfile(ctx context.Context) {
