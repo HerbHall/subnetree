@@ -59,6 +59,9 @@ archives:
       - scout
     name_template: >-
       scout_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - src: deploy/scout/scout.service
+      - src: deploy/scout/install.sh
     format_overrides:
       - goos: windows
         formats:

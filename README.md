@@ -72,6 +72,18 @@ See [docker-compose.yml](docker-compose.yml) for a ready-to-use Compose file:
 docker compose up -d
 ```
 
+### Scout Agent (Linux)
+
+The Scout agent runs on monitored Linux machines and reports system metrics, hardware inventory, and service status back to SubNetree.
+
+```bash
+# Download latest release
+curl -fsSL https://github.com/HerbHall/subnetree/releases/latest/download/scout_linux_amd64.tar.gz | tar xz
+sudo ./install.sh --server http://your-subnetree-server:8080 --start
+```
+
+See [deploy/scout/](deploy/scout/) for the systemd service file and install script.
+
 ## Features
 
 ### Discovery and Mapping

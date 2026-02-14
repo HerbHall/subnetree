@@ -1,0 +1,22 @@
+[Unit]
+Description=SubNetree Scout Agent
+Documentation=https://github.com/HerbHall/subnetree
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=scout
+Group=scout
+ExecStart=/usr/local/bin/scout --server ${SERVER_URL}
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
