@@ -10,4 +10,5 @@ const (
 	TopicMetricsCollected = "pulse.metrics.collected"
 	TopicAlertTriggered   = "pulse.alert.triggered"
 	TopicAlertResolved    = "pulse.alert.resolved"
+	TopicAlertSuppressed  = "pulse.alert.suppressed"
 )

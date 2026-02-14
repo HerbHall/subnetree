@@ -1,6 +1,7 @@
 import { api } from './client'
 import type {
   Check,
+  CheckDependency,
   CheckResult,
   Alert,
   CreateCheckRequest,
@@ -79,12 +80,14 @@ export async function listAlerts(params?: {
   device_id?: string
   severity?: string
   active?: boolean
+  suppressed?: boolean
   limit?: number
 }): Promise<Alert[]> {
   const query = new URLSearchParams()
   if (params?.device_id) query.set('device_id', params.device_id)
   if (params?.severity) query.set('severity', params.severity)
   if (params?.active !== undefined) query.set('active', params.active.toString())
+  if (params?.suppressed !== undefined) query.set('suppressed', params.suppressed.toString())
   if (params?.limit) query.set('limit', params.limit.toString())
   const qs = query.toString()
   return api.get<Alert[]>(`/pulse/alerts${qs ? `?${qs}` : ''}`)
@@ -109,6 +112,41 @@ export async function acknowledgeAlert(id: string): Promise<Alert> {
  */
 export async function resolveAlert(id: string): Promise<Alert> {
   return api.post<Alert>(`/pulse/alerts/${id}/resolve`, {})
+}
+
+// ============================================================================
+// Check Dependencies
+// ============================================================================
+
+/**
+ * List dependencies for a check.
+ */
+export async function listCheckDependencies(
+  checkId: string
+): Promise<CheckDependency[]> {
+  return api.get<CheckDependency[]>(`/pulse/checks/${checkId}/dependencies`)
+}
+
+/**
+ * Add a dependency between a check and an upstream device.
+ */
+export async function addCheckDependency(
+  checkId: string,
+  deviceId: string
+): Promise<void> {
+  await api.post(`/pulse/checks/${checkId}/dependencies`, {
+    depends_on_device_id: deviceId,
+  })
+}
+
+/**
+ * Remove a dependency between a check and an upstream device.
+ */
+export async function removeCheckDependency(
+  checkId: string,
+  deviceId: string
+): Promise<void> {
+  await api.delete(`/pulse/checks/${checkId}/dependencies/${deviceId}`)
 }
 
 /**

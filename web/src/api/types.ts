@@ -387,6 +387,15 @@ export interface Alert {
   resolved_at?: string
   acknowledged_at?: string
   consecutive_failures: number
+  suppressed: boolean
+  suppressed_by?: string
+}
+
+/** A dependency between a check and an upstream device for alert suppression. */
+export interface CheckDependency {
+  check_id: string
+  depends_on_device_id: string
+  created_at: string
 }
 
 /** Request body for creating a new check. */

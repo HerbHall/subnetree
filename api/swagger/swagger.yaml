@@ -613,6 +613,10 @@ definitions:
         type: string
       severity:
         type: string
+      suppressed:
+        type: boolean
+      suppressed_by:
+        type: string
       triggered_at:
         type: string
     type: object
@@ -633,6 +637,15 @@ definitions:
       target:
         type: string
       updated_at:
+        type: string
+    type: object
+  internal_pulse.CheckDependency:
+    properties:
+      check_id:
+        type: string
+      created_at:
+        type: string
+      depends_on_device_id:
         type: string
     type: object
   internal_pulse.CheckResult:
@@ -691,6 +704,11 @@ definitions:
         description: '"webhook", "email"'
         type: string
       updated_at:
+        type: string
+    type: object
+  internal_pulse.addDependencyRequest:
+    properties:
+      depends_on_device_id:
         type: string
     type: object
   internal_pulse.createCheckRequest:
@@ -1801,6 +1819,101 @@ paths:
       security:
       - BearerAuth: []
       summary: Create check
+      tags:
+      - pulse
+  /pulse/checks/{check_id}/dependencies:
+    get:
+      description: Returns all upstream device dependencies for a check.
+      parameters:
+      - description: Check ID
+        in: path
+        name: check_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.CheckDependency'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List check dependencies
+      tags:
+      - pulse
+    post:
+      consumes:
+      - application/json
+      description: Adds an upstream device dependency. When the upstream device has
+        an active critical alert, this check's alerts are suppressed.
+      parameters:
+      - description: Check ID
+        in: path
+        name: check_id
+        required: true
+        type: string
+      - description: Dependency definition
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_pulse.addDependencyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add check dependency
+      tags:
+      - pulse
+  /pulse/checks/{check_id}/dependencies/{device_id}:
+    delete:
+      description: Removes an upstream device dependency from a check.
+      parameters:
+      - description: Check ID
+        in: path
+        name: check_id
+        required: true
+        type: string
+      - description: Upstream device ID
+        in: path
+        name: device_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove check dependency
       tags:
       - pulse
   /pulse/checks/{device_id}:

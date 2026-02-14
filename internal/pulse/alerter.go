@@ -131,8 +131,40 @@ func (a *Alerter) handleFailure(ctx context.Context, check Check, result *CheckR
 		ConsecutiveFailures: count,
 	}
 
+	// Check if this alert should be suppressed due to an upstream device failure.
+	suppressed, byDevice, suppErr := a.store.IsSuppressed(ctx, check.ID)
+	if suppErr != nil {
+		a.logger.Warn("suppression check failed, proceeding with alert",
+			zap.String("check_id", check.ID),
+			zap.Error(suppErr),
+		)
+	}
+	if suppressed {
+		alert.Suppressed = true
+		alert.SuppressedBy = byDevice
+	}
+
 	if err := a.store.InsertAlert(ctx, alert); err != nil {
 		a.logger.Warn("failed to insert alert", zap.String("check_id", check.ID), zap.Error(err))
+		return
+	}
+
+	if alert.Suppressed {
+		a.logger.Info("alert suppressed",
+			zap.String("alert_id", alert.ID),
+			zap.String("check_id", check.ID),
+			zap.String("device_id", check.DeviceID),
+			zap.String("suppressed_by", alert.SuppressedBy),
+		)
+
+		if a.bus != nil {
+			a.bus.PublishAsync(ctx, plugin.Event{
+				Topic:     TopicAlertSuppressed,
+				Source:    "pulse",
+				Timestamp: now,
+				Payload:   alert,
+			})
+		}
 		return
 	}
 

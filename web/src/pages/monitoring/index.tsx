@@ -403,13 +403,15 @@ function AlertsTab() {
   const queryClient = useQueryClient()
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [activeOnly, setActiveOnly] = useState(false)
+  const [hideSuppressed, setHideSuppressed] = useState(true)
 
   const { data: alerts, isLoading } = useQuery({
-    queryKey: ['alerts', { severity: severityFilter, active: activeOnly }],
+    queryKey: ['alerts', { severity: severityFilter, active: activeOnly, hideSuppressed }],
     queryFn: () =>
       listAlerts({
         severity: severityFilter || undefined,
         active: activeOnly || undefined,
+        suppressed: hideSuppressed ? false : undefined,
       }),
   })
 
@@ -470,6 +472,18 @@ function AlertsTab() {
           <Eye className="h-3.5 w-3.5" />
           Active Only
         </button>
+        <button
+          onClick={() => setHideSuppressed(!hideSuppressed)}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors border',
+            hideSuppressed
+              ? 'bg-transparent text-muted-foreground border-input hover:bg-muted'
+              : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+          )}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          {hideSuppressed ? 'Show Suppressed' : 'Showing Suppressed'}
+        </button>
         <p className="text-sm text-muted-foreground ml-auto">
           {alerts?.length ?? 0} alert{(alerts?.length ?? 0) !== 1 ? 's' : ''}
         </p>
@@ -502,7 +516,14 @@ function AlertsTab() {
               </thead>
               <tbody className="divide-y">
                 {alerts.map((alert) => (
-                  <tr key={alert.id} className="hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={alert.id}
+                    className={cn(
+                      'hover:bg-muted/30 transition-colors',
+                      alert.suppressed && 'opacity-50'
+                    )}
+                    title={alert.suppressed ? `Suppressed: upstream device ${alert.suppressed_by ?? ''} is down` : undefined}
+                  >
                     <td className="px-4 py-3 font-mono text-xs">
                       {alert.device_id.slice(0, 8)}...
                     </td>
@@ -576,6 +597,13 @@ function AlertStatusBadge({ alert }: { alert: Alert }) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400">
         Resolved
+      </span>
+    )
+  }
+  if (alert.suppressed) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        Suppressed
       </span>
     )
   }

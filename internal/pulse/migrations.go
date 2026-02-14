@@ -82,5 +82,28 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     4,
+			Description: "add check dependencies and alert suppression",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`CREATE TABLE IF NOT EXISTS pulse_check_dependencies (
+						check_id TEXT NOT NULL REFERENCES pulse_checks(id) ON DELETE CASCADE,
+						depends_on_device_id TEXT NOT NULL,
+						created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (check_id, depends_on_device_id)
+					)`,
+					`CREATE INDEX IF NOT EXISTS idx_pulse_check_deps_device ON pulse_check_dependencies(depends_on_device_id)`,
+					`ALTER TABLE pulse_alerts ADD COLUMN suppressed INTEGER NOT NULL DEFAULT 0`,
+					`ALTER TABLE pulse_alerts ADD COLUMN suppressed_by TEXT NOT NULL DEFAULT ''`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

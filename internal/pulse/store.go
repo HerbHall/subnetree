@@ -56,14 +56,25 @@ type Alert struct {
 	ResolvedAt          *time.Time `json:"resolved_at,omitempty"`
 	AcknowledgedAt      *time.Time `json:"acknowledged_at,omitempty"`
 	ConsecutiveFailures int        `json:"consecutive_failures"`
+	Suppressed          bool       `json:"suppressed"`
+	SuppressedBy        string     `json:"suppressed_by,omitempty"`
+}
+
+// CheckDependency represents a dependency between a check and an upstream device.
+// When the upstream device has an active critical alert, the check is suppressed.
+type CheckDependency struct {
+	CheckID           string    `json:"check_id"`
+	DependsOnDeviceID string    `json:"depends_on_device_id"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 // AlertFilters controls filtering for ListAlerts queries.
 type AlertFilters struct {
-	DeviceID   string
-	Severity   string
-	ActiveOnly bool
-	Limit      int
+	DeviceID      string
+	Severity      string
+	ActiveOnly    bool
+	Suppressed    *bool // nil = no filter, true = only suppressed, false = only non-suppressed
+	Limit         int
 }
 
 // PulseStore provides database access for the Pulse monitoring plugin.
@@ -433,12 +444,18 @@ func (s *PulseStore) InsertAlert(ctx context.Context, a *Alert) error {
 	if a.ResolvedAt != nil {
 		resolvedAt = sql.NullTime{Time: *a.ResolvedAt, Valid: true}
 	}
+	suppressed := 0
+	if a.Suppressed {
+		suppressed = 1
+	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO pulse_alerts (
-			id, check_id, device_id, severity, message, triggered_at, resolved_at, consecutive_failures
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, check_id, device_id, severity, message, triggered_at, resolved_at,
+			consecutive_failures, suppressed, suppressed_by
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.ID, a.CheckID, a.DeviceID, a.Severity, a.Message,
 		a.TriggeredAt, resolvedAt, a.ConsecutiveFailures,
+		suppressed, a.SuppressedBy,
 	)
 	if err != nil {
 		return fmt.Errorf("insert alert: %w", err)
@@ -462,13 +479,16 @@ func (s *PulseStore) ResolveAlert(ctx context.Context, id string, resolvedAt tim
 func (s *PulseStore) GetActiveAlert(ctx context.Context, checkID string) (*Alert, error) {
 	var a Alert
 	var resolvedAt, acknowledgedAt sql.NullTime
+	var suppressedInt int
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at, acknowledged_at, consecutive_failures
+		SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at,
+			acknowledged_at, consecutive_failures, suppressed, suppressed_by
 		FROM pulse_alerts WHERE check_id = ? AND resolved_at IS NULL`,
 		checkID,
 	).Scan(
 		&a.ID, &a.CheckID, &a.DeviceID, &a.Severity, &a.Message,
 		&a.TriggeredAt, &resolvedAt, &acknowledgedAt, &a.ConsecutiveFailures,
+		&suppressedInt, &a.SuppressedBy,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -482,6 +502,7 @@ func (s *PulseStore) GetActiveAlert(ctx context.Context, checkID string) (*Alert
 	if acknowledgedAt.Valid {
 		a.AcknowledgedAt = &acknowledgedAt.Time
 	}
+	a.Suppressed = suppressedInt != 0
 	return &a, nil
 }
 
@@ -492,12 +513,14 @@ func (s *PulseStore) ListActiveAlerts(ctx context.Context, deviceID string) ([]A
 	var err error
 	if deviceID == "" {
 		rows, err = s.db.QueryContext(ctx, `
-			SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at, acknowledged_at, consecutive_failures
+			SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at,
+				acknowledged_at, consecutive_failures, suppressed, suppressed_by
 			FROM pulse_alerts WHERE resolved_at IS NULL ORDER BY triggered_at DESC`,
 		)
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
-			SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at, acknowledged_at, consecutive_failures
+			SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at,
+				acknowledged_at, consecutive_failures, suppressed, suppressed_by
 			FROM pulse_alerts WHERE device_id = ? AND resolved_at IS NULL ORDER BY triggered_at DESC`,
 			deviceID,
 		)
@@ -507,38 +530,23 @@ func (s *PulseStore) ListActiveAlerts(ctx context.Context, deviceID string) ([]A
 	}
 	defer rows.Close()
 
-	var alerts []Alert
-	for rows.Next() {
-		var a Alert
-		var resolvedAt, acknowledgedAt sql.NullTime
-		if err := rows.Scan(
-			&a.ID, &a.CheckID, &a.DeviceID, &a.Severity, &a.Message,
-			&a.TriggeredAt, &resolvedAt, &acknowledgedAt, &a.ConsecutiveFailures,
-		); err != nil {
-			return nil, fmt.Errorf("scan alert row: %w", err)
-		}
-		if resolvedAt.Valid {
-			a.ResolvedAt = &resolvedAt.Time
-		}
-		if acknowledgedAt.Valid {
-			a.AcknowledgedAt = &acknowledgedAt.Time
-		}
-		alerts = append(alerts, a)
-	}
-	return alerts, rows.Err()
+	return scanAlertRows(rows)
 }
 
 // GetAlert returns a single alert by ID. Returns nil, nil if not found.
 func (s *PulseStore) GetAlert(ctx context.Context, id string) (*Alert, error) {
 	var a Alert
 	var resolvedAt, acknowledgedAt sql.NullTime
+	var suppressedInt int
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at, acknowledged_at, consecutive_failures
+		SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at,
+			acknowledged_at, consecutive_failures, suppressed, suppressed_by
 		FROM pulse_alerts WHERE id = ?`,
 		id,
 	).Scan(
 		&a.ID, &a.CheckID, &a.DeviceID, &a.Severity, &a.Message,
 		&a.TriggeredAt, &resolvedAt, &acknowledgedAt, &a.ConsecutiveFailures,
+		&suppressedInt, &a.SuppressedBy,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -552,12 +560,14 @@ func (s *PulseStore) GetAlert(ctx context.Context, id string) (*Alert, error) {
 	if acknowledgedAt.Valid {
 		a.AcknowledgedAt = &acknowledgedAt.Time
 	}
+	a.Suppressed = suppressedInt != 0
 	return &a, nil
 }
 
 // ListAlerts returns alerts matching the given filters.
 func (s *PulseStore) ListAlerts(ctx context.Context, filters AlertFilters) ([]Alert, error) {
-	query := `SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at, acknowledged_at, consecutive_failures FROM pulse_alerts`
+	query := `SELECT id, check_id, device_id, severity, message, triggered_at, resolved_at,
+		acknowledged_at, consecutive_failures, suppressed, suppressed_by FROM pulse_alerts`
 	var conditions []string
 	var args []any
 
@@ -571,6 +581,13 @@ func (s *PulseStore) ListAlerts(ctx context.Context, filters AlertFilters) ([]Al
 	}
 	if filters.ActiveOnly {
 		conditions = append(conditions, "resolved_at IS NULL")
+	}
+	if filters.Suppressed != nil {
+		if *filters.Suppressed {
+			conditions = append(conditions, "suppressed = 1")
+		} else {
+			conditions = append(conditions, "suppressed = 0")
+		}
 	}
 
 	if len(conditions) > 0 {
@@ -594,25 +611,7 @@ func (s *PulseStore) ListAlerts(ctx context.Context, filters AlertFilters) ([]Al
 	}
 	defer rows.Close()
 
-	var alerts []Alert
-	for rows.Next() {
-		var a Alert
-		var resolvedAt, acknowledgedAt sql.NullTime
-		if err := rows.Scan(
-			&a.ID, &a.CheckID, &a.DeviceID, &a.Severity, &a.Message,
-			&a.TriggeredAt, &resolvedAt, &acknowledgedAt, &a.ConsecutiveFailures,
-		); err != nil {
-			return nil, fmt.Errorf("scan alert row: %w", err)
-		}
-		if resolvedAt.Valid {
-			a.ResolvedAt = &resolvedAt.Time
-		}
-		if acknowledgedAt.Valid {
-			a.AcknowledgedAt = &acknowledgedAt.Time
-		}
-		alerts = append(alerts, a)
-	}
-	return alerts, rows.Err()
+	return scanAlertRows(rows)
 }
 
 // AcknowledgeAlert sets the acknowledged_at timestamp on an alert.
@@ -638,6 +637,124 @@ func (s *PulseStore) DeleteOldAlerts(ctx context.Context, before time.Time) (int
 		return 0, fmt.Errorf("delete old alerts: %w", err)
 	}
 	return result.RowsAffected()
+}
+
+// scanAlertRows scans alert rows into a slice, handling nullable columns.
+func scanAlertRows(rows *sql.Rows) ([]Alert, error) {
+	var alerts []Alert
+	for rows.Next() {
+		var a Alert
+		var resolvedAt, acknowledgedAt sql.NullTime
+		var suppressedInt int
+		if err := rows.Scan(
+			&a.ID, &a.CheckID, &a.DeviceID, &a.Severity, &a.Message,
+			&a.TriggeredAt, &resolvedAt, &acknowledgedAt, &a.ConsecutiveFailures,
+			&suppressedInt, &a.SuppressedBy,
+		); err != nil {
+			return nil, fmt.Errorf("scan alert row: %w", err)
+		}
+		if resolvedAt.Valid {
+			a.ResolvedAt = &resolvedAt.Time
+		}
+		if acknowledgedAt.Valid {
+			a.AcknowledgedAt = &acknowledgedAt.Time
+		}
+		a.Suppressed = suppressedInt != 0
+		alerts = append(alerts, a)
+	}
+	return alerts, rows.Err()
+}
+
+// -- Check Dependencies --
+
+// AddCheckDependency creates a dependency between a check and an upstream device.
+func (s *PulseStore) AddCheckDependency(ctx context.Context, checkID, dependsOnDeviceID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO pulse_check_dependencies (check_id, depends_on_device_id)
+		VALUES (?, ?)`,
+		checkID, dependsOnDeviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("add check dependency: %w", err)
+	}
+	return nil
+}
+
+// RemoveCheckDependency removes a dependency between a check and an upstream device.
+func (s *PulseStore) RemoveCheckDependency(ctx context.Context, checkID, dependsOnDeviceID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM pulse_check_dependencies WHERE check_id = ? AND depends_on_device_id = ?`,
+		checkID, dependsOnDeviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("remove check dependency: %w", err)
+	}
+	return nil
+}
+
+// ListCheckDependencies returns all dependencies for a check.
+func (s *PulseStore) ListCheckDependencies(ctx context.Context, checkID string) ([]CheckDependency, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT check_id, depends_on_device_id, created_at
+		FROM pulse_check_dependencies WHERE check_id = ? ORDER BY created_at`,
+		checkID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list check dependencies: %w", err)
+	}
+	defer rows.Close()
+
+	var deps []CheckDependency
+	for rows.Next() {
+		var d CheckDependency
+		if err := rows.Scan(&d.CheckID, &d.DependsOnDeviceID, &d.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan check dependency row: %w", err)
+		}
+		deps = append(deps, d)
+	}
+	return deps, rows.Err()
+}
+
+// GetDependentCheckIDs returns check IDs that depend on the given device.
+func (s *PulseStore) GetDependentCheckIDs(ctx context.Context, deviceID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT check_id FROM pulse_check_dependencies WHERE depends_on_device_id = ?`,
+		deviceID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get dependent check IDs: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan dependent check ID: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// IsSuppressed checks whether a check should be suppressed because an upstream device
+// has an active critical alert. Returns the suppression state and the device ID causing it.
+func (s *PulseStore) IsSuppressed(ctx context.Context, checkID string) (suppressed bool, byDevice string, err error) {
+	err = s.db.QueryRowContext(ctx, `
+		SELECT d.depends_on_device_id
+		FROM pulse_check_dependencies d
+		JOIN pulse_alerts a ON a.device_id = d.depends_on_device_id
+		WHERE d.check_id = ? AND a.resolved_at IS NULL AND a.severity = 'critical'
+		LIMIT 1`,
+		checkID,
+	).Scan(&byDevice)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, "", nil
+		}
+		return false, "", fmt.Errorf("check suppression: %w", err)
+	}
+	return true, byDevice, nil
 }
 
 // -- Notification Channels --

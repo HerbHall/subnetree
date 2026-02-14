@@ -1203,3 +1203,384 @@ func TestAcknowledgeAlert(t *testing.T) {
 		t.Fatal("AcknowledgedAt should be set after acknowledging")
 	}
 }
+
+// -- Check Dependencies --
+
+func TestAddCheckDependency_AndList(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-switch"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+
+	deps, err := s.ListCheckDependencies(ctx, "chk-001")
+	if err != nil {
+		t.Fatalf("ListCheckDependencies: %v", err)
+	}
+	if len(deps) != 2 {
+		t.Fatalf("expected 2 dependencies, got %d", len(deps))
+	}
+	if deps[0].DependsOnDeviceID != "dev-router" {
+		t.Errorf("deps[0].DependsOnDeviceID = %q, want %q", deps[0].DependsOnDeviceID, "dev-router")
+	}
+	if deps[1].DependsOnDeviceID != "dev-switch" {
+		t.Errorf("deps[1].DependsOnDeviceID = %q, want %q", deps[1].DependsOnDeviceID, "dev-switch")
+	}
+}
+
+func TestAddCheckDependency_Idempotent(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	// Insert same dependency twice -- should not error (INSERT OR IGNORE).
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency first: %v", err)
+	}
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency duplicate: %v", err)
+	}
+
+	deps, err := s.ListCheckDependencies(ctx, "chk-001")
+	if err != nil {
+		t.Fatalf("ListCheckDependencies: %v", err)
+	}
+	if len(deps) != 1 {
+		t.Fatalf("expected 1 dependency after duplicate insert, got %d", len(deps))
+	}
+}
+
+func TestRemoveCheckDependency(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+	if err := s.RemoveCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("RemoveCheckDependency: %v", err)
+	}
+
+	deps, err := s.ListCheckDependencies(ctx, "chk-001")
+	if err != nil {
+		t.Fatalf("ListCheckDependencies: %v", err)
+	}
+	if len(deps) != 0 {
+		t.Fatalf("expected 0 dependencies after removal, got %d", len(deps))
+	}
+}
+
+func TestGetDependentCheckIDs(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	insertTestCheck(t, s, &Check{
+		ID: "chk-002", DeviceID: "dev-002", CheckType: "icmp",
+		Target: "192.168.1.2", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	// Both checks depend on the same router.
+	if err := s.AddCheckDependency(ctx, "chk-001", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency chk-001: %v", err)
+	}
+	if err := s.AddCheckDependency(ctx, "chk-002", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency chk-002: %v", err)
+	}
+
+	ids, err := s.GetDependentCheckIDs(ctx, "dev-router")
+	if err != nil {
+		t.Fatalf("GetDependentCheckIDs: %v", err)
+	}
+	if len(ids) != 2 {
+		t.Fatalf("expected 2 dependent check IDs, got %d", len(ids))
+	}
+}
+
+func TestIsSuppressed_NoActiveCritical(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	// Create check and dependency.
+	insertTestCheck(t, s, &Check{
+		ID: "chk-downstream", DeviceID: "dev-downstream", CheckType: "icmp",
+		Target: "192.168.1.10", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	if err := s.AddCheckDependency(ctx, "chk-downstream", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+
+	// No alerts on the router -- should not be suppressed.
+	suppressed, byDevice, err := s.IsSuppressed(ctx, "chk-downstream")
+	if err != nil {
+		t.Fatalf("IsSuppressed: %v", err)
+	}
+	if suppressed {
+		t.Errorf("suppressed = true, want false (no alerts on router)")
+	}
+	if byDevice != "" {
+		t.Errorf("byDevice = %q, want empty", byDevice)
+	}
+}
+
+func TestIsSuppressed_WithActiveCritical(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	// Create checks for router and downstream.
+	insertTestCheck(t, s, &Check{
+		ID: "chk-router", DeviceID: "dev-router", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	insertTestCheck(t, s, &Check{
+		ID: "chk-downstream", DeviceID: "dev-downstream", CheckType: "icmp",
+		Target: "192.168.1.10", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	// Set dependency.
+	if err := s.AddCheckDependency(ctx, "chk-downstream", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+
+	// Insert critical alert on router.
+	if err := s.InsertAlert(ctx, &Alert{
+		ID: "alert-router", CheckID: "chk-router", DeviceID: "dev-router",
+		Severity: "critical", Message: "Router down",
+		TriggeredAt: now, ConsecutiveFailures: 5,
+	}); err != nil {
+		t.Fatalf("InsertAlert: %v", err)
+	}
+
+	// Should be suppressed.
+	suppressed, byDevice, err := s.IsSuppressed(ctx, "chk-downstream")
+	if err != nil {
+		t.Fatalf("IsSuppressed: %v", err)
+	}
+	if !suppressed {
+		t.Error("suppressed = false, want true (critical alert on router)")
+	}
+	if byDevice != "dev-router" {
+		t.Errorf("byDevice = %q, want %q", byDevice, "dev-router")
+	}
+}
+
+func TestIsSuppressed_WarningNotSuppressed(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-router", DeviceID: "dev-router", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	insertTestCheck(t, s, &Check{
+		ID: "chk-downstream", DeviceID: "dev-downstream", CheckType: "icmp",
+		Target: "192.168.1.10", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	if err := s.AddCheckDependency(ctx, "chk-downstream", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+
+	// Insert WARNING alert (not critical) on router.
+	if err := s.InsertAlert(ctx, &Alert{
+		ID: "alert-router-warn", CheckID: "chk-router", DeviceID: "dev-router",
+		Severity: "warning", Message: "Router latency high",
+		TriggeredAt: now, ConsecutiveFailures: 3,
+	}); err != nil {
+		t.Fatalf("InsertAlert: %v", err)
+	}
+
+	// Should NOT be suppressed (only critical alerts trigger suppression).
+	suppressed, _, err := s.IsSuppressed(ctx, "chk-downstream")
+	if err != nil {
+		t.Fatalf("IsSuppressed: %v", err)
+	}
+	if suppressed {
+		t.Error("suppressed = true, want false (only warning on router)")
+	}
+}
+
+func TestIsSuppressed_ResolvedCriticalNotSuppressed(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-router", DeviceID: "dev-router", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	insertTestCheck(t, s, &Check{
+		ID: "chk-downstream", DeviceID: "dev-downstream", CheckType: "icmp",
+		Target: "192.168.1.10", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	if err := s.AddCheckDependency(ctx, "chk-downstream", "dev-router"); err != nil {
+		t.Fatalf("AddCheckDependency: %v", err)
+	}
+
+	// Insert resolved critical alert on router.
+	resolvedAt := now.Add(5 * time.Minute)
+	if err := s.InsertAlert(ctx, &Alert{
+		ID: "alert-router-resolved", CheckID: "chk-router", DeviceID: "dev-router",
+		Severity: "critical", Message: "Router down",
+		TriggeredAt: now, ResolvedAt: &resolvedAt, ConsecutiveFailures: 5,
+	}); err != nil {
+		t.Fatalf("InsertAlert: %v", err)
+	}
+
+	// Should NOT be suppressed (alert is resolved).
+	suppressed, _, err := s.IsSuppressed(ctx, "chk-downstream")
+	if err != nil {
+		t.Fatalf("IsSuppressed: %v", err)
+	}
+	if suppressed {
+		t.Error("suppressed = true, want false (alert is resolved)")
+	}
+}
+
+func TestInsertAlert_WithSuppression(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	a := &Alert{
+		ID: "alert-suppressed", CheckID: "chk-001", DeviceID: "dev-001",
+		Severity: "warning", Message: "Host down",
+		TriggeredAt: now, ConsecutiveFailures: 3,
+		Suppressed: true, SuppressedBy: "dev-router",
+	}
+	if err := s.InsertAlert(ctx, a); err != nil {
+		t.Fatalf("InsertAlert: %v", err)
+	}
+
+	got, err := s.GetAlert(ctx, "alert-suppressed")
+	if err != nil {
+		t.Fatalf("GetAlert: %v", err)
+	}
+	if got == nil {
+		t.Fatal("GetAlert returned nil")
+	}
+	if !got.Suppressed {
+		t.Error("Suppressed = false, want true")
+	}
+	if got.SuppressedBy != "dev-router" {
+		t.Errorf("SuppressedBy = %q, want %q", got.SuppressedBy, "dev-router")
+	}
+}
+
+func TestListAlerts_SuppressedFilter(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	now := time.Now().Truncate(time.Second)
+
+	insertTestCheck(t, s, &Check{
+		ID: "chk-001", DeviceID: "dev-001", CheckType: "icmp",
+		Target: "192.168.1.1", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+	insertTestCheck(t, s, &Check{
+		ID: "chk-002", DeviceID: "dev-002", CheckType: "icmp",
+		Target: "192.168.1.2", IntervalSeconds: 30, Enabled: true,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	// Insert a normal alert.
+	if err := s.InsertAlert(ctx, &Alert{
+		ID: "alert-normal", CheckID: "chk-001", DeviceID: "dev-001",
+		Severity: "warning", Message: "Host down",
+		TriggeredAt: now, ConsecutiveFailures: 3,
+	}); err != nil {
+		t.Fatalf("InsertAlert normal: %v", err)
+	}
+
+	// Insert a suppressed alert.
+	if err := s.InsertAlert(ctx, &Alert{
+		ID: "alert-suppressed", CheckID: "chk-002", DeviceID: "dev-002",
+		Severity: "warning", Message: "Downstream down",
+		TriggeredAt: now.Add(time.Second), ConsecutiveFailures: 3,
+		Suppressed: true, SuppressedBy: "dev-router",
+	}); err != nil {
+		t.Fatalf("InsertAlert suppressed: %v", err)
+	}
+
+	// Filter: only suppressed.
+	suppTrue := true
+	alerts, err := s.ListAlerts(ctx, AlertFilters{Suppressed: &suppTrue})
+	if err != nil {
+		t.Fatalf("ListAlerts suppressed=true: %v", err)
+	}
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 suppressed alert, got %d", len(alerts))
+	}
+	if alerts[0].ID != "alert-suppressed" {
+		t.Errorf("ID = %q, want %q", alerts[0].ID, "alert-suppressed")
+	}
+
+	// Filter: only non-suppressed.
+	suppFalse := false
+	alerts, err = s.ListAlerts(ctx, AlertFilters{Suppressed: &suppFalse})
+	if err != nil {
+		t.Fatalf("ListAlerts suppressed=false: %v", err)
+	}
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 non-suppressed alert, got %d", len(alerts))
+	}
+	if alerts[0].ID != "alert-normal" {
+		t.Errorf("ID = %q, want %q", alerts[0].ID, "alert-normal")
+	}
+
+	// Filter: no filter (all).
+	alerts, err = s.ListAlerts(ctx, AlertFilters{})
+	if err != nil {
+		t.Fatalf("ListAlerts no filter: %v", err)
+	}
+	if len(alerts) != 2 {
+		t.Fatalf("expected 2 alerts total, got %d", len(alerts))
+	}
+}

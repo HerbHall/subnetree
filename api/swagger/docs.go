@@ -1083,6 +1083,151 @@ const docTemplate = `{
                 }
             }
         },
+        "/pulse/checks/{check_id}/dependencies": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all upstream device dependencies for a check.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pulse"
+                ],
+                "summary": "List check dependencies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Check ID",
+                        "name": "check_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_pulse.CheckDependency"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds an upstream device dependency. When the upstream device has an active critical alert, this check's alerts are suppressed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pulse"
+                ],
+                "summary": "Add check dependency",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Check ID",
+                        "name": "check_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dependency definition",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_pulse.addDependencyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/pulse/checks/{check_id}/dependencies/{device_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes an upstream device dependency from a check.",
+                "tags": [
+                    "pulse"
+                ],
+                "summary": "Remove check dependency",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Check ID",
+                        "name": "check_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Upstream device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/pulse/checks/{device_id}": {
             "get": {
                 "security": [
@@ -4266,6 +4411,12 @@ const docTemplate = `{
                 "severity": {
                     "type": "string"
                 },
+                "suppressed": {
+                    "type": "boolean"
+                },
+                "suppressed_by": {
+                    "type": "string"
+                },
                 "triggered_at": {
                     "type": "string"
                 }
@@ -4296,6 +4447,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_pulse.CheckDependency": {
+            "type": "object",
+            "properties": {
+                "check_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "depends_on_device_id": {
                     "type": "string"
                 }
             }
@@ -4384,6 +4549,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_pulse.addDependencyRequest": {
+            "type": "object",
+            "properties": {
+                "depends_on_device_id": {
                     "type": "string"
                 }
             }

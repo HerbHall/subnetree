@@ -53,6 +53,9 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "PUT", Path: "/checks/{id}", Handler: m.handleUpdateCheck},
 		{Method: "DELETE", Path: "/checks/{id}", Handler: m.handleDeleteCheck},
 		{Method: "PATCH", Path: "/checks/{id}/toggle", Handler: m.handleToggleCheck},
+		{Method: "GET", Path: "/checks/{check_id}/dependencies", Handler: m.handleListCheckDependencies},
+		{Method: "POST", Path: "/checks/{check_id}/dependencies", Handler: m.handleAddCheckDependency},
+		{Method: "DELETE", Path: "/checks/{check_id}/dependencies/{device_id}", Handler: m.handleRemoveCheckDependency},
 		{Method: "GET", Path: "/results/{device_id}", Handler: m.handleDeviceResults},
 		{Method: "GET", Path: "/metrics/{device_id}", Handler: m.handleDeviceMetrics},
 		{Method: "GET", Path: "/alerts", Handler: m.handleListAlerts},
@@ -424,6 +427,10 @@ func (m *Module) handleListAlerts(w http.ResponseWriter, r *http.Request) {
 	if activeStr := r.URL.Query().Get("active"); activeStr != "" {
 		filters.ActiveOnly = activeStr != "false"
 	}
+	if suppressedStr := r.URL.Query().Get("suppressed"); suppressedStr != "" {
+		v := suppressedStr == "true"
+		filters.Suppressed = &v
+	}
 
 	alerts, err := m.store.ListAlerts(r.Context(), filters)
 	if err != nil {
@@ -650,6 +657,128 @@ func (m *Module) handleDeviceMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pulseWriteJSON(w, http.StatusOK, series)
+}
+
+// -- Check dependency handlers --
+
+// addDependencyRequest is the JSON body for POST /checks/{check_id}/dependencies.
+type addDependencyRequest struct {
+	DependsOnDeviceID string `json:"depends_on_device_id"`
+}
+
+// handleListCheckDependencies returns all dependencies for a check.
+//
+//	@Summary		List check dependencies
+//	@Description	Returns all upstream device dependencies for a check.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			check_id path string true "Check ID"
+//	@Success		200 {array} CheckDependency
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/checks/{check_id}/dependencies [get]
+func (m *Module) handleListCheckDependencies(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	checkID := r.PathValue("check_id")
+	if checkID == "" {
+		pulseWriteError(w, http.StatusBadRequest, "check_id is required")
+		return
+	}
+	deps, err := m.store.ListCheckDependencies(r.Context(), checkID)
+	if err != nil {
+		m.logger.Warn("failed to list check dependencies", zap.String("check_id", checkID), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to list dependencies")
+		return
+	}
+	if deps == nil {
+		deps = []CheckDependency{}
+	}
+	pulseWriteJSON(w, http.StatusOK, deps)
+}
+
+// handleAddCheckDependency adds a dependency between a check and an upstream device.
+//
+//	@Summary		Add check dependency
+//	@Description	Adds an upstream device dependency. When the upstream device has an active critical alert, this check's alerts are suppressed.
+//	@Tags			pulse
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			check_id path string true "Check ID"
+//	@Param			body body addDependencyRequest true "Dependency definition"
+//	@Success		201 {object} map[string]any
+//	@Failure		400 {object} map[string]any
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/checks/{check_id}/dependencies [post]
+func (m *Module) handleAddCheckDependency(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	checkID := r.PathValue("check_id")
+	if checkID == "" {
+		pulseWriteError(w, http.StatusBadRequest, "check_id is required")
+		return
+	}
+	var req addDependencyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.DependsOnDeviceID == "" {
+		pulseWriteError(w, http.StatusBadRequest, "depends_on_device_id is required")
+		return
+	}
+	if err := m.store.AddCheckDependency(r.Context(), checkID, req.DependsOnDeviceID); err != nil {
+		m.logger.Warn("failed to add check dependency",
+			zap.String("check_id", checkID),
+			zap.String("depends_on", req.DependsOnDeviceID),
+			zap.Error(err),
+		)
+		pulseWriteError(w, http.StatusInternalServerError, "failed to add dependency")
+		return
+	}
+	pulseWriteJSON(w, http.StatusCreated, map[string]any{
+		"check_id":             checkID,
+		"depends_on_device_id": req.DependsOnDeviceID,
+	})
+}
+
+// handleRemoveCheckDependency removes a dependency between a check and an upstream device.
+//
+//	@Summary		Remove check dependency
+//	@Description	Removes an upstream device dependency from a check.
+//	@Tags			pulse
+//	@Security		BearerAuth
+//	@Param			check_id path string true "Check ID"
+//	@Param			device_id path string true "Upstream device ID"
+//	@Success		204
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/checks/{check_id}/dependencies/{device_id} [delete]
+func (m *Module) handleRemoveCheckDependency(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	checkID := r.PathValue("check_id")
+	deviceID := r.PathValue("device_id")
+	if checkID == "" || deviceID == "" {
+		pulseWriteError(w, http.StatusBadRequest, "check_id and device_id are required")
+		return
+	}
+	if err := m.store.RemoveCheckDependency(r.Context(), checkID, deviceID); err != nil {
+		m.logger.Warn("failed to remove check dependency",
+			zap.String("check_id", checkID),
+			zap.String("device_id", deviceID),
+			zap.Error(err),
+		)
+		pulseWriteError(w, http.StatusInternalServerError, "failed to remove dependency")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // -- helpers --
