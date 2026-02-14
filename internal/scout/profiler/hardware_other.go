@@ -40,7 +40,7 @@ func collectHardware(_ context.Context, logger *zap.Logger) (*scoutpb.HardwarePr
 }
 
 // readCPUInfo parses /proc/cpuinfo for CPU model, physical cores, and logical CPUs.
-func readCPUInfo(logger *zap.Logger) (model string, physCores int32, logicalCPUs int32) {
+func readCPUInfo(logger *zap.Logger) (model string, physCores, logicalCPUs int32) {
 	logicalCPUs = int32(runtime.NumCPU())
 
 	data, err := os.ReadFile("/proc/cpuinfo")
@@ -53,7 +53,7 @@ func readCPUInfo(logger *zap.Logger) (model string, physCores int32, logicalCPUs
 }
 
 // parseCPUInfo extracts CPU model and physical core count from /proc/cpuinfo content.
-func parseCPUInfo(content string, logicalCPUs int32) (model string, physCores int32, logical int32) {
+func parseCPUInfo(content string, logicalCPUs int32) (model string, physCores, logical int32) {
 	logical = logicalCPUs
 
 	// Track unique physical cores via (physical_id, core_id) pairs.
@@ -154,7 +154,7 @@ func readBlockDevices(logger *zap.Logger) []*scoutpb.DiskInfo {
 		return nil
 	}
 
-	var disks []*scoutpb.DiskInfo
+	disks := make([]*scoutpb.DiskInfo, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 
@@ -225,7 +225,7 @@ func readNetworkInterfaces(logger *zap.Logger) []*scoutpb.NICInfo {
 		return nil
 	}
 
-	var nics []*scoutpb.NICInfo
+	nics := make([]*scoutpb.NICInfo, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if name == "lo" {
