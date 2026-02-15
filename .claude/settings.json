@@ -10,15 +10,15 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Run /dashboard to display the session control station with project state, priorities, and available actions."
+            "type": "command",
+            "command": "echo 'AUTO_START: Run /dashboard skill to display the session control station with project state, priorities, and available actions.'"
           }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
-        "matcher": "^(?!/)(?!\\d{1,2}$)",
+        "matcher": "^(?!/).{5,}",
         "hooks": [
           {
             "type": "prompt",

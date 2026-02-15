@@ -1,8 +1,10 @@
 ## Phased Roadmap
 
-**Target Audience:** HomeLabbers and small business IT administrators. The roadmap prioritizes features that serve single-subnet home networks (15–200 devices) while maintaining a scalable, acquisition-ready architecture.
+**Target Audience:** HomeLabbers and small business IT administrators running 10-500 devices on hardware from Raspberry Pi 4 to small business servers. See [01-product-vision.md](01-product-vision.md) for the five-tier hardware target system.
 
-**Key Integration Targets:** Home Assistant, UnRAID, Proxmox VE -- the HomeLab community staples that differentiate this project from enterprise-focused tools.
+**Strategic Position:** "Start Here, Grow Anywhere." SubNetree is the gateway product -- a jack of all trades that provides 80% of what dedicated tools offer, then helps users graduate to specialized tools via standard protocols. The roadmap prioritizes integration and interoperability alongside core features.
+
+**Key Integration Targets:** Prometheus/Grafana (monitoring), Home Assistant/MQTT (IoT), NetBox (CMDB), Ansible (IaC), Uptime Kuma/Beszel (complementary monitoring) -- the ecosystem tools that homelab and small business users actually run. See [01-product-vision.md Integration Strategy](01-product-vision.md) for the full priority matrix.
 
 ### Phase 0: Pre-Development Infrastructure
 
@@ -338,6 +340,24 @@
 - [x] Metrics history and time-series graphs (PR #243, issue #235)
 - [x] Maintenance windows (suppress alerts during scheduled work) (PR #294)
 
+#### Integration Foundation (Gateway P0)
+
+- [x] Prometheus `/metrics` endpoint (shipped in Phase 1 -- `/metrics` at server root)
+- [ ] MQTT publisher for Home Assistant auto-discovery (device status, alerts, metrics as HA sensors)
+- [ ] Alertmanager-compatible webhook format for alert notifications
+- [ ] CSV import/export (universal device inventory interchange)
+- [ ] Tier-aware default configuration (auto-detect hardware tier, set scan interval/retention/modules)
+
+#### Recommendation Engine Framework
+
+Framework for hardware-aware growth recommendations. SubNetree uses Scout's hardware profiles to suggest modules and ecosystem tools the user's hardware can support. Full implementation in Phase 3-4; framework here enables the data model and basic recommendations.
+
+- [ ] `pkg/catalog/` data model: Go structs for catalog entries (tool name, category, hardware requirements, features, growth triggers, integration status)
+- [ ] Embedded catalog: `catalog.yaml` compiled into binary via `//go:embed` with SubNetree modules + top 15 ecosystem tools (~50 KB)
+- [ ] Hardware capability assessment: compare Scout's hardware profile (CPU, RAM, disk) against catalog entry requirements
+- [ ] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage
+- [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring")
+
 #### Multi-Tenancy
 
 - [ ] TenantID on all core entities (Device, Agent, Credential)
@@ -423,6 +443,26 @@
 - [x] Research LLM provider SDKs: OpenAI Go client, Anthropic SDK, Ollama local API (Ollama provider shipped in v0.1.0-alpha; OpenAI/Anthropic deferred)
 - [ ] Evaluate data anonymization approaches for LLM context (PII stripping, metric-only summaries)
 
+#### Integration Bridges (Gateway P1)
+
+- [ ] NetBox JSON export (push discovered devices to NetBox CMDB via REST API)
+- [ ] Ansible YAML inventory import (parse INI and YAML inventory as scan seed data)
+- [ ] Ansible YAML inventory export (generate inventory from discovered devices with host_vars)
+- [ ] Uptime Kuma monitor sync (auto-create monitors from discovered HTTP/TCP/DNS services via Socket.IO API)
+- [ ] Nmap XML import (seed discovery from existing scan results)
+- [ ] Grafana dashboard bundle (pre-built JSON dashboards + data source provisioning YAML)
+
+#### Recommendation Engine (Full)
+
+Builds on Phase 2 framework. Adds remote catalog, usage-pattern triggers, and rich dashboard UX.
+
+- [ ] Remote catalog: weekly fetch from GitHub Pages static JSON, cached in SQLite, graceful offline degradation
+- [ ] Usage-pattern growth triggers (e.g., monitor count > 50, needs status page, needs notification diversity)
+- [ ] Two-tier recommendations: (a) possible on current hardware, (b) possible with hardware upgrade
+- [ ] Feature comparison view: side-by-side SubNetree module vs ecosystem tool with hardware requirements
+- [ ] Dashboard: recommendation cards with "Enable module" / "Learn about alternative" / "Dismiss" actions
+- [ ] Dashboard: "Growth Path" page showing current tier, enabled modules, and available upgrades
+
 #### Remote Access & Vault Implementation
 
 - [x] Gateway: SSH-in-browser via xterm.js (WebSocket backend shipped; frontend xterm.js deferred)
@@ -458,7 +498,7 @@
 
 ### Phase 4: Extended Platform
 
-**Goal:** IoT awareness, ecosystem growth, acquisition readiness.
+**Goal:** Full ecosystem integration, IoT awareness, acquisition readiness. SubNetree becomes the "data pump" that feeds all other tools in the homelab/SMB stack.
 
 #### Pre-Phase Tooling Research
 
@@ -469,9 +509,30 @@
 - [ ] Evaluate Home Assistant API integration patterns and authentication
 - [ ] Research RBAC frameworks for Go (Casbin vs custom implementation)
 
+#### Integration Ecosystem (Gateway P2/P3)
+
+- [ ] NetAlertX device import (migrate existing discovery data via REST/GraphQL API)
+- [ ] Markdown documentation generation (auto-generated per-device docs with hardware, services, change history)
+- [ ] Nagios plugin executor (run existing check scripts, parse exit code + perfdata)
+- [ ] Zabbix host/template import (parse `zabbix_export` JSON, map items to Pulse monitors)
+- [ ] Nagios config import (parse `hosts.cfg`/`services.cfg`, extract check definitions)
+- [ ] Beszel metric display (pull system metrics via PocketBase REST API into device detail view)
+- [ ] Config versioning (git-based config snapshots, Oxidized-style, for Scout-collected configs)
+- [ ] SubNetree Ansible dynamic inventory plugin (Python script querying `/api/v1/recon/devices`)
+- [ ] Hudu API integration (push assets for MSP documentation workflows)
+- [ ] PDF infrastructure report generation (inventory + topology + health + change history)
+- [ ] NetBox bidirectional sync (webhook-driven reconciliation with conflict resolution)
+
+#### Recommendation Catalog Maintenance
+
+- [ ] Community-contributed catalog entries (PRs to catalog repo, reviewed before merge)
+- [ ] Catalog versioning with changelog (users see "3 new tools added since last update")
+- [ ] Integration status badges in catalog (none/planned/basic/full with links to setup docs)
+- [ ] Anonymous opt-in usage telemetry to inform catalog priorities (which tools are users actually pairing with SubNetree)
+
 #### HomeLab Platform Integrations
 
-SubNetree is a dashboard and aggregator, not a replacement for HomeLab tools. These integrations provide status-at-a-glance and quick-launch access to other platforms:
+SubNetree is the gateway product that connects users to their existing tools. These integrations provide status-at-a-glance, quick-launch access, and data exchange with the broader homelab ecosystem:
 
 - [ ] MQTT integration (Eclipse Paho) -- subscribe to status updates from IoT devices
 - [ ] Home Assistant integration -- pull entity states, display status tiles, quick-launch to HA dashboard
