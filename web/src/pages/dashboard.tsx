@@ -37,6 +37,7 @@ import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { NLQueryBar } from '@/components/nl-query-bar'
 
 const REFRESH_OPTIONS = [
   { label: '15s', value: 15 * 1000 },
@@ -542,6 +543,9 @@ export function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Insight Query Bar */}
+      <NLQueryBar />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
