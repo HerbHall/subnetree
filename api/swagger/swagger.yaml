@@ -126,6 +126,31 @@ definitions:
         type: string
       structured: {}
     type: object
+  github_com_HerbHall_subnetree_pkg_analytics.Recommendation:
+    properties:
+      current_value:
+        type: number
+      description:
+        type: string
+      device_id:
+        type: string
+      generated_at:
+        type: string
+      id:
+        type: string
+      metric:
+        type: string
+      severity:
+        description: '"info", "warning", "critical"'
+        type: string
+      threshold:
+        type: number
+      title:
+        type: string
+      type:
+        description: '"cpu", "memory", "disk"'
+        type: string
+    type: object
   github_com_HerbHall_subnetree_pkg_models.APIProblem:
     properties:
       detail:
@@ -1649,6 +1674,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Natural language query
+      tags:
+      - insight
+  /insight/recommendations:
+    get:
+      description: Returns optimization recommendations based on recent metrics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Recommendation'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get recommendations
       tags:
       - insight
   /llm/config:

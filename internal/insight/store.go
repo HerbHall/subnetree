@@ -313,6 +313,35 @@ func (s *InsightStore) GetMetricWindow(ctx context.Context, deviceID, metricName
 	return points, rows.Err()
 }
 
+// GetLatestMetricPerDevice returns the most recent metric point per device for a given metric name.
+func (s *InsightStore) GetLatestMetricPerDevice(ctx context.Context, metricName string, since time.Time) ([]analytics.MetricPoint, error) {
+	query := `
+		SELECT device_id, metric_name, value, timestamp
+		FROM analytics_metrics
+		WHERE metric_name = ? AND timestamp >= ?
+		GROUP BY device_id
+		HAVING timestamp = MAX(timestamp)
+		ORDER BY value DESC`
+
+	rows, err := s.db.QueryContext(ctx, query, metricName, since.UTC().Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("query latest metrics: %w", err)
+	}
+	defer rows.Close()
+
+	var results []analytics.MetricPoint
+	for rows.Next() {
+		var p analytics.MetricPoint
+		var ts string
+		if err := rows.Scan(&p.DeviceID, &p.MetricName, &p.Value, &ts); err != nil {
+			return nil, fmt.Errorf("scan metric: %w", err)
+		}
+		p.Timestamp, _ = time.Parse(time.RFC3339, ts)
+		results = append(results, p)
+	}
+	return results, rows.Err()
+}
+
 // DeleteOldMetrics deletes metrics older than the given time.
 // Returns the number of rows deleted.
 func (s *InsightStore) DeleteOldMetrics(ctx context.Context, before time.Time) (int64, error) {

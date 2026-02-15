@@ -38,6 +38,7 @@ import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { NLQueryBar } from '@/components/nl-query-bar'
+import { RecommendationsWidget } from '@/components/insight/recommendations'
 
 const REFRESH_OPTIONS = [
   { label: '15s', value: 15 * 1000 },
@@ -546,6 +547,9 @@ export function DashboardPage() {
 
       {/* AI Insight Query Bar */}
       <NLQueryBar />
+
+      {/* AI Recommendations */}
+      <RecommendationsWidget />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">

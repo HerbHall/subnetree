@@ -25,6 +25,19 @@ export interface Anomaly {
   description: string
 }
 
+export interface Recommendation {
+  id: string
+  device_id: string
+  type: string
+  severity: string
+  title: string
+  description: string
+  metric: string
+  current_value: number
+  threshold: number
+  generated_at: string
+}
+
 /**
  * Submit a natural language query to the Insight module.
  */
@@ -40,4 +53,11 @@ export async function listAnomalies(limit?: number): Promise<Anomaly[]> {
   if (limit) query.set('limit', limit.toString())
   const qs = query.toString()
   return api.get<Anomaly[]>(`/insight/anomalies${qs ? `?${qs}` : ''}`)
+}
+
+/**
+ * Get AI optimization recommendations.
+ */
+export async function getRecommendations(): Promise<Recommendation[]> {
+  return api.get<Recommendation[]>('/insight/recommendations')
 }

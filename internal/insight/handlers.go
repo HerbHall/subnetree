@@ -19,6 +19,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/correlations", Handler: m.handleListCorrelations},
 		{Method: "GET", Path: "/baselines/{device_id}", Handler: m.handleDeviceBaselines},
 		{Method: "POST", Path: "/query", Handler: m.handleNLQuery},
+		{Method: "GET", Path: "/recommendations", Handler: m.handleRecommendations},
 	}
 }
 
@@ -196,6 +197,29 @@ func (m *Module) handleNLQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleRecommendations returns AI optimization recommendations.
+//
+//	@Summary		Get recommendations
+//	@Description	Returns optimization recommendations based on recent metrics.
+//	@Tags			insight
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200 {array} analytics.Recommendation
+//	@Failure		500 {object} map[string]any
+//	@Router			/insight/recommendations [get]
+func (m *Module) handleRecommendations(w http.ResponseWriter, r *http.Request) {
+	opt := NewOptimizer(m.store, m.logger)
+	recs, err := opt.GenerateRecommendations(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to generate recommendations")
+		return
+	}
+	if recs == nil {
+		recs = []analytics.Recommendation{}
+	}
+	writeJSON(w, http.StatusOK, recs)
 }
 
 // -- helpers --

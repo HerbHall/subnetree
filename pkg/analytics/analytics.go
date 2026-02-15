@@ -75,3 +75,17 @@ type MetricPoint struct {
 	Timestamp  time.Time         `json:"timestamp"`
 	Tags       map[string]string `json:"tags,omitempty"`
 }
+
+// Recommendation represents an optimization recommendation based on metric analysis.
+type Recommendation struct {
+	ID           string    `json:"id"`
+	DeviceID     string    `json:"device_id"`
+	Type         string    `json:"type"`      // "cpu", "memory", "disk"
+	Severity     string    `json:"severity"`  // "info", "warning", "critical"
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	Metric       string    `json:"metric"`
+	CurrentValue float64   `json:"current_value"`
+	Threshold    float64   `json:"threshold"`
+	GeneratedAt  time.Time `json:"generated_at"`
+}

@@ -767,6 +767,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/insight/recommendations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns optimization recommendations based on recent metrics.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Get recommendations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.Recommendation"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/llm/config": {
             "get": {
                 "security": [
@@ -3835,6 +3870,43 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "structured": {}
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_analytics.Recommendation": {
+            "type": "object",
+            "properties": {
+                "current_value": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metric": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "\"info\", \"warning\", \"critical\"",
+                    "type": "string"
+                },
+                "threshold": {
+                    "type": "number"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"cpu\", \"memory\", \"disk\"",
+                    "type": "string"
+                }
             }
         },
         "github_com_HerbHall_subnetree_pkg_models.APIProblem": {
