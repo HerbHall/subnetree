@@ -4400,7 +4400,13 @@ const docTemplate = `{
                 "dashboard",
                 "cmdb",
                 "documentation",
-                "network"
+                "network",
+                "backup",
+                "security",
+                "media",
+                "vpn",
+                "automation",
+                "container-management"
             ],
             "x-enum-varnames": [
                 "CategoryMonitoring",
@@ -4411,7 +4417,13 @@ const docTemplate = `{
                 "CategoryDashboard",
                 "CategoryCMDB",
                 "CategoryDocumentation",
-                "CategoryNetwork"
+                "CategoryNetwork",
+                "CategoryBackup",
+                "CategorySecurity",
+                "CategoryMedia",
+                "CategoryVPN",
+                "CategoryAutomation",
+                "CategoryContainerManagement"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_catalog.HardwareTier": {
