@@ -294,12 +294,12 @@ export function SetupPage() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                name="new-username"
+                name="username"
                 value={formData.username}
                 onChange={(e) => updateField('username', e.target.value)}
                 placeholder="admin"
                 autoFocus
-                autoComplete="off"
+                autoComplete="username"
               />
               {errors.username && (
                 <p className="text-sm text-red-400">{errors.username}</p>
@@ -310,6 +310,7 @@ export function SetupPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => updateField('email', e.target.value)}
@@ -326,6 +327,7 @@ export function SetupPage() {
               <div className="relative">
                 <Input
                   id="password"
+                  name="new-password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => updateField('password', e.target.value)}
@@ -371,6 +373,7 @@ export function SetupPage() {
               <div className="relative">
                 <Input
                   id="confirmPassword"
+                  name="confirm-password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={(e) => updateField('confirmPassword', e.target.value)}
