@@ -21,9 +21,10 @@ func TestInit_WithConfig(t *testing.T) {
 	srv := mockHeartbeat(t)
 
 	v := viper.New()
-	v.Set("url", srv.URL)
-	v.Set("model", "test-model")
-	v.Set("timeout", "30s")
+	v.Set("provider", "ollama")
+	v.Set("ollama.url", srv.URL)
+	v.Set("ollama.model", "test-model")
+	v.Set("ollama.timeout", "30s")
 
 	m := New()
 	err := m.Init(context.Background(), plugin.Dependencies{
@@ -57,8 +58,9 @@ func TestStart_HeartbeatFails(t *testing.T) {
 	srv.Close()
 
 	v := viper.New()
-	v.Set("url", srv.URL)
-	v.Set("timeout", "1s")
+	v.Set("provider", "ollama")
+	v.Set("ollama.url", srv.URL)
+	v.Set("ollama.timeout", "1s")
 
 	m := New()
 	if err := m.Init(context.Background(), plugin.Dependencies{
@@ -77,8 +79,9 @@ func TestHealth_Healthy(t *testing.T) {
 	srv := mockHeartbeat(t)
 
 	v := viper.New()
-	v.Set("url", srv.URL)
-	v.Set("timeout", "5s")
+	v.Set("provider", "ollama")
+	v.Set("ollama.url", srv.URL)
+	v.Set("ollama.timeout", "5s")
 
 	m := New()
 	if err := m.Init(context.Background(), plugin.Dependencies{
@@ -99,8 +102,9 @@ func TestHealth_Unhealthy(t *testing.T) {
 	srv.Close()
 
 	v := viper.New()
-	v.Set("url", srv.URL)
-	v.Set("timeout", "1s")
+	v.Set("provider", "ollama")
+	v.Set("ollama.url", srv.URL)
+	v.Set("ollama.timeout", "1s")
 
 	m := New()
 	if err := m.Init(context.Background(), plugin.Dependencies{

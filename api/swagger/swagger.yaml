@@ -595,6 +595,40 @@ definitions:
         description: raw token (only returned once)
         type: string
     type: object
+  internal_llm.LLMConfigRequest:
+    properties:
+      credential_id:
+        type: string
+      model:
+        type: string
+      provider:
+        type: string
+      url:
+        type: string
+    type: object
+  internal_llm.LLMConfigResponse:
+    properties:
+      credential_id:
+        description: for openai/anthropic
+        type: string
+      model:
+        type: string
+      provider:
+        description: '"ollama", "openai", "anthropic"'
+        type: string
+      url:
+        description: only for ollama
+        type: string
+    type: object
+  internal_llm.LLMTestResponse:
+    properties:
+      message:
+        type: string
+      model:
+        type: string
+      success:
+        type: boolean
+    type: object
   internal_pulse.Alert:
     properties:
       acknowledged_at:
@@ -1617,6 +1651,73 @@ paths:
       summary: Natural language query
       tags:
       - insight
+  /llm/config:
+    get:
+      description: Returns the current LLM provider configuration.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_llm.LLMConfigResponse'
+      security:
+      - BearerAuth: []
+      summary: Get LLM config
+      tags:
+      - llm
+    put:
+      consumes:
+      - application/json
+      description: Update the LLM provider and model configuration.
+      parameters:
+      - description: LLM config
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_llm.LLMConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_llm.LLMConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update LLM config
+      tags:
+      - llm
+  /llm/test:
+    post:
+      description: Tests connectivity to the configured LLM provider.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_llm.LLMTestResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_llm.LLMTestResponse'
+      security:
+      - BearerAuth: []
+      summary: Test LLM connection
+      tags:
+      - llm
   /plugins:
     get:
       description: Returns all registered plugins with their metadata.
