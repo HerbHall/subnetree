@@ -238,3 +238,561 @@ entries:
     integration_status: "possible"
     integration_notes: "Device discovery data sharing via REST APIs"
     tags: ["network", "scanner", "intrusion-detection"]
+
+  # --- Backup ---
+
+  - name: "Duplicati"
+    description: "Free backup client that stores encrypted, incremental, compressed backups to cloud or local storage."
+    category: "backup"
+    github_url: "https://github.com/duplicati/duplicati"
+    website: "https://duplicati.com"
+    docker_image: "lscr.io/linuxserver/duplicati"
+    stars: 12100
+    license: "LGPL-2.1"
+    language: "C#"
+    min_ram_mb: 100
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Backup job status monitoring via Duplicati API"
+    tags: ["backup", "cloud", "encryption"]
+
+  - name: "Restic"
+    description: "Fast, secure, efficient backup program with deduplication and encryption."
+    category: "backup"
+    github_url: "https://github.com/restic/restic"
+    website: "https://restic.net"
+    docker_image: "restic/restic"
+    stars: 28500
+    license: "BSD-2-Clause"
+    language: "Go"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Backup health monitoring via restic check output"
+    tags: ["backup", "deduplication", "encryption"]
+
+  - name: "Kopia"
+    description: "Cross-platform backup tool with content-addressable storage, compression, and encryption."
+    category: "backup"
+    github_url: "https://github.com/kopia/kopia"
+    website: "https://kopia.io"
+    docker_image: "kopia/kopia"
+    stars: 9200
+    license: "Apache-2.0"
+    language: "Go"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Snapshot status monitoring via Kopia server REST API"
+    tags: ["backup", "snapshot", "encryption"]
+
+  # --- Security ---
+
+  - name: "CrowdSec"
+    description: "Collaborative security engine that analyzes behavior and blocks threats using crowd-sourced intelligence."
+    category: "security"
+    github_url: "https://github.com/crowdsecurity/crowdsec"
+    website: "https://www.crowdsec.net"
+    docker_image: "crowdsecurity/crowdsec"
+    stars: 10800
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Threat intelligence feed and ban list correlation"
+    tags: ["security", "ids", "crowdsourced"]
+
+  - name: "Wazuh"
+    description: "Unified security platform providing SIEM, XDR, and compliance capabilities."
+    category: "security"
+    github_url: "https://github.com/wazuh/wazuh"
+    website: "https://wazuh.com"
+    docker_image: "wazuh/wazuh-manager"
+    stars: 12600
+    license: "GPL-2.0"
+    language: "C"
+    min_ram_mb: 500
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST", "syslog"]
+    integration_status: "possible"
+    integration_notes: "Security alert correlation and agent inventory sharing"
+    tags: ["siem", "xdr", "compliance"]
+
+  - name: "Fail2ban"
+    description: "Intrusion prevention framework that bans IPs showing malicious signs from log analysis."
+    category: "security"
+    github_url: "https://github.com/fail2ban/fail2ban"
+    website: "https://www.fail2ban.org"
+    docker_image: "lscr.io/linuxserver/fail2ban"
+    stars: 13200
+    license: "GPL-2.0"
+    language: "Python"
+    min_ram_mb: 20
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Banned IP correlation with device inventory"
+    tags: ["security", "intrusion-prevention", "firewall"]
+
+  # --- Media ---
+
+  - name: "Jellyfin"
+    description: "Free software media system for managing and streaming personal media collections."
+    category: "media"
+    github_url: "https://github.com/jellyfin/jellyfin"
+    website: "https://jellyfin.org"
+    docker_image: "jellyfin/jellyfin"
+    stars: 42000
+    license: "GPL-2.0"
+    language: "C#"
+    min_ram_mb: 200
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Media server health and library stats monitoring"
+    tags: ["media", "streaming", "entertainment"]
+
+  - name: "Immich"
+    description: "Self-hosted photo and video management solution with mobile app and machine learning."
+    category: "media"
+    github_url: "https://github.com/immich-app/immich"
+    website: "https://immich.app"
+    docker_image: "ghcr.io/immich-app/immich-server"
+    stars: 62000
+    license: "AGPL-3.0"
+    language: "TypeScript"
+    min_ram_mb: 300
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Storage usage and backup job monitoring"
+    tags: ["photos", "videos", "machine-learning"]
+
+  - name: "Plex"
+    description: "Media server platform for organizing and streaming personal media across devices."
+    category: "media"
+    github_url: "https://github.com/plexinc/pms-docker"
+    website: "https://www.plex.tv"
+    docker_image: "plexinc/pms-docker"
+    stars: 3200
+    license: "Proprietary"
+    language: "C++"
+    min_ram_mb: 200
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Server health and transcoding status via Plex API"
+    tags: ["media", "streaming", "entertainment"]
+
+  # --- VPN ---
+
+  - name: "WireGuard"
+    description: "Modern, fast VPN tunnel utilizing state-of-the-art cryptography."
+    category: "vpn"
+    github_url: "https://github.com/WireGuard/wireguard-go"
+    website: "https://www.wireguard.com"
+    docker_image: "lscr.io/linuxserver/wireguard"
+    stars: 8400
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 10
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Tunnel status and peer discovery for topology mapping"
+    tags: ["vpn", "tunnel", "encryption"]
+
+  - name: "Tailscale"
+    description: "Zero-config mesh VPN built on WireGuard with SSO and access control."
+    category: "vpn"
+    github_url: "https://github.com/tailscale/tailscale"
+    website: "https://tailscale.com"
+    docker_image: "tailscale/tailscale"
+    stars: 22600
+    license: "BSD-3-Clause"
+    language: "Go"
+    min_ram_mb: 20
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "planned"
+    integration_notes: "Tailscale plugin planned for Phase 3 (see 09-tailscale-integration.md)"
+    tags: ["vpn", "mesh", "zero-trust"]
+
+  - name: "Headscale"
+    description: "Self-hosted implementation of the Tailscale control server for private mesh VPN."
+    category: "vpn"
+    github_url: "https://github.com/juanfont/headscale"
+    website: "https://headscale.net"
+    docker_image: "headscale/headscale"
+    stars: 26500
+    license: "BSD-3-Clause"
+    language: "Go"
+    min_ram_mb: 30
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST", "gRPC"]
+    integration_status: "possible"
+    integration_notes: "Node inventory and route topology via Headscale API"
+    tags: ["vpn", "mesh", "self-hosted"]
+
+  # --- Automation ---
+
+  - name: "Node-RED"
+    description: "Low-code programming tool for event-driven applications and IoT automation flows."
+    category: "automation"
+    github_url: "https://github.com/node-red/node-red"
+    website: "https://nodered.org"
+    docker_image: "nodered/node-red"
+    stars: 22200
+    license: "Apache-2.0"
+    language: "JavaScript"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST", "MQTT", "webhooks"]
+    integration_status: "possible"
+    integration_notes: "Event-driven automation via SubNetree webhooks and MQTT"
+    tags: ["automation", "iot", "low-code"]
+
+  - name: "Ansible"
+    description: "Agentless IT automation engine for configuration management and application deployment."
+    category: "automation"
+    github_url: "https://github.com/ansible/ansible"
+    website: "https://www.ansible.com"
+    docker_image: "ansible/ansible-runner"
+    stars: 65600
+    license: "GPL-3.0"
+    language: "Python"
+    min_ram_mb: 100
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "planned"
+    integration_notes: "Ansible inventory export planned for Phase 3"
+    tags: ["automation", "configuration", "deployment"]
+
+  - name: "Semaphore"
+    description: "Modern UI for Ansible with task scheduling, notifications, and team collaboration."
+    category: "automation"
+    github_url: "https://github.com/semaphoreui/semaphore"
+    website: "https://semaphoreui.com"
+    docker_image: "semaphoreui/semaphore"
+    stars: 12800
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST", "webhooks"]
+    integration_status: "possible"
+    integration_notes: "Trigger Ansible playbooks from SubNetree events via webhook"
+    tags: ["automation", "ansible", "ci-cd"]
+
+  - name: "n8n"
+    description: "Workflow automation tool with a visual editor for connecting apps and services."
+    category: "automation"
+    github_url: "https://github.com/n8n-io/n8n"
+    website: "https://n8n.io"
+    docker_image: "n8nio/n8n"
+    stars: 68500
+    license: "Sustainable-Use"
+    language: "TypeScript"
+    min_ram_mb: 100
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST", "webhooks"]
+    integration_status: "possible"
+    integration_notes: "Workflow automation via SubNetree webhooks and REST API"
+    tags: ["automation", "workflow", "integration"]
+
+  # --- Container Management ---
+
+  - name: "Dockge"
+    description: "Self-hosted Docker Compose stack manager with a reactive web UI."
+    category: "container-management"
+    github_url: "https://github.com/louislam/dockge"
+    website: "https://dockge.kuma.pet"
+    docker_image: "louislam/dockge"
+    stars: 17500
+    license: "MIT"
+    language: "TypeScript"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Container stack status correlation via Dockge API"
+    tags: ["containers", "docker-compose", "management"]
+
+  - name: "Yacht"
+    description: "Web-based container management UI focused on templated deployments."
+    category: "container-management"
+    github_url: "https://github.com/SelfhostedPro/Yacht"
+    website: "https://yacht.sh"
+    docker_image: "selfhostedpro/yacht"
+    stars: 3800
+    license: "MIT"
+    language: "Python"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Container inventory correlation via Yacht API"
+    tags: ["containers", "docker", "templates"]
+
+  - name: "Watchtower"
+    description: "Automatically updates running Docker containers when new images are available."
+    category: "container-management"
+    github_url: "https://github.com/containrrr/watchtower"
+    website: "https://containrrr.dev/watchtower"
+    docker_image: "containrrr/watchtower"
+    stars: 21200
+    license: "Apache-2.0"
+    language: "Go"
+    min_ram_mb: 10
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Container update status monitoring via Watchtower notifications"
+    tags: ["containers", "auto-update", "docker"]
+
+  - name: "Dozzle"
+    description: "Real-time log viewer for Docker containers with a lightweight web UI."
+    category: "container-management"
+    github_url: "https://github.com/amir20/dozzle"
+    website: "https://dozzle.dev"
+    docker_image: "amir20/dozzle"
+    stars: 9500
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 10
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Container log health correlation"
+    tags: ["containers", "logs", "monitoring"]
+
+  # --- Additional Monitoring ---
+
+  - name: "Zabbix"
+    description: "Enterprise-class monitoring solution for networks, servers, and cloud infrastructure."
+    category: "monitoring"
+    github_url: "https://github.com/zabbix/zabbix"
+    website: "https://www.zabbix.com"
+    docker_image: "zabbix/zabbix-server-pgsql"
+    stars: 6200
+    license: "AGPL-3.0"
+    language: "C"
+    min_ram_mb: 500
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST", "SNMP", "syslog"]
+    integration_status: "possible"
+    integration_notes: "Metric and alert exchange via Zabbix JSON-RPC API"
+    tags: ["monitoring", "enterprise", "snmp"]
+
+  # --- Additional Infrastructure ---
+
+  - name: "Caddy"
+    description: "Fast, multi-platform web server with automatic HTTPS via Let's Encrypt."
+    category: "infrastructure"
+    github_url: "https://github.com/caddyserver/caddy"
+    website: "https://caddyserver.com"
+    docker_image: "caddy/caddy"
+    stars: 64000
+    license: "Apache-2.0"
+    language: "Go"
+    min_ram_mb: 20
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Reverse proxy health and upstream status via Caddy admin API"
+    tags: ["web-server", "reverse-proxy", "https"]
+
+  # --- Additional DNS ---
+
+  - name: "Technitium DNS"
+    description: "Self-hosted DNS server with ad blocking, privacy features, and DHCP server."
+    category: "dns"
+    github_url: "https://github.com/TechnitiumSoftware/DnsServer"
+    website: "https://technitium.com/dns"
+    docker_image: "technitium/dns-server"
+    stars: 5600
+    license: "GPL-3.0"
+    language: "C#"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "DNS query analytics and DHCP lease discovery via API"
+    tags: ["dns", "dhcp", "ad-blocking"]
+
+  # --- Additional Home Automation ---
+
+  - name: "Zigbee2MQTT"
+    description: "Bridge Zigbee devices to MQTT without a proprietary hub."
+    category: "home-automation"
+    github_url: "https://github.com/Koenkk/zigbee2mqtt"
+    website: "https://www.zigbee2mqtt.io"
+    docker_image: "koenkk/zigbee2mqtt"
+    stars: 14200
+    license: "GPL-3.0"
+    language: "TypeScript"
+    min_ram_mb: 30
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["MQTT", "REST"]
+    integration_status: "possible"
+    integration_notes: "Zigbee device discovery via MQTT bridge topic"
+    tags: ["iot", "zigbee", "mqtt"]
+
+  # --- Additional Notifications ---
+
+  - name: "Gotify"
+    description: "Self-hosted push notification service with a simple REST API and web UI."
+    category: "notifications"
+    github_url: "https://github.com/gotify/server"
+    website: "https://gotify.net"
+    docker_image: "gotify/server"
+    stars: 13900
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 10
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST", "webhooks"]
+    integration_status: "possible"
+    integration_notes: "Alert forwarding as push notifications via Gotify REST API"
+    tags: ["notifications", "push", "self-hosted"]
+
+  - name: "Apprise"
+    description: "Universal notification library supporting 100+ services with a single REST API."
+    category: "notifications"
+    github_url: "https://github.com/caronc/apprise"
+    website: "https://github.com/caronc/apprise/wiki"
+    docker_image: "caronc/apprise"
+    stars: 12800
+    license: "BSD-2-Clause"
+    language: "Python"
+    min_ram_mb: 30
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "planned"
+    integration_notes: "Alert notification relay via Apprise stateless API"
+    tags: ["notifications", "multi-channel", "aggregator"]
+
+  # --- Additional Dashboards ---
+
+  - name: "Homarr"
+    description: "Customizable homelab dashboard with integrations for popular self-hosted apps."
+    category: "dashboard"
+    github_url: "https://github.com/ajnart/homarr"
+    website: "https://homarr.dev"
+    docker_image: "ghcr.io/ajnart/homarr"
+    stars: 8500
+    license: "MIT"
+    language: "TypeScript"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "SubNetree status widget via Homarr integration API"
+    tags: ["dashboard", "startpage", "integrations"]
+
+  - name: "Dashy"
+    description: "Feature-rich homepage for self-hosted services with status checks and themes."
+    category: "dashboard"
+    github_url: "https://github.com/Lissy93/dashy"
+    website: "https://dashy.to"
+    docker_image: "lissy93/dashy"
+    stars: 20500
+    license: "MIT"
+    language: "Vue"
+    min_ram_mb: 30
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Service status provider for Dashy status checks"
+    tags: ["dashboard", "startpage", "themes"]
+
+  # --- Additional CMDB ---
+
+  - name: "Snipe-IT"
+    description: "IT asset management system for tracking hardware, software, and licenses."
+    category: "cmdb"
+    github_url: "https://github.com/snipe/snipe-it"
+    website: "https://snipeitapp.com"
+    docker_image: "snipe/snipe-it"
+    stars: 12600
+    license: "AGPL-3.0"
+    language: "PHP"
+    min_ram_mb: 200
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Asset sync and discovery-to-inventory pipeline via REST API"
+    tags: ["asset-management", "inventory", "licensing"]
+
+  # --- Additional Documentation ---
+
+  - name: "Outline"
+    description: "Team knowledge base and wiki with real-time collaboration and Markdown support."
+    category: "documentation"
+    github_url: "https://github.com/outline/outline"
+    website: "https://www.getoutline.com"
+    docker_image: "outlinewiki/outline"
+    stars: 33000
+    license: "BSL-1.1"
+    language: "TypeScript"
+    min_ram_mb: 200
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST", "webhooks"]
+    integration_status: "possible"
+    integration_notes: "Infrastructure documentation auto-publish via Outline API"
+    tags: ["wiki", "knowledge-base", "collaboration"]
+
+  - name: "Wiki.js"
+    description: "Modern wiki engine built on Node.js with Git-backed storage and rich editors."
+    category: "documentation"
+    github_url: "https://github.com/requarks/wiki"
+    website: "https://js.wiki"
+    docker_image: "ghcr.io/requarks/wiki"
+    stars: 26700
+    license: "AGPL-3.0"
+    language: "JavaScript"
+    min_ram_mb: 100
+    supported_tiers: [1, 3, 4]
+    protocols: ["REST", "GraphQL"]
+    integration_status: "possible"
+    integration_notes: "Infrastructure documentation export via GraphQL API"
+    tags: ["wiki", "documentation", "git-backed"]
+
+  # --- Additional Network ---
+
+  - name: "WatchYourLAN"
+    description: "Lightweight network IP scanner with web GUI for monitoring connected devices."
+    category: "network"
+    github_url: "https://github.com/aceberg/WatchYourLAN"
+    website: "https://github.com/aceberg/WatchYourLAN"
+    docker_image: "aceberg/watchyourlan"
+    stars: 3800
+    license: "MIT"
+    language: "Go"
+    min_ram_mb: 20
+    supported_tiers: [0, 1, 2, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Device discovery data comparison and correlation"
+    tags: ["network", "scanner", "arp"]
+
+  - name: "Scanopy"
+    description: "Network topology visualization tool with auto-layout and service discovery."
+    category: "network"
+    github_url: "https://github.com/scanopy/scanopy"
+    website: "https://scanopy.dev"
+    docker_image: "scanopy/scanopy"
+    stars: 3200
+    license: "MIT"
+    language: "Svelte"
+    min_ram_mb: 50
+    supported_tiers: [0, 1, 3, 4]
+    protocols: ["REST"]
+    integration_status: "possible"
+    integration_notes: "Topology data exchange for visualization comparison"
+    tags: ["network", "topology", "visualization"]

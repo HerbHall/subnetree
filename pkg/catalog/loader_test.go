@@ -10,8 +10,8 @@ func TestCatalog_LoadsSuccessfully(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(entries) != 15 {
-		t.Fatalf("expected 15 entries, got %d", len(entries))
+	if len(entries) != 48 {
+		t.Fatalf("expected 48 entries, got %d", len(entries))
 	}
 }
 

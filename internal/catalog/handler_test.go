@@ -149,7 +149,7 @@ func TestHandleListEntries(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(entries) != 15 {
-		t.Errorf("expected 15 entries, got %d", len(entries))
+	if len(entries) != 48 {
+		t.Errorf("expected 48 entries, got %d", len(entries))
 	}
 }

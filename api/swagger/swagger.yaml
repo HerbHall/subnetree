@@ -201,6 +201,12 @@ definitions:
     - cmdb
     - documentation
     - network
+    - backup
+    - security
+    - media
+    - vpn
+    - automation
+    - container-management
     type: string
     x-enum-varnames:
     - CategoryMonitoring
@@ -212,6 +218,12 @@ definitions:
     - CategoryCMDB
     - CategoryDocumentation
     - CategoryNetwork
+    - CategoryBackup
+    - CategorySecurity
+    - CategoryMedia
+    - CategoryVPN
+    - CategoryAutomation
+    - CategoryContainerManagement
   github_com_HerbHall_subnetree_pkg_catalog.HardwareTier:
     enum:
     - 0

@@ -17,15 +17,21 @@ const (
 type Category string
 
 const (
-	CategoryMonitoring     Category = "monitoring"
-	CategoryInfrastructure Category = "infrastructure"
-	CategoryDNS            Category = "dns"
-	CategoryHomeAutomation Category = "home-automation"
-	CategoryNotifications  Category = "notifications"
-	CategoryDashboard      Category = "dashboard"
-	CategoryCMDB           Category = "cmdb"
-	CategoryDocumentation  Category = "documentation"
-	CategoryNetwork        Category = "network"
+	CategoryMonitoring          Category = "monitoring"
+	CategoryInfrastructure      Category = "infrastructure"
+	CategoryDNS                 Category = "dns"
+	CategoryHomeAutomation      Category = "home-automation"
+	CategoryNotifications       Category = "notifications"
+	CategoryDashboard           Category = "dashboard"
+	CategoryCMDB                Category = "cmdb"
+	CategoryDocumentation       Category = "documentation"
+	CategoryNetwork             Category = "network"
+	CategoryBackup              Category = "backup"
+	CategorySecurity            Category = "security"
+	CategoryMedia               Category = "media"
+	CategoryVPN                 Category = "vpn"
+	CategoryAutomation          Category = "automation"
+	CategoryContainerManagement Category = "container-management"
 )
 
 // IntegrationStatus describes how a tool integrates with SubNetree.
