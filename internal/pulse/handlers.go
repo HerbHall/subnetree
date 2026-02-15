@@ -1164,6 +1164,15 @@ func buildNotifier(ch NotificationChannel) (Notifier, error) {
 			return nil, fmt.Errorf("webhook URL is required")
 		}
 		return NewWebhookNotifier(cfg), nil
+	case "alertmanager":
+		var cfg AlertmanagerConfig
+		if err := json.Unmarshal([]byte(ch.Config), &cfg); err != nil {
+			return nil, fmt.Errorf("unmarshal alertmanager config: %w", err)
+		}
+		if cfg.URL == "" {
+			return nil, fmt.Errorf("alertmanager URL is required")
+		}
+		return NewAlertmanagerNotifier(cfg), nil
 	case "email":
 		// Email notifications are stubbed for future implementation.
 		return nil, nil
