@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   X,
@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { TopologyNode, DeviceType, DeviceStatus } from '@/api/types'
+import { getServiceByPort, type ServiceIconInfo } from '@/lib/service-icons'
 
 interface NodeDetailPanelProps {
   node: TopologyNode
@@ -77,6 +78,17 @@ export const NodeDetailPanel = memo(function NodeDetailPanel({
   const Icon = deviceTypeIcons[node.device_type] || CircleHelp
   const typeLabel = deviceTypeLabels[node.device_type] || 'Unknown'
   const status = statusConfig[node.status] || statusConfig.unknown
+
+  // Resolve open ports to service info (stable reference via useMemo)
+  const resolvedServices = useMemo(() => {
+    if (!node.open_ports || node.open_ports.length === 0) return []
+    return node.open_ports
+      .map((port) => ({ port, service: getServiceByPort(port) }))
+      .filter(
+        (entry): entry is { port: number; service: ServiceIconInfo } =>
+          entry.service !== undefined,
+      )
+  }, [node.open_ports])
 
   return (
     <div
@@ -219,6 +231,43 @@ export const NodeDetailPanel = memo(function NodeDetailPanel({
             >
               {node.manufacturer}
             </p>
+          </div>
+        )}
+
+        {/* Services (shown only when port data is available) */}
+        {resolvedServices.length > 0 && (
+          <div>
+            <label
+              className="text-[10px] font-medium uppercase tracking-wider block mb-1"
+              style={{ color: 'var(--nv-text-muted)' }}
+            >
+              Services
+            </label>
+            <div className="space-y-1.5">
+              {resolvedServices.map(({ port, service }) => {
+                const SvcIcon = service.icon
+                return (
+                  <div key={port} className="flex items-center gap-2">
+                    <SvcIcon
+                      className="h-4 w-4 flex-shrink-0"
+                      style={{ color: 'var(--nv-text-secondary)' }}
+                    />
+                    <span
+                      className="text-sm flex-1"
+                      style={{ color: 'var(--nv-text-primary)' }}
+                    >
+                      {service.name}
+                    </span>
+                    <span
+                      className="text-xs font-mono"
+                      style={{ color: 'var(--nv-text-muted)' }}
+                    >
+                      :{port}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

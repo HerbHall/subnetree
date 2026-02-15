@@ -109,6 +109,8 @@ export interface TopologyNode {
   ip_addresses: string[]
   mac_address: string
   manufacturer: string
+  /** Open port numbers discovered on this device (optional, populated when available). */
+  open_ports?: number[]
 }
 
 /** Topology edge (connection between devices). */

@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { DeviceType, DeviceStatus } from '@/api/types'
+import { getServiceBadges } from '@/lib/service-icons'
 
 /** Data shape stored on each React Flow node. */
 export interface DeviceNodeData {
@@ -26,6 +27,8 @@ export interface DeviceNodeData {
   deviceType: DeviceType
   status: DeviceStatus
   ip: string
+  /** Open port numbers discovered on this device (populated when topology API includes port data). */
+  openPorts?: number[]
   /** True when this node matches a search query */
   highlighted?: boolean
   /** True when a search is active but this node does NOT match */
@@ -71,6 +74,7 @@ export const DeviceNode = memo(function DeviceNode({
 
   const highlighted = data.highlighted ?? false
   const dimmed = data.dimmed ?? false
+  const badges = data.openPorts ? getServiceBadges(data.openPorts) : []
 
   return (
     <>
@@ -110,6 +114,31 @@ export const DeviceNode = memo(function DeviceNode({
         >
           {data.ip}
         </span>
+        {/* Service badges */}
+        {badges.length > 0 && (
+          <div className="flex items-center gap-1.5 pt-0.5">
+            {badges.map((svc) => {
+              const SvcIcon = svc.icon
+              return (
+                <span
+                  key={svc.name}
+                  title={svc.name}
+                  className="flex items-center justify-center rounded"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    backgroundColor: 'var(--nv-bg-active)',
+                  }}
+                >
+                  <SvcIcon
+                    className="h-3 w-3"
+                    style={{ color: 'var(--nv-text-secondary)' }}
+                  />
+                </span>
+              )
+            })}
+          </div>
+        )}
       </div>
       <Handle type="source" position={Position.Bottom} className="!w-2 !h-2" />
     </>
