@@ -100,6 +100,7 @@ nav:
       - Non-Functional Requirements: requirements/27-non-functional-requirements.md
       - Documentation Requirements: requirements/28-documentation-requirements.md
   - Releases:
+      - v0.4.0: releases/v0.4.0.md
       - v0.2.1: releases/v0.2.1.md
       - v0.2.0: releases/v0.2.0.md
       - v0.1.0-alpha: releases/v0.1.0-alpha.md
