@@ -1,4 +1,10 @@
 import type { Node } from '@xyflow/react'
+import {
+  listTopologyLayouts,
+  createTopologyLayout,
+  deleteTopologyLayout,
+  type TopologyLayoutAPI,
+} from '@/api/devices'
 
 export interface SavedLayout {
   id: string
@@ -9,8 +15,18 @@ export interface SavedLayout {
 
 const STORAGE_KEY = 'subnetree-topology-layouts'
 
-/** Read all saved layouts from localStorage. */
-function readLayouts(): SavedLayout[] {
+/** Convert API response to SavedLayout. */
+function fromAPI(api: TopologyLayoutAPI): SavedLayout {
+  return {
+    id: api.id,
+    name: api.name,
+    nodes: JSON.parse(api.positions),
+    createdAt: api.created_at,
+  }
+}
+
+/** Read layouts from localStorage (fallback). */
+function readLocalLayouts(): SavedLayout[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
@@ -20,45 +36,63 @@ function readLayouts(): SavedLayout[] {
   }
 }
 
-/** Write layouts array to localStorage. */
-function writeLayouts(layouts: SavedLayout[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts))
-}
-
 /** Save the current node positions as a named layout. */
-export function saveLayout(
+export async function saveLayout(
   name: string,
   nodes: Array<{ id: string; position: { x: number; y: number } }>
-): SavedLayout {
-  const layouts = readLayouts()
-  const layout: SavedLayout = {
-    id: crypto.randomUUID(),
-    name,
-    nodes: nodes.map((n) => ({ id: n.id, position: { ...n.position } })),
-    createdAt: new Date().toISOString(),
+): Promise<SavedLayout> {
+  const positions = JSON.stringify(
+    nodes.map((n) => ({ id: n.id, position: { ...n.position } }))
+  )
+  try {
+    const result = await createTopologyLayout(name, positions)
+    return fromAPI(result)
+  } catch {
+    // Fallback to localStorage
+    const layout: SavedLayout = {
+      id: crypto.randomUUID(),
+      name,
+      nodes: nodes.map((n) => ({ id: n.id, position: { ...n.position } })),
+      createdAt: new Date().toISOString(),
+    }
+    const layouts = readLocalLayouts()
+    layouts.push(layout)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts))
+    return layout
   }
-  layouts.push(layout)
-  writeLayouts(layouts)
-  return layout
 }
 
 /** Load a single saved layout by ID. */
-export function loadLayout(id: string): SavedLayout | null {
-  const layouts = readLayouts()
-  return layouts.find((l) => l.id === id) ?? null
+export async function loadLayout(id: string): Promise<SavedLayout | null> {
+  try {
+    const layouts = await listTopologyLayouts()
+    const found = layouts.find((l) => l.id === id)
+    return found ? fromAPI(found) : null
+  } catch {
+    return readLocalLayouts().find((l) => l.id === id) ?? null
+  }
 }
 
 /** List all saved layouts, most recent first. */
-export function listLayouts(): SavedLayout[] {
-  return readLayouts().sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
+export async function listLayouts(): Promise<SavedLayout[]> {
+  try {
+    const layouts = await listTopologyLayouts()
+    return layouts.map(fromAPI)
+  } catch {
+    return readLocalLayouts().sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }
 }
 
 /** Delete a saved layout by ID. */
-export function deleteLayout(id: string): void {
-  const layouts = readLayouts().filter((l) => l.id !== id)
-  writeLayouts(layouts)
+export async function deleteLayout(id: string): Promise<void> {
+  try {
+    await deleteTopologyLayout(id)
+  } catch {
+    const layouts = readLocalLayouts().filter((l) => l.id !== id)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts))
+  }
 }
 
 /**

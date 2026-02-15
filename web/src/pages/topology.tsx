@@ -200,7 +200,12 @@ export function TopologyPage() {
   const [direction, setDirection] = useState<ElkDirection>('DOWN')
   const [showMinimap, setShowMinimap] = useState(false)
   const [showUtilization, setShowUtilization] = useState(false)
-  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => listLayouts())
+  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([])
+
+  // Load saved layouts from API on mount.
+  useEffect(() => {
+    listLayouts().then(setSavedLayouts)
+  }, [])
 
   const edgeTypes = showUtilization ? utilizationEdgeTypes : defaultEdgeTypes
 
@@ -349,20 +354,22 @@ export function TopologyPage() {
   const handleMinimapToggle = useCallback(() => { setShowMinimap((prev) => !prev) }, [])
   const handleUtilizationToggle = useCallback(() => { setShowUtilization((prev) => !prev) }, [])
 
-  const handleSaveLayout = useCallback((name: string) => {
-    saveLayoutToStorage(name, nodes.map((n) => ({ id: n.id, position: n.position })))
-    setSavedLayouts(listLayouts())
+  const handleSaveLayout = useCallback(async (name: string) => {
+    await saveLayoutToStorage(name, nodes.map((n) => ({ id: n.id, position: n.position })))
+    const updated = await listLayouts()
+    setSavedLayouts(updated)
   }, [nodes])
 
-  const handleLoadLayout = useCallback((id: string) => {
-    const saved = loadLayoutFromStorage(id)
+  const handleLoadLayout = useCallback(async (id: string) => {
+    const saved = await loadLayoutFromStorage(id)
     if (!saved) return
     setNodes((current) => applyLayoutPositions(current, saved))
   }, [setNodes])
 
-  const handleDeleteLayout = useCallback((id: string) => {
-    deleteLayoutFromStorage(id)
-    setSavedLayouts(listLayouts())
+  const handleDeleteLayout = useCallback(async (id: string) => {
+    await deleteLayoutFromStorage(id)
+    const updated = await listLayouts()
+    setSavedLayouts(updated)
   }, [])
 
   const handleStatusFilterChange = useCallback((status: DeviceStatus) => {

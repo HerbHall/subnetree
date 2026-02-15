@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/HerbHall/subnetree/pkg/models"
@@ -260,6 +261,121 @@ func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, graph)
+}
+
+// handleListTopologyLayouts returns all saved topology layouts.
+//
+//	@Summary		List topology layouts
+//	@Description	Returns all saved topology layout configurations.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{array}		TopologyLayout
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/topology/layouts [get]
+func (m *Module) handleListTopologyLayouts(w http.ResponseWriter, r *http.Request) {
+	layouts, err := m.store.ListTopologyLayouts(r.Context())
+	if err != nil {
+		m.logger.Error("failed to list topology layouts", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list topology layouts")
+		return
+	}
+	if layouts == nil {
+		layouts = []TopologyLayout{}
+	}
+	writeJSON(w, http.StatusOK, layouts)
+}
+
+// handleCreateTopologyLayout creates a new saved topology layout.
+//
+//	@Summary		Create topology layout
+//	@Description	Creates a new saved topology layout configuration.
+//	@Tags			recon
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		TopologyLayout	true	"Layout to create"
+//	@Success		201		{object}	TopologyLayout
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/topology/layouts [post]
+func (m *Module) handleCreateTopologyLayout(w http.ResponseWriter, r *http.Request) {
+	var layout TopologyLayout
+	if err := json.NewDecoder(r.Body).Decode(&layout); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if layout.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if err := m.store.CreateTopologyLayout(r.Context(), &layout); err != nil {
+		m.logger.Error("failed to create topology layout", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to create topology layout")
+		return
+	}
+	writeJSON(w, http.StatusCreated, layout)
+}
+
+// handleUpdateTopologyLayout updates an existing saved topology layout.
+//
+//	@Summary		Update topology layout
+//	@Description	Updates an existing saved topology layout configuration.
+//	@Tags			recon
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string			true	"Layout ID"
+//	@Param			body	body		TopologyLayout	true	"Layout to update"
+//	@Success		200		{object}	TopologyLayout
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		404		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/topology/layouts/{id} [put]
+func (m *Module) handleUpdateTopologyLayout(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var layout TopologyLayout
+	if err := json.NewDecoder(r.Body).Decode(&layout); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	layout.ID = id
+	if err := m.store.UpdateTopologyLayout(r.Context(), &layout); err != nil {
+		m.logger.Error("failed to update topology layout", zap.Error(err))
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, "topology layout not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to update topology layout")
+		return
+	}
+	writeJSON(w, http.StatusOK, layout)
+}
+
+// handleDeleteTopologyLayout deletes a saved topology layout.
+//
+//	@Summary		Delete topology layout
+//	@Description	Deletes a saved topology layout configuration.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path	string	true	"Layout ID"
+//	@Success		204	"No content"
+//	@Failure		404	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/topology/layouts/{id} [delete]
+func (m *Module) handleDeleteTopologyLayout(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := m.store.DeleteTopologyLayout(r.Context(), id); err != nil {
+		m.logger.Error("failed to delete topology layout", zap.Error(err))
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, "topology layout not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to delete topology layout")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ImportResult contains the results of a CSV import operation.

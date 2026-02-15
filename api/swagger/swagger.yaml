@@ -1107,6 +1107,20 @@ definitions:
           $ref: '#/definitions/internal_recon.TopologyNode'
         type: array
     type: object
+  internal_recon.TopologyLayout:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      positions:
+        description: JSON array of {id, x, y}
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_recon.TopologyNode:
     properties:
       device_type:
@@ -3286,6 +3300,125 @@ paths:
       security:
       - BearerAuth: []
       summary: Get topology
+      tags:
+      - recon
+  /recon/topology/layouts:
+    get:
+      description: Returns all saved topology layout configurations.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.TopologyLayout'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List topology layouts
+      tags:
+      - recon
+    post:
+      consumes:
+      - application/json
+      description: Creates a new saved topology layout configuration.
+      parameters:
+      - description: Layout to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.TopologyLayout'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_recon.TopologyLayout'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Create topology layout
+      tags:
+      - recon
+  /recon/topology/layouts/{id}:
+    delete:
+      description: Deletes a saved topology layout configuration.
+      parameters:
+      - description: Layout ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Delete topology layout
+      tags:
+      - recon
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing saved topology layout configuration.
+      parameters:
+      - description: Layout ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Layout to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.TopologyLayout'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.TopologyLayout'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Update topology layout
       tags:
       - recon
   /settings/interfaces:

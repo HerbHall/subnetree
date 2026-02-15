@@ -186,3 +186,46 @@ export interface BulkUpdateRequest {
 export async function bulkUpdateDevices(req: BulkUpdateRequest): Promise<{ updated: number }> {
   return api.patch<{ updated: number }>('/recon/devices/bulk', req)
 }
+
+// ============================================================================
+// Topology Layout Persistence
+// ============================================================================
+
+/**
+ * Server-side topology layout record.
+ */
+export interface TopologyLayoutAPI {
+  id: string
+  name: string
+  positions: string // JSON string
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * List all saved topology layouts.
+ */
+export async function listTopologyLayouts(): Promise<TopologyLayoutAPI[]> {
+  return api.get<TopologyLayoutAPI[]>('/recon/topology/layouts')
+}
+
+/**
+ * Create a new topology layout.
+ */
+export async function createTopologyLayout(name: string, positions: string): Promise<TopologyLayoutAPI> {
+  return api.post<TopologyLayoutAPI>('/recon/topology/layouts', { name, positions })
+}
+
+/**
+ * Update an existing topology layout.
+ */
+export async function updateTopologyLayout(id: string, name: string, positions: string): Promise<TopologyLayoutAPI> {
+  return api.put<TopologyLayoutAPI>(`/recon/topology/layouts/${id}`, { name, positions })
+}
+
+/**
+ * Delete a topology layout.
+ */
+export async function deleteTopologyLayout(id: string): Promise<void> {
+  return api.delete<void>(`/recon/topology/layouts/${id}`)
+}

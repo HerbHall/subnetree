@@ -22,6 +22,15 @@ func NewReconStore(db *sql.DB) *ReconStore {
 	return &ReconStore{db: db}
 }
 
+// TopologyLayout represents a saved topology layout configuration.
+type TopologyLayout struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Positions string `json:"positions"` // JSON array of {id, x, y}
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 // TopologyLink represents a network connection between two devices.
 type TopologyLink struct {
 	ID             string    `json:"id"`
@@ -906,4 +915,95 @@ func (s *ReconStore) BulkUpdateDevices(ctx context.Context, ids []string, params
 	}
 
 	return int(n), nil
+}
+
+// CreateTopologyLayout inserts a new topology layout record.
+func (s *ReconStore) CreateTopologyLayout(ctx context.Context, layout *TopologyLayout) error {
+	if layout.ID == "" {
+		layout.ID = uuid.New().String()
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	layout.CreatedAt = now
+	layout.UpdatedAt = now
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO recon_topology_layouts (id, name, positions, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		layout.ID, layout.Name, layout.Positions, layout.CreatedAt, layout.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create topology layout: %w", err)
+	}
+	return nil
+}
+
+// ListTopologyLayouts returns all saved topology layouts ordered by most recently updated.
+func (s *ReconStore) ListTopologyLayouts(ctx context.Context) ([]TopologyLayout, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, name, positions, created_at, updated_at
+		FROM recon_topology_layouts
+		ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("list topology layouts: %w", err)
+	}
+	defer rows.Close()
+	var layouts []TopologyLayout
+	for rows.Next() {
+		var l TopologyLayout
+		if err := rows.Scan(&l.ID, &l.Name, &l.Positions, &l.CreatedAt, &l.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan topology layout: %w", err)
+		}
+		layouts = append(layouts, l)
+	}
+	return layouts, rows.Err()
+}
+
+// GetTopologyLayout returns a single topology layout by ID.
+func (s *ReconStore) GetTopologyLayout(ctx context.Context, id string) (*TopologyLayout, error) {
+	var l TopologyLayout
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, name, positions, created_at, updated_at
+		FROM recon_topology_layouts WHERE id = ?`, id,
+	).Scan(&l.ID, &l.Name, &l.Positions, &l.CreatedAt, &l.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get topology layout: %w", err)
+	}
+	return &l, nil
+}
+
+// UpdateTopologyLayout updates an existing topology layout.
+func (s *ReconStore) UpdateTopologyLayout(ctx context.Context, layout *TopologyLayout) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	layout.UpdatedAt = now
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE recon_topology_layouts
+		SET name = ?, positions = ?, updated_at = ?
+		WHERE id = ?`,
+		layout.Name, layout.Positions, layout.UpdatedAt, layout.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("update topology layout: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("topology layout not found: %s", layout.ID)
+	}
+	return nil
+}
+
+// DeleteTopologyLayout removes a topology layout by ID.
+func (s *ReconStore) DeleteTopologyLayout(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM recon_topology_layouts WHERE id = ?`, id,
+	)
+	if err != nil {
+		return fmt.Errorf("delete topology layout: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("topology layout not found: %s", id)
+	}
+	return nil
 }

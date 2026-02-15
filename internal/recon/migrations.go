@@ -114,5 +114,19 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     4,
+			Description: "create topology_layouts table for server-side layout persistence",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS recon_topology_layouts (
+					id TEXT PRIMARY KEY,
+					name TEXT NOT NULL,
+					positions TEXT NOT NULL DEFAULT '[]',
+					created_at TEXT NOT NULL DEFAULT (datetime('now')),
+					updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)`)
+				return err
+			},
+		},
 	}
 }
