@@ -9,7 +9,7 @@ import (
 type Notifier interface {
 	// Notify sends an alert notification. eventType is "triggered" or "resolved".
 	Notify(ctx context.Context, alert *Alert, eventType string) error
-	// Type returns the notifier type identifier (e.g., "webhook", "email").
+	// Type returns the notifier type identifier (e.g., "webhook", "alertmanager", "email").
 	Type() string
 }
 
@@ -17,7 +17,7 @@ type Notifier interface {
 type NotificationChannel struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	Type      string    `json:"type"`   // "webhook", "email"
+	Type      string    `json:"type"`   // "webhook", "alertmanager", "email"
 	Config    string    `json:"config"` // JSON blob
 	Enabled   bool      `json:"enabled"`
 	CreatedAt time.Time `json:"created_at"`
@@ -29,6 +29,12 @@ type WebhookConfig struct {
 	URL     string            `json:"url"`
 	Secret  string            `json:"secret,omitempty"` //nolint:gosec // G101: config field name, not a credential
 	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// AlertmanagerConfig holds configuration for Alertmanager-compatible webhook delivery.
+type AlertmanagerConfig struct {
+	URL    string `json:"url"`
+	Secret string `json:"secret,omitempty"` //nolint:gosec // G101: config field name, not a credential
 }
 
 // EmailConfig holds configuration for email notification delivery (stub).

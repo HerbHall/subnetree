@@ -5164,7 +5164,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "description": "\"webhook\", \"email\"",
+                    "description": "\"webhook\", \"alertmanager\", \"email\"",
                     "type": "string"
                 },
                 "updated_at": {
