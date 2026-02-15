@@ -40,6 +40,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/settings"
 	"github.com/HerbHall/subnetree/internal/store"
 	"github.com/HerbHall/subnetree/internal/svcmap"
+	"github.com/HerbHall/subnetree/internal/tier"
 	"github.com/HerbHall/subnetree/internal/vault"
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/internal/webhook"
@@ -82,6 +83,10 @@ func main() {
 	}
 	cfg := config.New(viperCfg)
 
+	// Detect hardware tier and apply tier-specific defaults.
+	detectedTier := tier.DetectTier()
+	tier.ApplyDefaults(viperCfg, detectedTier)
+
 	// Initialize logger from configuration.
 	logger, err := config.NewLogger(viperCfg)
 	if err != nil {
@@ -91,6 +96,11 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 
 	logger.Info("SubNetree server starting", zap.String("version", version.Short()))
+
+	logger.Info("hardware tier detected",
+		zap.Int("tier", int(detectedTier)),
+		zap.String("tier_name", tier.Name(detectedTier)),
+	)
 
 	if f := viperCfg.ConfigFileUsed(); f != "" {
 		logger.Info("configuration loaded",
