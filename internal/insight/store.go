@@ -265,6 +265,39 @@ func (s *InsightStore) ListActiveCorrelations(ctx context.Context) ([]analytics.
 	return groups, rows.Err()
 }
 
+// ListDeviceCorrelations returns active correlation groups involving the given device.
+func (s *InsightStore) ListDeviceCorrelations(ctx context.Context, deviceID string) ([]analytics.AlertGroup, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, root_cause, device_ids, alert_count, description, created_at
+		FROM analytics_correlations
+		WHERE resolved_at IS NULL
+			AND (root_cause = ? OR device_ids LIKE '%' || ? || '%')
+		ORDER BY created_at DESC`,
+		deviceID, deviceID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list device correlations: %w", err)
+	}
+	defer rows.Close()
+
+	var groups []analytics.AlertGroup
+	for rows.Next() {
+		var g analytics.AlertGroup
+		var deviceIDsJSON string
+		if err := rows.Scan(
+			&g.ID, &g.RootCause, &deviceIDsJSON, &g.AlertCount,
+			&g.Description, &g.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan correlation row: %w", err)
+		}
+		if err := json.Unmarshal([]byte(deviceIDsJSON), &g.DeviceIDs); err != nil {
+			return nil, fmt.Errorf("unmarshal device_ids: %w", err)
+		}
+		groups = append(groups, g)
+	}
+	return groups, rows.Err()
+}
+
 // -- Metrics --
 
 // InsertMetric stores a raw metric data point.

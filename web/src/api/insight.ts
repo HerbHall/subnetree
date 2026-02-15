@@ -38,6 +38,27 @@ export interface Recommendation {
   generated_at: string
 }
 
+export interface Forecast {
+  device_id: string
+  metric_name: string
+  current_value: number
+  predicted_value: number
+  time_to_threshold?: number
+  threshold: number
+  confidence: number
+  slope: number
+  generated_at: string
+}
+
+export interface AlertGroup {
+  id: string
+  root_cause: string
+  device_ids: string[]
+  alert_count: number
+  description: string
+  created_at: string
+}
+
 /**
  * Submit a natural language query to the Insight module.
  */
@@ -53,6 +74,27 @@ export async function listAnomalies(limit?: number): Promise<Anomaly[]> {
   if (limit) query.set('limit', limit.toString())
   const qs = query.toString()
   return api.get<Anomaly[]>(`/insight/anomalies${qs ? `?${qs}` : ''}`)
+}
+
+/**
+ * Get anomalies for a specific device.
+ */
+export async function getDeviceAnomalies(deviceId: string): Promise<Anomaly[]> {
+  return api.get<Anomaly[]>(`/insight/anomalies/${deviceId}`)
+}
+
+/**
+ * Get capacity forecasts for a specific device.
+ */
+export async function getDeviceForecasts(deviceId: string): Promise<Forecast[]> {
+  return api.get<Forecast[]>(`/insight/forecasts/${deviceId}`)
+}
+
+/**
+ * Get alert correlation groups involving a specific device.
+ */
+export async function getDeviceCorrelations(deviceId: string): Promise<AlertGroup[]> {
+  return api.get<AlertGroup[]>(`/insight/correlations/${deviceId}`)
 }
 
 /**

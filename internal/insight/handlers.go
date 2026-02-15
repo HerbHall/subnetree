@@ -17,6 +17,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/anomalies/{device_id}", Handler: m.handleDeviceAnomalies},
 		{Method: "GET", Path: "/forecasts/{device_id}", Handler: m.handleDeviceForecasts},
 		{Method: "GET", Path: "/correlations", Handler: m.handleListCorrelations},
+		{Method: "GET", Path: "/correlations/{device_id}", Handler: m.handleDeviceCorrelations},
 		{Method: "GET", Path: "/baselines/{device_id}", Handler: m.handleDeviceBaselines},
 		{Method: "POST", Path: "/query", Handler: m.handleNLQuery},
 		{Method: "GET", Path: "/recommendations", Handler: m.handleRecommendations},
@@ -119,6 +120,34 @@ func (m *Module) handleListCorrelations(w http.ResponseWriter, r *http.Request) 
 	groups, err := m.store.ListActiveCorrelations(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list correlations")
+		return
+	}
+	if groups == nil {
+		groups = []analytics.AlertGroup{}
+	}
+	writeJSON(w, http.StatusOK, groups)
+}
+
+// handleDeviceCorrelations returns alert correlation groups involving a specific device.
+//
+//	@Summary		Device correlations
+//	@Description	Returns alert correlation groups involving a specific device.
+//	@Tags			insight
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			device_id path string true "Device ID"
+//	@Success		200 {array} analytics.AlertGroup
+//	@Failure		500 {object} map[string]any
+//	@Router			/insight/correlations/{device_id} [get]
+func (m *Module) handleDeviceCorrelations(w http.ResponseWriter, r *http.Request) {
+	deviceID := r.PathValue("device_id")
+	if deviceID == "" {
+		writeError(w, http.StatusBadRequest, "device_id is required")
+		return
+	}
+	groups, err := m.store.ListDeviceCorrelations(r.Context(), deviceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list device correlations")
 		return
 	}
 	if groups == nil {

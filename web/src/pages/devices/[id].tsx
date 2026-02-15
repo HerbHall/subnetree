@@ -63,6 +63,9 @@ import { getSNMPSystemInfo, getSNMPInterfaces } from '@/api/recon'
 import { listDeviceCredentials } from '@/api/vault'
 import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange } from '@/api/types'
 import { TimeSeriesChart } from '@/components/time-series-chart'
+import { AnomalyIndicators } from '@/components/insight/anomaly-indicators'
+import { ForecastWarning } from '@/components/insight/forecast-warning'
+import { AlertCorrelationWidget } from '@/components/insight/alert-correlation'
 import { cn } from '@/lib/utils'
 
 // Device type icons (shared with device-card)
@@ -459,6 +462,9 @@ export function DeviceDetailPage() {
         </div>
       </div>
 
+      {/* Forecast Warning */}
+      <ForecastWarning deviceId={id!} />
+
       {/* Info Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Network Info */}
@@ -647,6 +653,9 @@ export function DeviceDetailPage() {
         onMetricChange={setSelectedMetric}
         onRangeChange={setSelectedRange}
       />
+
+      {/* Anomaly Indicators */}
+      <AnomalyIndicators deviceId={id!} />
 
       {/* Scout Agent Link */}
       {device.agent_id && (
@@ -1043,6 +1052,9 @@ export function DeviceDetailPage() {
           <StatusTimeline events={statusHistory || []} />
         </CardContent>
       </Card>
+
+      {/* Alert Correlations */}
+      <AlertCorrelationWidget deviceId={id!} />
 
       {/* Scan History */}
       <Card>
@@ -1577,7 +1589,7 @@ function SNMPSystemInfoSection({ deviceId }: { deviceId: string }) {
           {sysInfo.object_id && (
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">Object ID</p>
-              <p className="text-sm font-mono text-xs">{sysInfo.object_id}</p>
+              <p className="text-sm font-mono">{sysInfo.object_id}</p>
             </div>
           )}
           {sysInfo.up_time_ms > 0 && (

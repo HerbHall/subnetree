@@ -670,6 +670,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/insight/correlations/{device_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns alert correlation groups involving a specific device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "insight"
+                ],
+                "summary": "Device correlations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_analytics.AlertGroup"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/insight/forecasts/{device_id}": {
             "get": {
                 "security": [
