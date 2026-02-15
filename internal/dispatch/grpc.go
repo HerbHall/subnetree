@@ -122,6 +122,7 @@ func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) 
 			zap.Float64("memory_total_bytes", req.Metrics.MemoryTotalBytes),
 			zap.Int("disk_count", len(req.Metrics.Disks)),
 			zap.Int("network_count", len(req.Metrics.Networks)),
+			zap.Int("container_count", len(req.Metrics.ContainerStats)),
 		)
 		payload["cpu_percent"] = strconv.FormatFloat(req.Metrics.CpuPercent, 'f', 2, 64)
 		payload["memory_percent"] = strconv.FormatFloat(req.Metrics.MemoryPercent, 'f', 2, 64)

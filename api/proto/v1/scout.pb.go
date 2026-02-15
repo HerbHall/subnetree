@@ -284,13 +284,14 @@ func (x *CheckInResponse) GetCaCertificate() []byte {
 }
 
 type SystemMetrics struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	CpuPercent       float64                `protobuf:"fixed64,1,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemoryPercent    float64                `protobuf:"fixed64,2,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
-	MemoryUsedBytes  float64                `protobuf:"fixed64,3,opt,name=memory_used_bytes,json=memoryUsedBytes,proto3" json:"memory_used_bytes,omitempty"`
-	MemoryTotalBytes float64                `protobuf:"fixed64,4,opt,name=memory_total_bytes,json=memoryTotalBytes,proto3" json:"memory_total_bytes,omitempty"`
-	Disks            []*DiskMetric          `protobuf:"bytes,5,rep,name=disks,proto3" json:"disks,omitempty"`
-	Networks         []*NetworkMetric       `protobuf:"bytes,6,rep,name=networks,proto3" json:"networks,omitempty"`
+	state            protoimpl.MessageState  `protogen:"open.v1"`
+	CpuPercent       float64                 `protobuf:"fixed64,1,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent    float64                 `protobuf:"fixed64,2,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	MemoryUsedBytes  float64                 `protobuf:"fixed64,3,opt,name=memory_used_bytes,json=memoryUsedBytes,proto3" json:"memory_used_bytes,omitempty"`
+	MemoryTotalBytes float64                 `protobuf:"fixed64,4,opt,name=memory_total_bytes,json=memoryTotalBytes,proto3" json:"memory_total_bytes,omitempty"`
+	Disks            []*DiskMetric           `protobuf:"bytes,5,rep,name=disks,proto3" json:"disks,omitempty"`
+	Networks         []*NetworkMetric        `protobuf:"bytes,6,rep,name=networks,proto3" json:"networks,omitempty"`
+	ContainerStats   []*DockerContainerStats `protobuf:"bytes,7,rep,name=container_stats,json=containerStats,proto3" json:"container_stats,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -365,6 +366,107 @@ func (x *SystemMetrics) GetNetworks() []*NetworkMetric {
 		return x.Networks
 	}
 	return nil
+}
+
+func (x *SystemMetrics) GetContainerStats() []*DockerContainerStats {
+	if x != nil {
+		return x.ContainerStats
+	}
+	return nil
+}
+
+// DockerContainerStats holds per-container resource usage metrics.
+// Field numbers match api/proto/v1/scout.proto; full protoc regeneration
+// will replace this hand-written definition with the canonical generated code.
+type DockerContainerStats struct {
+	ContainerId      string  `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Name             string  `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	CpuPercent       float64 `protobuf:"fixed64,3,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryUsageBytes uint64  `protobuf:"varint,4,opt,name=memory_usage_bytes,json=memoryUsageBytes,proto3" json:"memory_usage_bytes,omitempty"`
+	MemoryLimitBytes uint64  `protobuf:"varint,5,opt,name=memory_limit_bytes,json=memoryLimitBytes,proto3" json:"memory_limit_bytes,omitempty"`
+	MemoryPercent    float64 `protobuf:"fixed64,6,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	NetworkRxBytes   uint64  `protobuf:"varint,7,opt,name=network_rx_bytes,json=networkRxBytes,proto3" json:"network_rx_bytes,omitempty"`
+	NetworkTxBytes   uint64  `protobuf:"varint,8,opt,name=network_tx_bytes,json=networkTxBytes,proto3" json:"network_tx_bytes,omitempty"`
+	BlockReadBytes   uint64  `protobuf:"varint,9,opt,name=block_read_bytes,json=blockReadBytes,proto3" json:"block_read_bytes,omitempty"`
+	BlockWriteBytes  uint64  `protobuf:"varint,10,opt,name=block_write_bytes,json=blockWriteBytes,proto3" json:"block_write_bytes,omitempty"`
+	Pids             uint32  `protobuf:"varint,11,opt,name=pids,proto3" json:"pids,omitempty"`
+}
+
+func (x *DockerContainerStats) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *DockerContainerStats) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DockerContainerStats) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryUsageBytes() uint64 {
+	if x != nil {
+		return x.MemoryUsageBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryLimitBytes() uint64 {
+	if x != nil {
+		return x.MemoryLimitBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetNetworkRxBytes() uint64 {
+	if x != nil {
+		return x.NetworkRxBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetNetworkTxBytes() uint64 {
+	if x != nil {
+		return x.NetworkTxBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetBlockReadBytes() uint64 {
+	if x != nil {
+		return x.BlockReadBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetBlockWriteBytes() uint64 {
+	if x != nil {
+		return x.BlockWriteBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetPids() uint32 {
+	if x != nil {
+		return x.Pids
+	}
+	return 0
 }
 
 type DiskMetric struct {
