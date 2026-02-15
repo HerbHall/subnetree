@@ -84,7 +84,7 @@ type CheckInRequest struct {
 	Metrics            *SystemMetrics         `protobuf:"bytes,5,opt,name=metrics,proto3" json:"metrics,omitempty"`
 	ProtoVersion       uint32                 `protobuf:"varint,6,opt,name=proto_version,json=protoVersion,proto3" json:"proto_version,omitempty"`
 	EnrollToken        string                 `protobuf:"bytes,7,opt,name=enroll_token,json=enrollToken,proto3" json:"enroll_token,omitempty"`
-	CertificateRequest []byte                 `protobuf:"bytes,8,opt,name=certificate_request,json=certificateRequest,proto3" json:"certificate_request,omitempty"`
+	CertificateRequest []byte                 `protobuf:"bytes,8,opt,name=certificate_request,json=certificateRequest,proto3" json:"certificate_request,omitempty"` // DER-encoded PKCS#10 CSR (sent during enrollment/renewal)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -184,8 +184,8 @@ type CheckInResponse struct {
 	ServerVersion        string                 `protobuf:"bytes,5,opt,name=server_version,json=serverVersion,proto3" json:"server_version,omitempty"`
 	UpgradeMessage       string                 `protobuf:"bytes,6,opt,name=upgrade_message,json=upgradeMessage,proto3" json:"upgrade_message,omitempty"`
 	AssignedAgentId      string                 `protobuf:"bytes,7,opt,name=assigned_agent_id,json=assignedAgentId,proto3" json:"assigned_agent_id,omitempty"`
-	SignedCertificate    []byte                 `protobuf:"bytes,8,opt,name=signed_certificate,json=signedCertificate,proto3" json:"signed_certificate,omitempty"`
-	CaCertificate        []byte                 `protobuf:"bytes,9,opt,name=ca_certificate,json=caCertificate,proto3" json:"ca_certificate,omitempty"`
+	SignedCertificate    []byte                 `protobuf:"bytes,8,opt,name=signed_certificate,json=signedCertificate,proto3" json:"signed_certificate,omitempty"` // DER-encoded X.509 certificate (returned after CSR signing)
+	CaCertificate        []byte                 `protobuf:"bytes,9,opt,name=ca_certificate,json=caCertificate,proto3" json:"ca_certificate,omitempty"`             // DER-encoded CA root certificate (agent needs for TLS verification)
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -375,100 +375,6 @@ func (x *SystemMetrics) GetContainerStats() []*DockerContainerStats {
 	return nil
 }
 
-// DockerContainerStats holds per-container resource usage metrics.
-// Field numbers match api/proto/v1/scout.proto; full protoc regeneration
-// will replace this hand-written definition with the canonical generated code.
-type DockerContainerStats struct {
-	ContainerId      string  `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Name             string  `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	CpuPercent       float64 `protobuf:"fixed64,3,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemoryUsageBytes uint64  `protobuf:"varint,4,opt,name=memory_usage_bytes,json=memoryUsageBytes,proto3" json:"memory_usage_bytes,omitempty"`
-	MemoryLimitBytes uint64  `protobuf:"varint,5,opt,name=memory_limit_bytes,json=memoryLimitBytes,proto3" json:"memory_limit_bytes,omitempty"`
-	MemoryPercent    float64 `protobuf:"fixed64,6,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
-	NetworkRxBytes   uint64  `protobuf:"varint,7,opt,name=network_rx_bytes,json=networkRxBytes,proto3" json:"network_rx_bytes,omitempty"`
-	NetworkTxBytes   uint64  `protobuf:"varint,8,opt,name=network_tx_bytes,json=networkTxBytes,proto3" json:"network_tx_bytes,omitempty"`
-	BlockReadBytes   uint64  `protobuf:"varint,9,opt,name=block_read_bytes,json=blockReadBytes,proto3" json:"block_read_bytes,omitempty"`
-	BlockWriteBytes  uint64  `protobuf:"varint,10,opt,name=block_write_bytes,json=blockWriteBytes,proto3" json:"block_write_bytes,omitempty"`
-	Pids             uint32  `protobuf:"varint,11,opt,name=pids,proto3" json:"pids,omitempty"`
-}
-
-func (x *DockerContainerStats) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *DockerContainerStats) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *DockerContainerStats) GetCpuPercent() float64 {
-	if x != nil {
-		return x.CpuPercent
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetMemoryUsageBytes() uint64 {
-	if x != nil {
-		return x.MemoryUsageBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetMemoryLimitBytes() uint64 {
-	if x != nil {
-		return x.MemoryLimitBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetMemoryPercent() float64 {
-	if x != nil {
-		return x.MemoryPercent
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetNetworkRxBytes() uint64 {
-	if x != nil {
-		return x.NetworkRxBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetNetworkTxBytes() uint64 {
-	if x != nil {
-		return x.NetworkTxBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetBlockReadBytes() uint64 {
-	if x != nil {
-		return x.BlockReadBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetBlockWriteBytes() uint64 {
-	if x != nil {
-		return x.BlockWriteBytes
-	}
-	return 0
-}
-
-func (x *DockerContainerStats) GetPids() uint32 {
-	if x != nil {
-		return x.Pids
-	}
-	return 0
-}
-
 type DiskMetric struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MountPoint    string                 `protobuf:"bytes,1,opt,name=mount_point,json=mountPoint,proto3" json:"mount_point,omitempty"`
@@ -597,6 +503,130 @@ func (x *NetworkMetric) GetBytesRecv() float64 {
 	return 0
 }
 
+type DockerContainerStats struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ContainerId      string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	CpuPercent       float64                `protobuf:"fixed64,3,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryUsageBytes uint64                 `protobuf:"varint,4,opt,name=memory_usage_bytes,json=memoryUsageBytes,proto3" json:"memory_usage_bytes,omitempty"`
+	MemoryLimitBytes uint64                 `protobuf:"varint,5,opt,name=memory_limit_bytes,json=memoryLimitBytes,proto3" json:"memory_limit_bytes,omitempty"`
+	MemoryPercent    float64                `protobuf:"fixed64,6,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	NetworkRxBytes   uint64                 `protobuf:"varint,7,opt,name=network_rx_bytes,json=networkRxBytes,proto3" json:"network_rx_bytes,omitempty"`
+	NetworkTxBytes   uint64                 `protobuf:"varint,8,opt,name=network_tx_bytes,json=networkTxBytes,proto3" json:"network_tx_bytes,omitempty"`
+	BlockReadBytes   uint64                 `protobuf:"varint,9,opt,name=block_read_bytes,json=blockReadBytes,proto3" json:"block_read_bytes,omitempty"`
+	BlockWriteBytes  uint64                 `protobuf:"varint,10,opt,name=block_write_bytes,json=blockWriteBytes,proto3" json:"block_write_bytes,omitempty"`
+	Pids             uint32                 `protobuf:"varint,11,opt,name=pids,proto3" json:"pids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DockerContainerStats) Reset() {
+	*x = DockerContainerStats{}
+	mi := &file_api_proto_v1_scout_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DockerContainerStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DockerContainerStats) ProtoMessage() {}
+
+func (x *DockerContainerStats) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_v1_scout_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DockerContainerStats.ProtoReflect.Descriptor instead.
+func (*DockerContainerStats) Descriptor() ([]byte, []int) {
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DockerContainerStats) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
+	}
+	return ""
+}
+
+func (x *DockerContainerStats) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DockerContainerStats) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryUsageBytes() uint64 {
+	if x != nil {
+		return x.MemoryUsageBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryLimitBytes() uint64 {
+	if x != nil {
+		return x.MemoryLimitBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetNetworkRxBytes() uint64 {
+	if x != nil {
+		return x.NetworkRxBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetNetworkTxBytes() uint64 {
+	if x != nil {
+		return x.NetworkTxBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetBlockReadBytes() uint64 {
+	if x != nil {
+		return x.BlockReadBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetBlockWriteBytes() uint64 {
+	if x != nil {
+		return x.BlockWriteBytes
+	}
+	return 0
+}
+
+func (x *DockerContainerStats) GetPids() uint32 {
+	if x != nil {
+		return x.Pids
+	}
+	return 0
+}
+
 type MetricsReport struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
@@ -608,7 +638,7 @@ type MetricsReport struct {
 
 func (x *MetricsReport) Reset() {
 	*x = MetricsReport{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[5]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +650,7 @@ func (x *MetricsReport) String() string {
 func (*MetricsReport) ProtoMessage() {}
 
 func (x *MetricsReport) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[5]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +663,7 @@ func (x *MetricsReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsReport.ProtoReflect.Descriptor instead.
 func (*MetricsReport) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MetricsReport) GetAgentId() string {
@@ -666,7 +696,7 @@ type Ack struct {
 
 func (x *Ack) Reset() {
 	*x = Ack{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[6]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -678,7 +708,7 @@ func (x *Ack) String() string {
 func (*Ack) ProtoMessage() {}
 
 func (x *Ack) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[6]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -691,7 +721,7 @@ func (x *Ack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ack.ProtoReflect.Descriptor instead.
 func (*Ack) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Ack) GetSuccess() bool {
@@ -712,7 +742,7 @@ type Command struct {
 
 func (x *Command) Reset() {
 	*x = Command{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[7]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -724,7 +754,7 @@ func (x *Command) String() string {
 func (*Command) ProtoMessage() {}
 
 func (x *Command) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[7]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -737,7 +767,7 @@ func (x *Command) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Command.ProtoReflect.Descriptor instead.
 func (*Command) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Command) GetId() string {
@@ -773,7 +803,7 @@ type CommandResponse struct {
 
 func (x *CommandResponse) Reset() {
 	*x = CommandResponse{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[8]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -785,7 +815,7 @@ func (x *CommandResponse) String() string {
 func (*CommandResponse) ProtoMessage() {}
 
 func (x *CommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[8]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +828,7 @@ func (x *CommandResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommandResponse.ProtoReflect.Descriptor instead.
 func (*CommandResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CommandResponse) GetCommandId() string {
@@ -840,7 +870,7 @@ type ProfileReport struct {
 
 func (x *ProfileReport) Reset() {
 	*x = ProfileReport{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[9]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -852,7 +882,7 @@ func (x *ProfileReport) String() string {
 func (*ProfileReport) ProtoMessage() {}
 
 func (x *ProfileReport) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[9]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -865,7 +895,7 @@ func (x *ProfileReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfileReport.ProtoReflect.Descriptor instead.
 func (*ProfileReport) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{9}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ProfileReport) GetAgentId() string {
@@ -900,7 +930,7 @@ type SystemProfile struct {
 
 func (x *SystemProfile) Reset() {
 	*x = SystemProfile{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[10]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +942,7 @@ func (x *SystemProfile) String() string {
 func (*SystemProfile) ProtoMessage() {}
 
 func (x *SystemProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[10]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +955,7 @@ func (x *SystemProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemProfile.ProtoReflect.Descriptor instead.
 func (*SystemProfile) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{10}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SystemProfile) GetHardware() *HardwareProfile {
@@ -968,7 +998,7 @@ type HardwareProfile struct {
 
 func (x *HardwareProfile) Reset() {
 	*x = HardwareProfile{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[11]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1010,7 @@ func (x *HardwareProfile) String() string {
 func (*HardwareProfile) ProtoMessage() {}
 
 func (x *HardwareProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[11]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1023,7 @@ func (x *HardwareProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HardwareProfile.ProtoReflect.Descriptor instead.
 func (*HardwareProfile) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{11}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *HardwareProfile) GetCpuModel() string {
@@ -1086,7 +1116,7 @@ type DiskInfo struct {
 
 func (x *DiskInfo) Reset() {
 	*x = DiskInfo{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[12]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1128,7 @@ func (x *DiskInfo) String() string {
 func (*DiskInfo) ProtoMessage() {}
 
 func (x *DiskInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[12]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,7 +1141,7 @@ func (x *DiskInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiskInfo.ProtoReflect.Descriptor instead.
 func (*DiskInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{12}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DiskInfo) GetName() string {
@@ -1160,7 +1190,7 @@ type GPUInfo struct {
 
 func (x *GPUInfo) Reset() {
 	*x = GPUInfo{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[13]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1172,7 +1202,7 @@ func (x *GPUInfo) String() string {
 func (*GPUInfo) ProtoMessage() {}
 
 func (x *GPUInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[13]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1185,7 +1215,7 @@ func (x *GPUInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GPUInfo.ProtoReflect.Descriptor instead.
 func (*GPUInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{13}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GPUInfo) GetModel() string {
@@ -1221,7 +1251,7 @@ type NICInfo struct {
 
 func (x *NICInfo) Reset() {
 	*x = NICInfo{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[14]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1233,7 +1263,7 @@ func (x *NICInfo) String() string {
 func (*NICInfo) ProtoMessage() {}
 
 func (x *NICInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[14]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,7 +1276,7 @@ func (x *NICInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NICInfo.ProtoReflect.Descriptor instead.
 func (*NICInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{14}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *NICInfo) GetName() string {
@@ -1290,7 +1320,7 @@ type SoftwareInventory struct {
 
 func (x *SoftwareInventory) Reset() {
 	*x = SoftwareInventory{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[15]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1302,7 +1332,7 @@ func (x *SoftwareInventory) String() string {
 func (*SoftwareInventory) ProtoMessage() {}
 
 func (x *SoftwareInventory) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[15]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1315,7 +1345,7 @@ func (x *SoftwareInventory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SoftwareInventory.ProtoReflect.Descriptor instead.
 func (*SoftwareInventory) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{15}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SoftwareInventory) GetOsName() string {
@@ -1365,7 +1395,7 @@ type InstalledPackage struct {
 
 func (x *InstalledPackage) Reset() {
 	*x = InstalledPackage{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[16]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1377,7 +1407,7 @@ func (x *InstalledPackage) String() string {
 func (*InstalledPackage) ProtoMessage() {}
 
 func (x *InstalledPackage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[16]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1390,7 +1420,7 @@ func (x *InstalledPackage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstalledPackage.ProtoReflect.Descriptor instead.
 func (*InstalledPackage) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{16}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *InstalledPackage) GetName() string {
@@ -1433,7 +1463,7 @@ type DockerContainer struct {
 
 func (x *DockerContainer) Reset() {
 	*x = DockerContainer{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[17]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1475,7 @@ func (x *DockerContainer) String() string {
 func (*DockerContainer) ProtoMessage() {}
 
 func (x *DockerContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[17]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1488,7 @@ func (x *DockerContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DockerContainer.ProtoReflect.Descriptor instead.
 func (*DockerContainer) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{17}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DockerContainer) GetContainerId() string {
@@ -1504,7 +1534,7 @@ type ServiceInfo struct {
 
 func (x *ServiceInfo) Reset() {
 	*x = ServiceInfo{}
-	mi := &file_api_proto_v1_scout_proto_msgTypes[18]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1516,7 +1546,7 @@ func (x *ServiceInfo) String() string {
 func (*ServiceInfo) ProtoMessage() {}
 
 func (x *ServiceInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_v1_scout_proto_msgTypes[18]
+	mi := &file_api_proto_v1_scout_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1529,7 +1559,7 @@ func (x *ServiceInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceInfo.ProtoReflect.Descriptor instead.
 func (*ServiceInfo) Descriptor() ([]byte, []int) {
-	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{18}
+	return file_api_proto_v1_scout_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ServiceInfo) GetName() string {
@@ -1593,7 +1623,8 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\ragent_version\x18\x04 \x01(\tR\fagentVersion\x125\n" +
 	"\ametrics\x18\x05 \x01(\v2\x1b.subnetree.v1.SystemMetricsR\ametrics\x12#\n" +
 	"\rproto_version\x18\x06 \x01(\rR\fprotoVersion\x12!\n" +
-	"\fenroll_token\x18\a \x01(\tR\venrollToken\x12/\n\x13certificate_request\x18\b \x01(\x0cR\x12certificateRequest\"\xac\x03\n" +
+	"\fenroll_token\x18\a \x01(\tR\venrollToken\x12/\n" +
+	"\x13certificate_request\x18\b \x01(\fR\x12certificateRequest\"\xac\x03\n" +
 	"\x0fCheckInResponse\x12\"\n" +
 	"\facknowledged\x18\x01 \x01(\bR\facknowledged\x124\n" +
 	"\x16check_interval_seconds\x18\x02 \x01(\x05R\x14checkIntervalSeconds\x12)\n" +
@@ -1601,7 +1632,9 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\x0eversion_status\x18\x04 \x01(\x0e2\x1b.subnetree.v1.VersionStatusR\rversionStatus\x12%\n" +
 	"\x0eserver_version\x18\x05 \x01(\tR\rserverVersion\x12'\n" +
 	"\x0fupgrade_message\x18\x06 \x01(\tR\x0eupgradeMessage\x12*\n" +
-	"\x11assigned_agent_id\x18\a \x01(\tR\x0fassignedAgentId\x12-\n\x12signed_certificate\x18\b \x01(\x0cR\x11signedCertificate\x12%\n\x0eca_certificate\x18\t \x01(\x0cR\rcaCertificate\"\x9a\x02\n" +
+	"\x11assigned_agent_id\x18\a \x01(\tR\x0fassignedAgentId\x12-\n" +
+	"\x12signed_certificate\x18\b \x01(\fR\x11signedCertificate\x12%\n" +
+	"\x0eca_certificate\x18\t \x01(\fR\rcaCertificate\"\xe7\x02\n" +
 	"\rSystemMetrics\x12\x1f\n" +
 	"\vcpu_percent\x18\x01 \x01(\x01R\n" +
 	"cpuPercent\x12%\n" +
@@ -1609,7 +1642,8 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\x11memory_used_bytes\x18\x03 \x01(\x01R\x0fmemoryUsedBytes\x12,\n" +
 	"\x12memory_total_bytes\x18\x04 \x01(\x01R\x10memoryTotalBytes\x12.\n" +
 	"\x05disks\x18\x05 \x03(\v2\x18.subnetree.v1.DiskMetricR\x05disks\x127\n" +
-	"\bnetworks\x18\x06 \x03(\v2\x1b.subnetree.v1.NetworkMetricR\bnetworks\"\x8c\x01\n" +
+	"\bnetworks\x18\x06 \x03(\v2\x1b.subnetree.v1.NetworkMetricR\bnetworks\x12K\n" +
+	"\x0fcontainer_stats\x18\a \x03(\v2\".subnetree.v1.DockerContainerStatsR\x0econtainerStats\"\x8c\x01\n" +
 	"\n" +
 	"DiskMetric\x12\x1f\n" +
 	"\vmount_point\x18\x01 \x01(\tR\n" +
@@ -1625,7 +1659,21 @@ const file_api_proto_v1_scout_proto_rawDesc = "" +
 	"\n" +
 	"bytes_sent\x18\x02 \x01(\x01R\tbytesSent\x12\x1d\n" +
 	"\n" +
-	"bytes_recv\x18\x03 \x01(\x01R\tbytesRecv\"\x7f\n" +
+	"bytes_recv\x18\x03 \x01(\x01R\tbytesRecv\"\xaf\x03\n" +
+	"\x14DockerContainerStats\x12!\n" +
+	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
+	"\vcpu_percent\x18\x03 \x01(\x01R\n" +
+	"cpuPercent\x12,\n" +
+	"\x12memory_usage_bytes\x18\x04 \x01(\x04R\x10memoryUsageBytes\x12,\n" +
+	"\x12memory_limit_bytes\x18\x05 \x01(\x04R\x10memoryLimitBytes\x12%\n" +
+	"\x0ememory_percent\x18\x06 \x01(\x01R\rmemoryPercent\x12(\n" +
+	"\x10network_rx_bytes\x18\a \x01(\x04R\x0enetworkRxBytes\x12(\n" +
+	"\x10network_tx_bytes\x18\b \x01(\x04R\x0enetworkTxBytes\x12(\n" +
+	"\x10block_read_bytes\x18\t \x01(\x04R\x0eblockReadBytes\x12*\n" +
+	"\x11block_write_bytes\x18\n" +
+	" \x01(\x04R\x0fblockWriteBytes\x12\x12\n" +
+	"\x04pids\x18\v \x01(\rR\x04pids\"\x7f\n" +
 	"\rMetricsReport\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x125\n" +
@@ -1735,7 +1783,7 @@ func file_api_proto_v1_scout_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_v1_scout_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_proto_v1_scout_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_api_proto_v1_scout_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_api_proto_v1_scout_proto_goTypes = []any{
 	(VersionStatus)(0),            // 0: subnetree.v1.VersionStatus
 	(*CheckInRequest)(nil),        // 1: subnetree.v1.CheckInRequest
@@ -1743,51 +1791,53 @@ var file_api_proto_v1_scout_proto_goTypes = []any{
 	(*SystemMetrics)(nil),         // 3: subnetree.v1.SystemMetrics
 	(*DiskMetric)(nil),            // 4: subnetree.v1.DiskMetric
 	(*NetworkMetric)(nil),         // 5: subnetree.v1.NetworkMetric
-	(*MetricsReport)(nil),         // 6: subnetree.v1.MetricsReport
-	(*Ack)(nil),                   // 7: subnetree.v1.Ack
-	(*Command)(nil),               // 8: subnetree.v1.Command
-	(*CommandResponse)(nil),       // 9: subnetree.v1.CommandResponse
-	(*ProfileReport)(nil),         // 10: subnetree.v1.ProfileReport
-	(*SystemProfile)(nil),         // 11: subnetree.v1.SystemProfile
-	(*HardwareProfile)(nil),       // 12: subnetree.v1.HardwareProfile
-	(*DiskInfo)(nil),              // 13: subnetree.v1.DiskInfo
-	(*GPUInfo)(nil),               // 14: subnetree.v1.GPUInfo
-	(*NICInfo)(nil),               // 15: subnetree.v1.NICInfo
-	(*SoftwareInventory)(nil),     // 16: subnetree.v1.SoftwareInventory
-	(*InstalledPackage)(nil),      // 17: subnetree.v1.InstalledPackage
-	(*DockerContainer)(nil),       // 18: subnetree.v1.DockerContainer
-	(*ServiceInfo)(nil),           // 19: subnetree.v1.ServiceInfo
-	(*timestamppb.Timestamp)(nil), // 20: google.protobuf.Timestamp
+	(*DockerContainerStats)(nil),  // 6: subnetree.v1.DockerContainerStats
+	(*MetricsReport)(nil),         // 7: subnetree.v1.MetricsReport
+	(*Ack)(nil),                   // 8: subnetree.v1.Ack
+	(*Command)(nil),               // 9: subnetree.v1.Command
+	(*CommandResponse)(nil),       // 10: subnetree.v1.CommandResponse
+	(*ProfileReport)(nil),         // 11: subnetree.v1.ProfileReport
+	(*SystemProfile)(nil),         // 12: subnetree.v1.SystemProfile
+	(*HardwareProfile)(nil),       // 13: subnetree.v1.HardwareProfile
+	(*DiskInfo)(nil),              // 14: subnetree.v1.DiskInfo
+	(*GPUInfo)(nil),               // 15: subnetree.v1.GPUInfo
+	(*NICInfo)(nil),               // 16: subnetree.v1.NICInfo
+	(*SoftwareInventory)(nil),     // 17: subnetree.v1.SoftwareInventory
+	(*InstalledPackage)(nil),      // 18: subnetree.v1.InstalledPackage
+	(*DockerContainer)(nil),       // 19: subnetree.v1.DockerContainer
+	(*ServiceInfo)(nil),           // 20: subnetree.v1.ServiceInfo
+	(*timestamppb.Timestamp)(nil), // 21: google.protobuf.Timestamp
 }
 var file_api_proto_v1_scout_proto_depIdxs = []int32{
 	3,  // 0: subnetree.v1.CheckInRequest.metrics:type_name -> subnetree.v1.SystemMetrics
 	0,  // 1: subnetree.v1.CheckInResponse.version_status:type_name -> subnetree.v1.VersionStatus
 	4,  // 2: subnetree.v1.SystemMetrics.disks:type_name -> subnetree.v1.DiskMetric
 	5,  // 3: subnetree.v1.SystemMetrics.networks:type_name -> subnetree.v1.NetworkMetric
-	3,  // 4: subnetree.v1.MetricsReport.metrics:type_name -> subnetree.v1.SystemMetrics
-	20, // 5: subnetree.v1.ProfileReport.collected_at:type_name -> google.protobuf.Timestamp
-	11, // 6: subnetree.v1.ProfileReport.profile:type_name -> subnetree.v1.SystemProfile
-	12, // 7: subnetree.v1.SystemProfile.hardware:type_name -> subnetree.v1.HardwareProfile
-	16, // 8: subnetree.v1.SystemProfile.software:type_name -> subnetree.v1.SoftwareInventory
-	19, // 9: subnetree.v1.SystemProfile.services:type_name -> subnetree.v1.ServiceInfo
-	13, // 10: subnetree.v1.HardwareProfile.disks:type_name -> subnetree.v1.DiskInfo
-	14, // 11: subnetree.v1.HardwareProfile.gpus:type_name -> subnetree.v1.GPUInfo
-	15, // 12: subnetree.v1.HardwareProfile.nics:type_name -> subnetree.v1.NICInfo
-	17, // 13: subnetree.v1.SoftwareInventory.packages:type_name -> subnetree.v1.InstalledPackage
-	18, // 14: subnetree.v1.SoftwareInventory.docker_containers:type_name -> subnetree.v1.DockerContainer
-	1,  // 15: subnetree.v1.ScoutService.CheckIn:input_type -> subnetree.v1.CheckInRequest
-	6,  // 16: subnetree.v1.ScoutService.ReportMetrics:input_type -> subnetree.v1.MetricsReport
-	9,  // 17: subnetree.v1.ScoutService.CommandStream:input_type -> subnetree.v1.CommandResponse
-	10, // 18: subnetree.v1.ScoutService.ReportProfile:input_type -> subnetree.v1.ProfileReport
-	2,  // 19: subnetree.v1.ScoutService.CheckIn:output_type -> subnetree.v1.CheckInResponse
-	7,  // 20: subnetree.v1.ScoutService.ReportMetrics:output_type -> subnetree.v1.Ack
-	8,  // 21: subnetree.v1.ScoutService.CommandStream:output_type -> subnetree.v1.Command
-	7,  // 22: subnetree.v1.ScoutService.ReportProfile:output_type -> subnetree.v1.Ack
-	19, // [19:23] is the sub-list for method output_type
-	15, // [15:19] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	6,  // 4: subnetree.v1.SystemMetrics.container_stats:type_name -> subnetree.v1.DockerContainerStats
+	3,  // 5: subnetree.v1.MetricsReport.metrics:type_name -> subnetree.v1.SystemMetrics
+	21, // 6: subnetree.v1.ProfileReport.collected_at:type_name -> google.protobuf.Timestamp
+	12, // 7: subnetree.v1.ProfileReport.profile:type_name -> subnetree.v1.SystemProfile
+	13, // 8: subnetree.v1.SystemProfile.hardware:type_name -> subnetree.v1.HardwareProfile
+	17, // 9: subnetree.v1.SystemProfile.software:type_name -> subnetree.v1.SoftwareInventory
+	20, // 10: subnetree.v1.SystemProfile.services:type_name -> subnetree.v1.ServiceInfo
+	14, // 11: subnetree.v1.HardwareProfile.disks:type_name -> subnetree.v1.DiskInfo
+	15, // 12: subnetree.v1.HardwareProfile.gpus:type_name -> subnetree.v1.GPUInfo
+	16, // 13: subnetree.v1.HardwareProfile.nics:type_name -> subnetree.v1.NICInfo
+	18, // 14: subnetree.v1.SoftwareInventory.packages:type_name -> subnetree.v1.InstalledPackage
+	19, // 15: subnetree.v1.SoftwareInventory.docker_containers:type_name -> subnetree.v1.DockerContainer
+	1,  // 16: subnetree.v1.ScoutService.CheckIn:input_type -> subnetree.v1.CheckInRequest
+	7,  // 17: subnetree.v1.ScoutService.ReportMetrics:input_type -> subnetree.v1.MetricsReport
+	10, // 18: subnetree.v1.ScoutService.CommandStream:input_type -> subnetree.v1.CommandResponse
+	11, // 19: subnetree.v1.ScoutService.ReportProfile:input_type -> subnetree.v1.ProfileReport
+	2,  // 20: subnetree.v1.ScoutService.CheckIn:output_type -> subnetree.v1.CheckInResponse
+	8,  // 21: subnetree.v1.ScoutService.ReportMetrics:output_type -> subnetree.v1.Ack
+	9,  // 22: subnetree.v1.ScoutService.CommandStream:output_type -> subnetree.v1.Command
+	8,  // 23: subnetree.v1.ScoutService.ReportProfile:output_type -> subnetree.v1.Ack
+	20, // [20:24] is the sub-list for method output_type
+	16, // [16:20] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_v1_scout_proto_init() }
@@ -1801,7 +1851,7 @@ func file_api_proto_v1_scout_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_v1_scout_proto_rawDesc), len(file_api_proto_v1_scout_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

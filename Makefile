@@ -62,7 +62,8 @@ run-scout: build-scout
 	./bin/$(SCOUT_BIN)
 
 proto:
-	protoc --go_out=. --go_opt=paths=source_relative \
+	protoc -I. -I$(shell go env GOPATH)/include \
+		--go_out=. --go_opt=paths=source_relative \
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		api/proto/v1/*.proto
 
