@@ -8,6 +8,8 @@ docs_dir: docs
 
 theme:
   name: material
+  logo: images/logo-icon.png
+  favicon: images/favicon.svg
   palette:
     scheme: slate
     primary: green

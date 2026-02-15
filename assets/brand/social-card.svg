@@ -1,0 +1,90 @@
+<svg viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- SubNetree OpenGraph social card (1200x630) -->
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0c1a0e" />
+
+  <!-- Subtle border accent -->
+  <rect x="2" y="2" width="1196" height="626" rx="8" fill="none" stroke="rgba(74,222,128,0.15)" stroke-width="2" />
+  <rect x="8" y="8" width="1184" height="614" rx="4" fill="none" stroke="rgba(74,222,128,0.06)" stroke-width="1" />
+
+  <!-- Subtle background grid pattern -->
+  <line x1="0" y1="315" x2="1200" y2="315" stroke="rgba(74,222,128,0.03)" stroke-width="1" />
+  <line x1="600" y1="0" x2="600" y2="630" stroke="rgba(74,222,128,0.03)" stroke-width="1" />
+
+  <!-- Large monitoring pulse rings (behind logo) -->
+  <circle cx="600" cy="240" r="160" stroke="rgba(74,222,128,0.05)" stroke-width="1" fill="none" />
+  <circle cx="600" cy="240" r="130" stroke="rgba(74,222,128,0.03)" stroke-width="0.75" fill="none" stroke-dasharray="6 4" />
+
+  <!-- === Tree topology logo (scaled from 80x80 viewBox, centered at 600,240) === -->
+  <!-- Scale factor: 2.5x, offset: cx=600-40*2.5=500, cy=240-40*2.5=140 -->
+
+  <!-- Outer monitoring pulse ring -->
+  <circle cx="600" cy="240" r="95" stroke="rgba(74,222,128,0.10)" stroke-width="2" fill="none" />
+  <circle cx="600" cy="240" r="82.5" stroke="rgba(74,222,128,0.06)" stroke-width="1.5" fill="none" stroke-dasharray="10 7.5" />
+
+  <!-- Trunk: root to junction -->
+  <line x1="600" y1="300" x2="600" y2="245" stroke="rgba(74,222,128,0.35)" stroke-width="5" />
+
+  <!-- Main branches: junction to subnet nodes -->
+  <line x1="600" y1="245" x2="555" y2="210" stroke="rgba(74,222,128,0.30)" stroke-width="4.375" />
+  <line x1="600" y1="245" x2="645" y2="210" stroke="rgba(74,222,128,0.30)" stroke-width="4.375" />
+
+  <!-- Leaf branches: subnet nodes to device leaves -->
+  <line x1="555" y1="210" x2="532.5" y2="180" stroke="rgba(196,167,125,0.35)" stroke-width="3.125" />
+  <line x1="555" y1="210" x2="577.5" y2="180" stroke="rgba(196,167,125,0.35)" stroke-width="3.125" />
+  <line x1="645" y1="210" x2="622.5" y2="180" stroke="rgba(196,167,125,0.35)" stroke-width="3.125" />
+  <line x1="645" y1="210" x2="667.5" y2="180" stroke="rgba(196,167,125,0.35)" stroke-width="3.125" />
+
+  <!-- Discovery links -->
+  <line x1="577.5" y1="180" x2="622.5" y2="180" stroke="rgba(74,222,128,0.07)" stroke-width="1.875" />
+  <line x1="555" y1="210" x2="645" y2="210" stroke="rgba(74,222,128,0.06)" stroke-width="1.875" stroke-dasharray="7.5 7.5" />
+
+  <!-- Satellite discovery lines -->
+  <line x1="600" y1="245" x2="575" y2="265" stroke="rgba(156,163,137,0.15)" stroke-width="1.875" />
+  <line x1="600" y1="245" x2="630" y2="260" stroke="rgba(156,163,137,0.15)" stroke-width="1.875" />
+
+  <!-- Leaf device nodes (earth tone) -->
+  <circle cx="532.5" cy="180" r="8.75" fill="#1a2e1c" stroke="#c4a77d" stroke-width="3.125" />
+  <circle cx="532.5" cy="180" r="3.75" fill="#c4a77d" />
+  <circle cx="577.5" cy="180" r="8.75" fill="#1a2e1c" stroke="#c4a77d" stroke-width="3.125" />
+  <circle cx="577.5" cy="180" r="3.75" fill="#c4a77d" />
+  <circle cx="622.5" cy="180" r="8.75" fill="#1a2e1c" stroke="#c4a77d" stroke-width="3.125" />
+  <circle cx="622.5" cy="180" r="3.75" fill="#c4a77d" />
+  <circle cx="667.5" cy="180" r="8.75" fill="#1a2e1c" stroke="#c4a77d" stroke-width="3.125" />
+  <circle cx="667.5" cy="180" r="3.75" fill="#c4a77d" />
+
+  <!-- Subnet gateway nodes (green) -->
+  <circle cx="555" cy="210" r="11.25" fill="#1a2e1c" stroke="#4ade80" stroke-width="3.75" />
+  <circle cx="555" cy="210" r="5" fill="#4ade80" />
+  <circle cx="645" cy="210" r="11.25" fill="#1a2e1c" stroke="#4ade80" stroke-width="3.75" />
+  <circle cx="645" cy="210" r="5" fill="#4ade80" />
+
+  <!-- Junction node -->
+  <circle cx="600" cy="245" r="12.5" fill="#1a2e1c" stroke="#4ade80" stroke-width="3.75" />
+  <circle cx="600" cy="245" r="6.25" fill="#4ade80" />
+
+  <!-- Satellite nodes (sage) -->
+  <circle cx="575" cy="265" r="6.25" fill="#1a2e1c" stroke="rgba(156,163,137,0.5)" stroke-width="2.5" />
+  <circle cx="575" cy="265" r="2.5" fill="#9ca389" />
+  <circle cx="630" cy="260" r="6.25" fill="#1a2e1c" stroke="rgba(156,163,137,0.5)" stroke-width="2.5" />
+  <circle cx="630" cy="260" r="2.5" fill="#9ca389" />
+
+  <!-- Root server node -->
+  <circle cx="600" cy="300" r="17.5" fill="none" stroke="rgba(74,222,128,0.12)" stroke-width="1.875" />
+  <circle cx="600" cy="300" r="15" fill="#1a2e1c" stroke="#4ade80" stroke-width="5" />
+  <circle cx="600" cy="300" r="7.5" fill="#4ade80" />
+
+  <!-- === Text === -->
+
+  <!-- "SubNetree" title -->
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="700" fill="#f5f0e8" letter-spacing="2">SubNetree</text>
+
+  <!-- Tagline -->
+  <text x="600" y="470" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="400" fill="#9ca389" letter-spacing="1">Network monitoring for your HomeLab</text>
+
+  <!-- Subtle bottom accent line -->
+  <line x1="450" y1="510" x2="750" y2="510" stroke="rgba(74,222,128,0.15)" stroke-width="1" />
+  <circle cx="450" cy="510" r="2" fill="#4ade80" opacity="0.3" />
+  <circle cx="750" cy="510" r="2" fill="#4ade80" opacity="0.3" />
+</svg>

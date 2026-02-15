@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/logo.svg" alt="SubNetree logo" width="120" height="120">
+</p>
+
 # SubNetree
 
 [![CI](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml/badge.svg)](https://github.com/HerbHall/subnetree/actions/workflows/ci.yml)
