@@ -6,7 +6,9 @@ SubNetree is a modular, source-available network monitoring and management platf
 
 **Target Users:** HomeLab enthusiasts, prosumers, and small business IT administrators.
 
-**Market Scope:** SubNetree targets single-subnet home and small-office networks (typically 15–200 devices). The current focus is building a product that delights HomeLabbers and small business users, not competing with enterprise monitoring platforms. However, the backend architecture is designed for scalability and flexibility -- modular, well-documented, and acquisition-ready. The goal is to build a passionate community around an excellent small-scale tool while maintaining the technical foundation that would allow a future owner to expand into larger markets.
+**Strategic Position: "Start Here, Grow Anywhere."** SubNetree is a gateway product -- jack of all trades, master of none, by design. Each module provides 80% of what a dedicated tool offers. When users outgrow a module, SubNetree helps them graduate to specialized free/low-cost tools via standard protocols (Prometheus, MQTT, REST, Ansible YAML) while remaining the central discovery and inventory engine. No competing tool auto-discovers infrastructure; SubNetree eliminates the manual inventory that every other tool requires.
+
+**Market Scope:** SubNetree targets single-subnet home and small-office networks (typically 15–200 devices). The current focus is building a product that delights HomeLabbers and small business users, not competing head-to-head with enterprise monitoring platforms. The backend architecture is modular, well-documented, and acquisition-ready -- the same standard protocols that connect homelab tools are what enterprise acquirers need.
 
 **Core Value Proposition:** No existing source-available tool combines device discovery, monitoring, remote access, credential management, and IoT awareness in a single product. Free for personal, HomeLab, and non-competing production use. BSL 1.1 licensed core with Apache 2.0 plugin SDK for ecosystem growth.
 
@@ -52,3 +54,9 @@ SubNetree is a modular, source-available network monitoring and management platf
 4. **Stability and security are non-negotiable.** These are not features that ship "later." Every release must be stable enough to trust with production infrastructure and secure enough to trust with network credentials. If a feature compromises stability or security, it does not ship.
 
 5. **Time to First Value under 10 minutes.** Users will forgive missing features but will not forgive a bad first experience. Download, install, see your network -- in minutes, not hours.
+
+6. **Gateway depth: 80% of dedicated tools.** Each module should handle the common cases well. When users need the remaining 20%, SubNetree provides growth pathways to specialized tools rather than trying to replicate enterprise features.
+
+7. **Standard protocols for integration.** Export Prometheus metrics, publish MQTT events, expose REST APIs, generate Ansible-compatible YAML. Users should never feel locked in.
+
+8. **Free/low-cost growth paths first.** When recommending tools users can graduate to, prioritize free and open-source options (Uptime Kuma, Grafana, NetBox) before commercial alternatives.

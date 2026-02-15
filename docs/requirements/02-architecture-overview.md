@@ -20,15 +20,17 @@ Each module fills one or more **roles** (abstract capabilities). Alternative imp
 | Credentials | **Vault** | `credential_store` | Encrypted credential storage, per-device credential assignment |
 | Remote Access | **Gateway** | `remote_access` | Browser-based SSH, RDP (via Guacamole), HTTP/HTTPS reverse proxy, VNC |
 | Notifications | **Webhook** | `webhook` | Event-driven webhook notifications to external services |
-| AI Provider | **LLM** | `llm` | LLM provider integration (Ollama); optional, product works without it |
-| Overlay Network | **Tailscale** | `overlay_network` | Tailscale tailnet device discovery, overlay IP enrichment, subnet route awareness |
+| AI Provider | **LLM** | `llm` | LLM provider integration (Ollama, OpenAI, Anthropic); optional, product works without it |
+| Analytics | **Insight** | `analytics` | Statistical anomaly detection, trend forecasting, NL query interface |
+| Documentation | **Docs** | `documentation` | Infrastructure documentation, config snapshots, diffing |
+| Overlay Network | **Tailscale** *(planned)* | `overlay_network` | Tailscale tailnet device discovery, overlay IP enrichment, subnet route awareness |
 
 ### Communication
 
 - **Server <-> Dashboard:** REST API + WebSocket (real-time updates)
 - **Server <-> Scout:** gRPC with mTLS (bidirectional streaming)
 - **Server <-> Network Devices:** ICMP, ARP, SNMP v2c/v3, mDNS, UPnP/SSDP, MQTT
-- **Server <-> Tailscale API:** HTTPS REST (device enumeration, subnet routes, DNS)
+- **Server <-> Tailscale API:** HTTPS REST (device enumeration, subnet routes, DNS) *(planned)*
 
 ### Module Dependency Graph
 
@@ -45,17 +47,16 @@ Dispatch (no deps, provides agent_management)
   +---> Pulse (optional: agent_management for agent metrics)
   +---> Recon (optional: agent_management for agent-assisted scans)
 
-Tailscale (requires: credential_store for API key/OAuth storage)
-  |
-  +---> Recon (optional: overlay_network for Tailscale-discovered devices)
-  +---> Gateway (optional: overlay_network for Tailscale IP connectivity)
-
 Webhook (no deps, provides webhook notifications)
 LLM (no deps, provides llm; Required: false)
+Insight (optional: llm for NL queries)
+Docs (no deps, provides documentation)
 ```
 
-**Topological Startup Order:** Vault -> Dispatch -> Webhook -> LLM -> Tailscale -> Recon -> Pulse -> Gateway
-**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Tailscale -> LLM -> Webhook -> Dispatch -> Vault
+**Topological Startup Order:** Vault -> Dispatch -> Webhook -> LLM -> Insight -> Docs -> Recon -> Pulse -> Gateway
+**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Docs -> Insight -> LLM -> Webhook -> Dispatch -> Vault
+
+*Tailscale module is planned for Phase 2. When implemented, it will require `credential_store` for API key storage and provide `overlay_network` for Tailscale-discovered device enrichment.*
 
 ### Go Architecture Conventions
 
