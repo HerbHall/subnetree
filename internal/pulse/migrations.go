@@ -105,5 +105,24 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     5,
+			Description: "create maintenance windows table",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS pulse_maint_windows (
+					id TEXT PRIMARY KEY,
+					name TEXT NOT NULL,
+					description TEXT NOT NULL DEFAULT '',
+					start_time DATETIME NOT NULL,
+					end_time DATETIME NOT NULL,
+					recurrence TEXT NOT NULL DEFAULT 'once',
+					device_ids TEXT NOT NULL DEFAULT '[]',
+					enabled INTEGER NOT NULL DEFAULT 1,
+					created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`)
+				return err
+			},
+		},
 	}
 }

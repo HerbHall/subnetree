@@ -91,6 +91,33 @@ func (s *Scheduler) tick() {
 		return
 	}
 
+	// Filter out checks for devices in active maintenance windows.
+	activeChecks := make([]Check, 0, len(checks))
+	for i := range checks {
+		inMaint, err := s.store.IsDeviceInMaintenanceWindow(ctx, checks[i].DeviceID)
+		if err != nil {
+			s.logger.Warn("scheduler: failed to check maintenance window",
+				zap.String("device_id", checks[i].DeviceID),
+				zap.Error(err),
+			)
+			activeChecks = append(activeChecks, checks[i])
+			continue
+		}
+		if inMaint {
+			s.logger.Debug("scheduler: skipping check (maintenance window)",
+				zap.String("check_id", checks[i].ID),
+				zap.String("device_id", checks[i].DeviceID),
+			)
+			continue
+		}
+		activeChecks = append(activeChecks, checks[i])
+	}
+	checks = activeChecks
+
+	if len(checks) == 0 {
+		return
+	}
+
 	// Semaphore-based worker pool.
 	sem := make(chan struct{}, s.workers)
 	var wg sync.WaitGroup

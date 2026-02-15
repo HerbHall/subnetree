@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
@@ -44,6 +46,27 @@ type updateNotificationRequest struct {
 	Enabled *bool  `json:"enabled,omitempty"`
 }
 
+// createMaintWindowRequest is the JSON body for POST /maintenance-windows.
+type createMaintWindowRequest struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	StartTime   string   `json:"start_time"`
+	EndTime     string   `json:"end_time"`
+	Recurrence  string   `json:"recurrence"`
+	DeviceIDs   []string `json:"device_ids"`
+}
+
+// updateMaintWindowRequest is the JSON body for PUT /maintenance-windows/{id}.
+type updateMaintWindowRequest struct {
+	Name        string   `json:"name,omitempty"`
+	Description string   `json:"description,omitempty"`
+	StartTime   string   `json:"start_time,omitempty"`
+	EndTime     string   `json:"end_time,omitempty"`
+	Recurrence  string   `json:"recurrence,omitempty"`
+	DeviceIDs   []string `json:"device_ids,omitempty"`
+	Enabled     *bool    `json:"enabled,omitempty"`
+}
+
 // Routes implements plugin.HTTPProvider.
 func (m *Module) Routes() []plugin.Route {
 	return []plugin.Route{
@@ -69,6 +92,11 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "PUT", Path: "/notifications/{id}", Handler: m.handleUpdateNotification},
 		{Method: "DELETE", Path: "/notifications/{id}", Handler: m.handleDeleteNotification},
 		{Method: "POST", Path: "/notifications/{id}/test", Handler: m.handleTestNotification},
+		{Method: "GET", Path: "/maintenance-windows", Handler: m.handleListMaintWindows},
+		{Method: "POST", Path: "/maintenance-windows", Handler: m.handleCreateMaintWindow},
+		{Method: "GET", Path: "/maintenance-windows/{id}", Handler: m.handleGetMaintWindow},
+		{Method: "PUT", Path: "/maintenance-windows/{id}", Handler: m.handleUpdateMaintWindow},
+		{Method: "DELETE", Path: "/maintenance-windows/{id}", Handler: m.handleDeleteMaintWindow},
 	}
 }
 
@@ -1142,6 +1170,202 @@ func buildNotifier(ch NotificationChannel) (Notifier, error) {
 	default:
 		return nil, fmt.Errorf("unsupported notification type: %s", ch.Type)
 	}
+}
+
+// -- Maintenance window handlers --
+
+// handleListMaintWindows returns all maintenance windows.
+func (m *Module) handleListMaintWindows(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	windows, err := m.store.ListMaintWindows(r.Context())
+	if err != nil {
+		m.logger.Warn("failed to list maintenance windows", zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to list maintenance windows")
+		return
+	}
+	if windows == nil {
+		windows = []MaintWindow{}
+	}
+	pulseWriteJSON(w, http.StatusOK, windows)
+}
+
+// handleCreateMaintWindow creates a new maintenance window.
+func (m *Module) handleCreateMaintWindow(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	var req createMaintWindowRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.Name == "" {
+		pulseWriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if !validRecurrence[req.Recurrence] {
+		pulseWriteError(w, http.StatusBadRequest, "recurrence must be once, daily, weekly, or monthly")
+		return
+	}
+	startTime, err := time.Parse(time.RFC3339, req.StartTime)
+	if err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "start_time must be RFC3339 format")
+		return
+	}
+	endTime, err := time.Parse(time.RFC3339, req.EndTime)
+	if err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "end_time must be RFC3339 format")
+		return
+	}
+	if !endTime.After(startTime) {
+		pulseWriteError(w, http.StatusBadRequest, "end_time must be after start_time")
+		return
+	}
+	if len(req.DeviceIDs) == 0 {
+		pulseWriteError(w, http.StatusBadRequest, "device_ids must not be empty")
+		return
+	}
+
+	now := time.Now().UTC()
+	mw := &MaintWindow{
+		ID:          uuid.New().String(),
+		Name:        req.Name,
+		Description: req.Description,
+		StartTime:   startTime.UTC(),
+		EndTime:     endTime.UTC(),
+		Recurrence:  req.Recurrence,
+		DeviceIDs:   req.DeviceIDs,
+		Enabled:     true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	if err := m.store.InsertMaintWindow(r.Context(), mw); err != nil {
+		m.logger.Warn("failed to create maintenance window", zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to create maintenance window")
+		return
+	}
+	pulseWriteJSON(w, http.StatusCreated, mw)
+}
+
+// handleGetMaintWindow returns a single maintenance window by ID.
+func (m *Module) handleGetMaintWindow(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	mw, err := m.store.GetMaintWindow(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get maintenance window", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get maintenance window")
+		return
+	}
+	if mw == nil {
+		pulseWriteError(w, http.StatusNotFound, "maintenance window not found")
+		return
+	}
+	pulseWriteJSON(w, http.StatusOK, mw)
+}
+
+// handleUpdateMaintWindow updates an existing maintenance window.
+func (m *Module) handleUpdateMaintWindow(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	existing, err := m.store.GetMaintWindow(r.Context(), id)
+	if err != nil {
+		m.logger.Warn("failed to get maintenance window for update", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get maintenance window")
+		return
+	}
+	if existing == nil {
+		pulseWriteError(w, http.StatusNotFound, "maintenance window not found")
+		return
+	}
+
+	var req updateMaintWindowRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		pulseWriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if req.Name != "" {
+		existing.Name = req.Name
+	}
+	if req.Description != "" {
+		existing.Description = req.Description
+	}
+	if req.StartTime != "" {
+		t, err := time.Parse(time.RFC3339, req.StartTime)
+		if err != nil {
+			pulseWriteError(w, http.StatusBadRequest, "start_time must be RFC3339 format")
+			return
+		}
+		existing.StartTime = t.UTC()
+	}
+	if req.EndTime != "" {
+		t, err := time.Parse(time.RFC3339, req.EndTime)
+		if err != nil {
+			pulseWriteError(w, http.StatusBadRequest, "end_time must be RFC3339 format")
+			return
+		}
+		existing.EndTime = t.UTC()
+	}
+	if req.Recurrence != "" {
+		if !validRecurrence[req.Recurrence] {
+			pulseWriteError(w, http.StatusBadRequest, "recurrence must be once, daily, weekly, or monthly")
+			return
+		}
+		existing.Recurrence = req.Recurrence
+	}
+	if len(req.DeviceIDs) > 0 {
+		existing.DeviceIDs = req.DeviceIDs
+	}
+	if req.Enabled != nil {
+		existing.Enabled = *req.Enabled
+	}
+	existing.UpdatedAt = time.Now().UTC()
+
+	if err := m.store.UpdateMaintWindow(r.Context(), existing); err != nil {
+		m.logger.Warn("failed to update maintenance window", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to update maintenance window")
+		return
+	}
+	pulseWriteJSON(w, http.StatusOK, existing)
+}
+
+// handleDeleteMaintWindow deletes a maintenance window.
+func (m *Module) handleDeleteMaintWindow(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+	id := r.PathValue("id")
+	if id == "" {
+		pulseWriteError(w, http.StatusBadRequest, "id is required")
+		return
+	}
+	if err := m.store.DeleteMaintWindow(r.Context(), id); err != nil {
+		m.logger.Warn("failed to delete maintenance window", zap.String("id", id), zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to delete maintenance window")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // validateTarget validates a check target based on the check type.

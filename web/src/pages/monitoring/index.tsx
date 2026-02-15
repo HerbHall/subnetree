@@ -14,6 +14,7 @@ import {
   Power,
   Eye,
   Filter,
+  Wrench,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ import {
   getDeviceMetrics,
 } from '@/api/pulse'
 import { SparklineChart } from '@/components/sparkline-chart'
+import { MaintenanceWindowsPanel } from '@/components/pulse/maintenance-windows'
 import type {
   Check,
   Alert,
@@ -45,12 +47,13 @@ import type {
   CreateNotificationRequest,
 } from '@/api/types'
 
-type TabId = 'checks' | 'alerts' | 'notifications'
+type TabId = 'checks' | 'alerts' | 'notifications' | 'maintenance'
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'checks', label: 'Checks', icon: HeartPulse },
   { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
   { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'maintenance', label: 'Maintenance', icon: Wrench },
 ]
 
 export function MonitoringPage() {
@@ -92,6 +95,7 @@ export function MonitoringPage() {
       {activeTab === 'checks' && <ChecksTab />}
       {activeTab === 'alerts' && <AlertsTab />}
       {activeTab === 'notifications' && <NotificationsTab />}
+      {activeTab === 'maintenance' && <MaintenanceWindowsPanel />}
     </div>
   )
 }
