@@ -59,6 +59,7 @@ message SystemMetrics {
   double memory_total_bytes = 4;
   repeated DiskMetric disks = 5;
   repeated NetworkMetric networks = 6;
+  repeated DockerContainerStats container_stats = 7;
 }
 
 message DiskMetric {
@@ -72,6 +73,20 @@ message NetworkMetric {
   string interface_name = 1;
   double bytes_sent = 2;
   double bytes_recv = 3;
+}
+
+message DockerContainerStats {
+  string container_id = 1;
+  string name = 2;
+  double cpu_percent = 3;
+  uint64 memory_usage_bytes = 4;
+  uint64 memory_limit_bytes = 5;
+  double memory_percent = 6;
+  uint64 network_rx_bytes = 7;
+  uint64 network_tx_bytes = 8;
+  uint64 block_read_bytes = 9;
+  uint64 block_write_bytes = 10;
+  uint32 pids = 11;
 }
 
 message MetricsReport {

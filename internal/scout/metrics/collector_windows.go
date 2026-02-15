@@ -68,6 +68,13 @@ func (c *windowsCollector) Collect(ctx context.Context) (*scoutpb.SystemMetrics,
 		m.Networks = networks
 	}
 
+	// Collect Docker container stats (graceful degradation if Docker unavailable).
+	containerStats := collectDockerStats(ctx, c.logger)
+	if len(containerStats) > 0 {
+		m.ContainerStats = containerStats
+		c.logger.Debug("collected docker container stats", zap.Int("count", len(containerStats)))
+	}
+
 	return m, nil
 }
 
