@@ -298,7 +298,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). Remaining: UPnP discovery, Tailscale plugin, multi-tenancy, maintenance windows, device inventory.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). v0.5.0 features shipped: MkDocs site (PR #270), LLM BYOK providers (PR #271), NL query bar (PR #272), LLM settings UI (PR #273), AI recommendations (PR #274), logo integration (PR #275), power monitoring research (PR #276). Remaining: UPnP discovery, Tailscale plugin, multi-tenancy, maintenance windows, device inventory, analytics dashboard enhancements.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -306,7 +306,7 @@
 
 - [ ] Evaluate PostgreSQL + TimescaleDB: migration tooling (golang-migrate), hypertable performance, connection pooling
 - [x] Research Docker multi-arch build pipeline (buildx, QEMU, manifest lists) (GoReleaser + buildx in v0.1.0-alpha)
-- [ ] Scaffold MkDocs Material documentation site, configure GitHub Pages deployment (see Cross-Cutting section)
+- [x] Scaffold MkDocs Material documentation site, configure GitHub Pages deployment (PR #270)
 - [ ] Evaluate Plausible Analytics: self-hosted vs cloud, deployment requirements
 - [ ] Research OpenTelemetry Go SDK integration patterns for tracing
 - [x] Evaluate SBOM generation tooling (Syft) and signing (Cosign) for release pipeline (Syft in GoReleaser since v0.1.0-alpha)
@@ -437,21 +437,21 @@
 - [ ] Dashboard: remote access launcher, session management, credential manager
 - [ ] Tailscale plugin: prefer Tailscale IPs for Gateway remote access when device is on tailnet
 - [ ] Scout: macOS agent
-- [x] LLM integration: natural language query interface (OpenAI, Anthropic, Ollama providers) (Ollama shipped; OpenAI/Anthropic deferred)
+- [x] LLM integration: natural language query interface (OpenAI, Anthropic, Ollama providers) (Ollama v0.1.0-alpha; OpenAI/Anthropic PR #271)
 - [ ] LLM integration: incident summarization on alert groups
-- [ ] LLM integration: "bring your own API key" configuration in settings
+- [x] LLM integration: "bring your own API key" configuration in settings (PR #271 backend, PR #273 frontend)
 - [ ] LLM integration: privacy controls (data anonymization levels, local-only mode)
-- [x] Dashboard: natural language query bar (optional, appears when LLM configured) (API endpoint shipped; dashboard UI deferred)
+- [x] Dashboard: natural language query bar (optional, appears when LLM configured) (API endpoint v0.2.0; dashboard UI PR #272)
 - [ ] Dashboard: AI-generated incident summaries on alert detail pages
 - [ ] Vault: anomalous credential access detection (analytics-powered, from audit log events)
 
 #### AI Infrastructure Optimization (#166)
 
-- [ ] Tier 1 rule-based recommendations (underutilized, overloaded, idle, upgrade needed)
+- [x] Tier 1 rule-based recommendations (underutilized, overloaded, idle, upgrade needed) (PR #274)
 - [ ] User-configurable optimization goals (utilization, responsiveness, power, balance)
 - [ ] Recommendations API with accept/dismiss/snooze workflow
 - [ ] Infrastructure Health Score (0-100) with category breakdown
-- [ ] Dashboard: recommendations panel with severity and suggested actions
+- [x] Dashboard: recommendations panel with severity and suggested actions (PR #274)
 - [ ] Tier 2 statistical recommendations (growth forecast, seasonal patterns, anomaly attribution)
 - [ ] Tier 3 AI-assisted: migration planning, hardware advisor, what-if simulator (requires LLM)
 
