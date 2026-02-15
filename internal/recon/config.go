@@ -12,6 +12,8 @@ type ReconConfig struct {
 	DeviceLostAfter time.Duration `mapstructure:"device_lost_after"`
 	MDNSEnabled     bool          `mapstructure:"mdns_enabled"`
 	MDNSInterval    time.Duration `mapstructure:"mdns_interval"`
+	UPNPEnabled     bool          `mapstructure:"upnp_enabled"`
+	UPNPInterval    time.Duration `mapstructure:"upnp_interval"`
 }
 
 // DefaultConfig returns the default configuration for the Recon module.
@@ -25,5 +27,7 @@ func DefaultConfig() ReconConfig {
 		DeviceLostAfter: 24 * time.Hour,
 		MDNSEnabled:     true,
 		MDNSInterval:    60 * time.Second,
+		UPNPEnabled:     true,
+		UPNPInterval:    5 * time.Minute,
 	}
 }

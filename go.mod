@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gosnmp/gosnmp v1.43.2
 	github.com/hashicorp/mdns v1.0.6
+	github.com/huin/goupnp v1.3.0
 	github.com/prometheus-community/pro-bing v0.8.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/viper v1.21.0

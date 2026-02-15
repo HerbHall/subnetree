@@ -28,6 +28,7 @@ type Module struct {
 	orchestrator  *ScanOrchestrator
 	snmpCollector *SNMPCollector
 	mdns          *MDNSListener
+	upnp          *UPNPDiscoverer
 	credAccessor  CredentialAccessor
 	credProvider  roles.CredentialProvider
 	activeScans   sync.Map // scanID -> context.CancelFunc
@@ -82,6 +83,12 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 		if d := deps.Config.GetDuration("mdns_interval"); d > 0 {
 			m.cfg.MDNSInterval = d
 		}
+		if deps.Config.IsSet("upnp_enabled") {
+			m.cfg.UPNPEnabled = deps.Config.GetBool("upnp_enabled")
+		}
+		if d := deps.Config.GetDuration("upnp_interval"); d > 0 {
+			m.cfg.UPNPInterval = d
+		}
 	}
 
 	// Run database migrations.
@@ -104,6 +111,11 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 	// Initialize mDNS listener if enabled.
 	if m.cfg.MDNSEnabled {
 		m.mdns = NewMDNSListener(m.store, m.bus, m.logger.Named("mdns"), m.cfg.MDNSInterval)
+	}
+
+	// Initialize UPnP discoverer if enabled.
+	if m.cfg.UPNPEnabled {
+		m.upnp = NewUPNPDiscoverer(m.store, m.bus, m.logger.Named("upnp"), m.cfg.UPNPInterval)
 	}
 
 	m.logger.Info("recon module initialized")
@@ -129,6 +141,18 @@ func (m *Module) Start(_ context.Context) error {
 		}()
 		m.logger.Info("mDNS passive discovery enabled",
 			zap.Duration("interval", m.cfg.MDNSInterval),
+		)
+	}
+
+	// Start UPnP discoverer background goroutine if configured.
+	if m.upnp != nil {
+		m.wg.Add(1)
+		go func() {
+			defer m.wg.Done()
+			m.upnp.Run(m.scanCtx)
+		}()
+		m.logger.Info("UPnP/SSDP discovery enabled",
+			zap.Duration("interval", m.cfg.UPNPInterval),
 		)
 	}
 
@@ -193,6 +217,7 @@ func (m *Module) Health(_ context.Context) plugin.HealthStatus {
 		"active_scans": strconv.Itoa(activeCount),
 		"arp_enabled":  strconv.FormatBool(m.cfg.ARPEnabled),
 		"mdns_enabled": strconv.FormatBool(m.cfg.MDNSEnabled),
+		"upnp_enabled": strconv.FormatBool(m.cfg.UPNPEnabled),
 	}
 
 	return plugin.HealthStatus{
