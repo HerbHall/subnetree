@@ -31,6 +31,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/gateway"
 	"github.com/HerbHall/subnetree/internal/insight"
 	"github.com/HerbHall/subnetree/internal/llm"
+	"github.com/HerbHall/subnetree/internal/mqtt"
 	"github.com/HerbHall/subnetree/internal/pulse"
 	"github.com/HerbHall/subnetree/internal/recon"
 	"github.com/HerbHall/subnetree/internal/registry"
@@ -145,6 +146,7 @@ func main() {
 		llm.New(),
 		insight.New(),
 		docs.New(),
+		mqtt.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
