@@ -172,14 +172,28 @@ Every GitHub issue must be developed on its own branch:
 - Co-author tag: `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
 - Branch protection on `main`: PRs required, CLA check must pass
 
+## Research Integration
+
+Development is coordinated with HomeLab research via `D:\DevSpace\.coordination\`:
+
+- **Check for new findings**: `/dev-mode` automatically surfaces unprocessed `RF-NNN` entries at session start
+- **File a research request**: `/dev-mode 2` creates an `RN-NNN` entry in `research-needs.md`
+- **End-of-session update**: `/dev-mode 5` updates `status.md` with development progress
+- **Full sync**: `/coordination-sync 1` updates all coordination files
+
+The `UserPromptSubmit` hook in `.claude/settings.json` automatically reminds about coordination context during regular dev prompts.
+
 ## Useful Claude Code Skills
 
 These installed skills are particularly relevant for SubNetree development:
 
 | Skill / Command | When to Use |
 |----------------|-------------|
+| `/dev-mode` | Start a development session (checks research findings first) |
 | `/create-plan` | Before starting any multi-file feature implementation |
 | `/run-plan` | Executing a phase from an existing plan |
+| `/coordination-sync` | Sync coordination files between SubNetree and HomeLab |
+| `/pm-view` | Bird's-eye project management across both projects |
 | `/check-todos` | Resuming work -- see what's outstanding |
 | `/add-to-todos` | Capturing context mid-work for future sessions |
 | `/whats-next` | Generating handoff docs when context is running low |

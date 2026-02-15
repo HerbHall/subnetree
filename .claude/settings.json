@@ -4,5 +4,18 @@
       "Bash(git -C d:/NetVantage push)",
       "mcp__memory__create_entities"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "^(?!/)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Coordination files at D:\\DevSpace\\.coordination\\. If work reveals a research question, suggest: 'Consider /dev-mode 2 to file a research request.' If there are unprocessed RF-NNN findings in research-findings.md, mention briefly."
+          }
+        ]
+      }
+    ]
   }
 }
