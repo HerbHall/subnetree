@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
-import { setupApi, loginApi } from '@/api/auth'
+import { setupApi, loginApi, checkSetupRequired } from '@/api/auth'
 import { getNetworkInterfaces, setScanInterface, type NetworkInterface } from '@/api/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -108,6 +108,19 @@ export function SetupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const setTokens = useAuthStore((s) => s.setTokens)
   const navigate = useNavigate()
+  const [setupComplete, setSetupComplete] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(true)
+
+  // Guard: check if setup is already complete
+  useEffect(() => {
+    checkSetupRequired()
+      .then((required) => {
+        if (!required) {
+          setSetupComplete(true)
+        }
+      })
+      .finally(() => setCheckingStatus(false))
+  }, [])
 
   // Fetch network interfaces when entering step 2
   useEffect(() => {
@@ -213,6 +226,38 @@ export function SetupPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingStatus) {
+    return (
+      <Card className="w-full max-w-lg">
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Checking setup status...
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (setupComplete) {
+    return (
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Setup Already Complete</CardTitle>
+          <CardDescription>
+            An administrator account has already been created.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            If you need to access SubNetree, sign in with your existing credentials.
+            If you have forgotten your password, contact your system administrator.
+          </p>
+          <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
+            Go to Login
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

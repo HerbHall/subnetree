@@ -7,8 +7,13 @@ import (
 	"sync"
 
 	"github.com/HerbHall/subnetree/pkg/plugin"
+	"golang.org/x/mod/semver"
 	_ "modernc.org/sqlite" // Pure-Go SQLite driver
 )
+
+// ErrNewerSchema is returned when the database was created by a newer version
+// of SubNetree than the currently running binary.
+var ErrNewerSchema = fmt.Errorf("database was created by a newer version of SubNetree")
 
 // Compile-time interface guard.
 var _ plugin.Store = (*SQLiteStore)(nil)
@@ -110,6 +115,88 @@ func (s *SQLiteStore) Migrate(ctx context.Context, pluginName string, migrations
 // Close closes the underlying database connection.
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
+}
+
+// CheckVersion compares the running binary version against the version stored
+// in the database. It prevents an older binary from opening a database created
+// by a newer version, which could corrupt data. The special version "dev"
+// always passes (both as stored and as current).
+func (s *SQLiteStore) CheckVersion(ctx context.Context, currentVersion string) error {
+	if err := s.ensureSchemaMetaTable(ctx); err != nil {
+		return fmt.Errorf("ensure schema meta table: %w", err)
+	}
+
+	var stored string
+	err := s.db.QueryRowContext(ctx,
+		"SELECT app_version FROM _schema_meta WHERE id = 1",
+	).Scan(&stored)
+
+	if err == sql.ErrNoRows {
+		// First run: record the current version.
+		_, err = s.db.ExecContext(ctx,
+			"INSERT INTO _schema_meta (id, app_version, updated_at) VALUES (1, ?, CURRENT_TIMESTAMP)",
+			currentVersion,
+		)
+		if err != nil {
+			return fmt.Errorf("insert schema version: %w", err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("query schema version: %w", err)
+	}
+
+	// "dev" always passes -- useful for local development.
+	if stored == "dev" || currentVersion == "dev" {
+		_, err = s.db.ExecContext(ctx,
+			"UPDATE _schema_meta SET app_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
+			currentVersion,
+		)
+		if err != nil {
+			return fmt.Errorf("update schema version: %w", err)
+		}
+		return nil
+	}
+
+	cur := normalizeVersion(currentVersion)
+	sto := normalizeVersion(stored)
+
+	if semver.Compare(cur, sto) < 0 {
+		return fmt.Errorf("%w: database=%s, binary=%s", ErrNewerSchema, stored, currentVersion)
+	}
+
+	// Current >= stored: update the stored version.
+	if semver.Compare(cur, sto) > 0 {
+		_, err = s.db.ExecContext(ctx,
+			"UPDATE _schema_meta SET app_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1",
+			currentVersion,
+		)
+		if err != nil {
+			return fmt.Errorf("update schema version: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ensureSchemaMetaTable creates the _schema_meta table if it doesn't exist.
+func (s *SQLiteStore) ensureSchemaMetaTable(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS _schema_meta (
+			id           INTEGER  PRIMARY KEY CHECK (id = 1),
+			app_version  TEXT     NOT NULL,
+			updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	return err
+}
+
+// normalizeVersion ensures the version string has a "v" prefix for semver comparison.
+func normalizeVersion(v string) string {
+	if v != "" && v[0] != 'v' {
+		return "v" + v
+	}
+	return v
 }
 
 // ensureMigrationsTable creates the shared _migrations tracking table if it

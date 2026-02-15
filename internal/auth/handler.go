@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	_ "github.com/HerbHall/subnetree/pkg/models" // swagger type reference
+	"github.com/HerbHall/subnetree/internal/version"
 	"go.uber.org/zap"
 )
 
@@ -27,6 +28,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/refresh", h.handleRefresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.handleLogout)
 	mux.HandleFunc("POST /api/v1/auth/setup", h.handleSetup)
+	mux.HandleFunc("GET /api/v1/auth/setup/status", h.handleSetupStatus)
 
 	// Admin-only user management endpoints (auth enforced by middleware,
 	// role checked in handlers).
@@ -194,6 +196,27 @@ func (h *Handler) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, user)
+}
+
+// handleSetupStatus reports whether initial setup is required.
+//
+//	@Summary		Check setup status
+//	@Description	Returns whether initial admin setup is needed and the server version.
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200	{object}	SetupStatusResponse
+//	@Router			/auth/setup/status [get]
+func (h *Handler) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
+	needed, err := h.service.NeedsSetup(r.Context())
+	if err != nil {
+		h.logger.Error("setup status check failed", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "failed to check setup status")
+		return
+	}
+	writeJSON(w, http.StatusOK, SetupStatusResponse{
+		SetupRequired: needed,
+		Version:       version.Short(),
+	})
 }
 
 // handleListUsers returns all users.

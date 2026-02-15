@@ -541,6 +541,15 @@ definitions:
         example: admin
         type: string
     type: object
+  internal_auth.SetupStatusResponse:
+    properties:
+      setup_required:
+        example: false
+        type: boolean
+      version:
+        example: 0.4.0
+        type: string
+    type: object
   internal_auth.TokenPair:
     properties:
       access_token:
@@ -1320,6 +1329,19 @@ paths:
           schema:
             $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
       summary: Initial setup
+      tags:
+      - auth
+  /auth/setup/status:
+    get:
+      description: Returns whether initial admin setup is needed and the server version.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.SetupStatusResponse'
+      summary: Check setup status
       tags:
       - auth
   /dispatch/agents:

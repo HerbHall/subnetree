@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -319,5 +320,103 @@ func TestForeignKeys_enabled(t *testing.T) {
 	}
 	if fk != 1 {
 		t.Errorf("foreign_keys = %d, want 1", fk)
+	}
+}
+
+func TestCheckVersion_FirstRun(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	if err := s.CheckVersion(ctx, "0.4.0"); err != nil {
+		t.Fatalf("CheckVersion first run: %v", err)
+	}
+
+	// Verify version was stored.
+	var stored string
+	err := s.DB().QueryRowContext(ctx, "SELECT app_version FROM _schema_meta WHERE id = 1").Scan(&stored)
+	if err != nil {
+		t.Fatalf("query stored version: %v", err)
+	}
+	if stored != "0.4.0" {
+		t.Errorf("stored version = %q, want %q", stored, "0.4.0")
+	}
+}
+
+func TestCheckVersion_SameVersion(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	if err := s.CheckVersion(ctx, "0.4.0"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if err := s.CheckVersion(ctx, "0.4.0"); err != nil {
+		t.Fatalf("second call with same version: %v", err)
+	}
+}
+
+func TestCheckVersion_NewerBinary(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	if err := s.CheckVersion(ctx, "0.4.0"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if err := s.CheckVersion(ctx, "0.5.0"); err != nil {
+		t.Fatalf("upgrade to 0.5.0: %v", err)
+	}
+
+	// Verify stored version was updated.
+	var stored string
+	err := s.DB().QueryRowContext(ctx, "SELECT app_version FROM _schema_meta WHERE id = 1").Scan(&stored)
+	if err != nil {
+		t.Fatalf("query stored version: %v", err)
+	}
+	if stored != "0.5.0" {
+		t.Errorf("stored version = %q, want %q", stored, "0.5.0")
+	}
+}
+
+func TestCheckVersion_OlderBinary_Rejected(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	if err := s.CheckVersion(ctx, "0.5.0"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+
+	err := s.CheckVersion(ctx, "0.4.0")
+	if err == nil {
+		t.Fatal("expected error when running older binary against newer database")
+	}
+	if !errors.Is(err, ErrNewerSchema) {
+		t.Errorf("expected ErrNewerSchema, got: %v", err)
+	}
+}
+
+func TestCheckVersion_DevAlwaysPasses(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	// dev -> 0.5.0 -> dev: all should pass.
+	if err := s.CheckVersion(ctx, "dev"); err != nil {
+		t.Fatalf("dev first run: %v", err)
+	}
+	if err := s.CheckVersion(ctx, "0.5.0"); err != nil {
+		t.Fatalf("dev -> 0.5.0: %v", err)
+	}
+	if err := s.CheckVersion(ctx, "dev"); err != nil {
+		t.Fatalf("0.5.0 -> dev: %v", err)
+	}
+}
+
+func TestCheckVersion_PatchUpgrade(t *testing.T) {
+	s := tempDB(t)
+	ctx := context.Background()
+
+	if err := s.CheckVersion(ctx, "0.4.0"); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if err := s.CheckVersion(ctx, "0.4.1"); err != nil {
+		t.Fatalf("patch upgrade 0.4.0 -> 0.4.1: %v", err)
 	}
 }

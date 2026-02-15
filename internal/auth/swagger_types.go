@@ -29,3 +29,9 @@ type UpdateUserRequest struct {
 	Role     string `json:"role" example:"operator"`
 	Disabled bool   `json:"disabled" example:"false"`
 }
+
+// SetupStatusResponse is the response for GET /auth/setup/status.
+type SetupStatusResponse struct {
+	SetupRequired bool   `json:"setup_required" example:"false"`
+	Version       string `json:"version" example:"0.4.0"`
+}

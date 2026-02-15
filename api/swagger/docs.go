@@ -208,6 +208,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/setup/status": {
+            "get": {
+                "description": "Returns whether initial admin setup is needed and the server version.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check setup status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_auth.SetupStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/dispatch/agents": {
             "get": {
                 "security": [
@@ -4489,6 +4509,19 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "admin"
+                }
+            }
+        },
+        "internal_auth.SetupStatusResponse": {
+            "type": "object",
+            "properties": {
+                "setup_required": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "version": {
+                    "type": "string",
+                    "example": "0.4.0"
                 }
             }
         },

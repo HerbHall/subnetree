@@ -58,24 +58,25 @@ export async function logoutApi(refreshToken: string): Promise<void> {
   })
 }
 
+/** Response from GET /api/v1/auth/setup/status. */
+export interface SetupStatusResponse {
+  setup_required: boolean
+  version: string
+}
+
 /**
  * Check if initial setup is required (no users exist).
- * Returns true if setup is needed, false if setup is complete.
+ * Uses a clean GET endpoint instead of probing POST side effects.
  */
 export async function checkSetupRequired(): Promise<boolean> {
-  const res = await fetch(`${BASE_URL}/auth/setup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: '', email: '', password: '' }),
-  })
-  // 409 Conflict means setup is already complete
-  if (res.status === 409) {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/setup/status`)
+    if (!res.ok) {
+      return false
+    }
+    const data: SetupStatusResponse = await res.json()
+    return data.setup_required
+  } catch {
     return false
   }
-  // 400 Bad Request means setup is available (validation failed on empty fields)
-  if (res.status === 400) {
-    return true
-  }
-  // Any other response, assume setup not required
-  return false
 }

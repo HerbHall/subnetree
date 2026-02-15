@@ -19,6 +19,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('@/api/auth', () => ({
   setupApi: vi.fn(),
   loginApi: vi.fn(),
+  checkSetupRequired: vi.fn().mockResolvedValue(true),
 }))
 
 // Mock settings API
@@ -47,6 +48,14 @@ vi.mock('jwt-decode', () => ({
 
 describe('SetupPage', () => {
   const user = userEvent.setup()
+
+  /** Renders SetupPage and waits for the async setup-status check to resolve. */
+  async function renderSetupPage() {
+    render(<SetupPage />)
+    await waitFor(() => {
+      expect(screen.getByText(/welcome to subnetree/i)).toBeInTheDocument()
+    })
+  }
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -77,8 +86,8 @@ describe('SetupPage', () => {
   })
 
   describe('Step 1 - Account Creation', () => {
-    it('renders the account creation form', () => {
-      render(<SetupPage />)
+    it('renders the account creation form', async () => {
+      await renderSetupPage()
 
       expect(screen.getByText(/welcome to subnetree/i)).toBeInTheDocument()
       expect(screen.getByText(/create your administrator account/i)).toBeInTheDocument()
@@ -88,15 +97,15 @@ describe('SetupPage', () => {
       expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
     })
 
-    it('shows step indicator with step 1 active', () => {
-      render(<SetupPage />)
+    it('shows step indicator with step 1 active', async () => {
+      await renderSetupPage()
 
       const stepIndicator = screen.getByText('1').closest('div')
       expect(stepIndicator).toHaveClass('bg-primary')
     })
 
     it('validates required username', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.click(screen.getByRole('button', { name: /next/i }))
 
@@ -104,7 +113,7 @@ describe('SetupPage', () => {
     })
 
     it('validates username format', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'invalid user!')
       await user.click(screen.getByRole('button', { name: /next/i }))
@@ -113,7 +122,7 @@ describe('SetupPage', () => {
     })
 
     it('accepts valid username formats', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       const usernameInput = screen.getByLabelText(/username/i)
 
@@ -129,7 +138,7 @@ describe('SetupPage', () => {
     })
 
     it('validates required email', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.click(screen.getByRole('button', { name: /next/i }))
@@ -141,7 +150,7 @@ describe('SetupPage', () => {
     // The browser's native email input validation in happy-dom prevents form submission
     // for obviously invalid emails before our custom validation runs.
     it('validates required email before password validation', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       // Leave email empty and fill passwords
@@ -153,7 +162,7 @@ describe('SetupPage', () => {
     })
 
     it('validates password minimum length', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
@@ -164,7 +173,7 @@ describe('SetupPage', () => {
     })
 
     it('validates password confirmation matches', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
@@ -176,7 +185,7 @@ describe('SetupPage', () => {
     })
 
     it('shows password strength indicator', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       const passwordInput = screen.getByLabelText(/^password$/i)
 
@@ -191,7 +200,7 @@ describe('SetupPage', () => {
     })
 
     it('clears field error when user types', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.click(screen.getByRole('button', { name: /next/i }))
       expect(screen.getByText(/username is required/i)).toBeInTheDocument()
@@ -204,7 +213,7 @@ describe('SetupPage', () => {
       const { setupApi } = await import('@/api/auth')
       vi.mocked(setupApi).mockRejectedValue(new Error('Username already exists'))
 
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
@@ -225,7 +234,7 @@ describe('SetupPage', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       )
 
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
@@ -251,7 +260,7 @@ describe('SetupPage', () => {
     }
 
     it('advances to step 2 with valid step 1 data', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
 
       await goToStep2()
 
@@ -260,7 +269,7 @@ describe('SetupPage', () => {
     })
 
     it('shows back and next buttons', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep2()
 
       expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
@@ -268,7 +277,7 @@ describe('SetupPage', () => {
     })
 
     it('goes back to step 1 when back is clicked', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep2()
 
       await user.click(screen.getByRole('button', { name: /back/i }))
@@ -277,7 +286,7 @@ describe('SetupPage', () => {
     })
 
     it('preserves form data when going back', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep2()
       await user.click(screen.getByRole('button', { name: /back/i }))
 
@@ -301,7 +310,7 @@ describe('SetupPage', () => {
     }
 
     it('shows summary with entered data', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       expect(screen.getByText(/setup summary/i)).toBeInTheDocument()
@@ -311,7 +320,7 @@ describe('SetupPage', () => {
     })
 
     it('shows complete setup button', async () => {
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       expect(screen.getByRole('button', { name: /complete setup/i })).toBeInTheDocument()
@@ -320,7 +329,7 @@ describe('SetupPage', () => {
     it('calls setup and login APIs during step 1 to 2 transition', async () => {
       const { setupApi, loginApi } = await import('@/api/auth')
 
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       // APIs called during step 1→2 transition, not on Complete
@@ -332,7 +341,7 @@ describe('SetupPage', () => {
       const { setScanInterface } = await import('@/api/settings')
       vi.mocked(setScanInterface).mockResolvedValue({ interface_name: '' })
 
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))
@@ -349,7 +358,7 @@ describe('SetupPage', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       )
 
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))
@@ -361,7 +370,7 @@ describe('SetupPage', () => {
       const { setScanInterface } = await import('@/api/settings')
       vi.mocked(setScanInterface).mockRejectedValue(new Error('Failed to save settings'))
 
-      render(<SetupPage />)
+      await renderSetupPage()
       await goToStep3()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))

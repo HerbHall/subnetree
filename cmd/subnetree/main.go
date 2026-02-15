@@ -116,6 +116,14 @@ func main() {
 		zap.String("path", dbPath),
 	)
 
+	// Check database schema version compatibility.
+	if err := db.CheckVersion(context.Background(), version.Short()); err != nil {
+		logger.Fatal("database version check failed",
+			zap.Error(err),
+			zap.String("binary_version", version.Short()),
+		)
+	}
+
 	// Create shared services
 	bus := event.NewBus(logger.Named("event"))
 	logger.Info("event bus created", zap.String("component", "event"))

@@ -18,7 +18,7 @@
     ],
     "UserPromptSubmit": [
       {
-        "matcher": "^(?!/)",
+        "matcher": "^(?!/)(?!\\d{1,2}$)",
         "hooks": [
           {
             "type": "prompt",

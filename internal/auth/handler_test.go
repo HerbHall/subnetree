@@ -318,3 +318,46 @@ func TestWriteAuthError_Format(t *testing.T) {
 		t.Errorf("status field = %v, want %d", resp["status"], http.StatusBadRequest)
 	}
 }
+
+func TestHandleSetupStatus_NoUsers(t *testing.T) {
+	_, mux := setupHandlerEnv(t)
+
+	w := doRequest(mux, "GET", "/api/v1/auth/setup/status", nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp SetupStatusResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !resp.SetupRequired {
+		t.Error("expected setup_required=true when no users exist")
+	}
+	if resp.Version == "" {
+		t.Error("expected non-empty version")
+	}
+}
+
+func TestHandleSetupStatus_AfterSetup(t *testing.T) {
+	_, mux := setupHandlerEnv(t)
+
+	doRequest(mux, "POST", "/api/v1/auth/setup", map[string]string{
+		"username": "admin",
+		"email":    "admin@example.com",
+		"password": "securepassword",
+	})
+
+	w := doRequest(mux, "GET", "/api/v1/auth/setup/status", nil)
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp SetupStatusResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.SetupRequired {
+		t.Error("expected setup_required=false after creating admin")
+	}
+}
