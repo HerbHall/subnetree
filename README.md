@@ -120,7 +120,7 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 
 ### Discovery and Mapping
 
-- Finds every device on your network automatically (ARP + ICMP scanning with manufacturer identification)
+- Finds every device on your network automatically (ARP, ICMP, mDNS, SNMP, UPnP scanning with manufacturer identification)
 - Identifies device type, operating system, and brand from MAC addresses (OUI lookup + reverse DNS)
 - Interactive network topology map showing how devices connect
 - Full device inventory with search, categorization, and bulk operations
@@ -130,7 +130,7 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 - Tracks device health in real time with automatic alerting (OK / Warning / Critical states)
 - Alerts you when device behavior changes (statistical anomaly detection with EWMA baselines, Z-score, and CUSUM)
 - Predicts trends before problems happen (linear regression forecasting)
-- Ask questions about your network in plain English via local AI (Ollama integration)
+- Ask questions about your network in plain English via AI (Ollama, OpenAI, Anthropic -- bring your own key)
 - Plugin-extensible -- monitor anything
 
 ### Secure Credential Storage
@@ -162,10 +162,10 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 
 ### Coming Next
 
-- Enhanced discovery: UPnP, LLDP/CDP
-- Additional LLM providers: OpenAI, Anthropic
+- Enhanced discovery: LLDP/CDP
 - Multi-tenant support for MSPs
 - Tailscale integration
+- MQTT integration for IoT devices
 
 See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
 
@@ -283,12 +283,12 @@ graph TD
 | **Vault** | Encrypted credential storage |
 | **Gateway** | Browser-based remote access (SSH, HTTP proxy) |
 | **Webhook** | Event-driven webhook notifications |
-| **LLM** | AI provider integration (Ollama, optional) |
+| **LLM** | AI provider integration (Ollama, OpenAI, Anthropic) |
 | **Insight** | Statistical analytics, anomaly detection, NL queries |
 
 ### Building from Source
 
-**Prerequisites:** Go 1.25+, Node.js 22+, Make (optional)
+**Prerequisites:** Go 1.25+, Node.js 20+, Make (optional)
 
 ```bash
 # Build everything (server + frontend)
@@ -343,8 +343,9 @@ api/
 ### Roadmap
 
 - **v0.3.0** (shipped): Scout agents, mTLS, service mapping, monitoring dashboard
-- **v0.4.0** (current): mDNS discovery, metrics history, alert suppression, vault UI, Linux Scout
-- **v0.5.0** (next): LLM BYOK providers, enhanced discovery (UPnP, LLDP/CDP), multi-tenant support
+- **v0.4.0** (shipped): mDNS discovery, metrics history, alert suppression, Linux Scout
+- **v0.4.1** (current): LLM BYOK providers, UPnP discovery, maintenance windows, analytics dashboard, vault UI
+- **v0.5.0** (next): MQTT publisher, Alertmanager webhooks, CSV import/export, recommendation engine
 - **v1.0.0**: PostgreSQL, MFA, OIDC, HomeLab integrations
 
 ## License

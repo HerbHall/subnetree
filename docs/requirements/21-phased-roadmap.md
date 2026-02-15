@@ -298,7 +298,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). v0.5.0 features shipped: MkDocs site (PR #270), LLM BYOK providers (PR #271), NL query bar (PR #272), LLM settings UI (PR #273), AI recommendations (PR #274), logo integration (PR #275), power monitoring research (PR #276). Remaining: UPnP discovery, Tailscale plugin, multi-tenancy, maintenance windows, device inventory, analytics dashboard enhancements.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). v0.4.1 features shipped: MkDocs site (PR #270), LLM BYOK providers (PR #271), NL query bar (PR #272), LLM settings UI (PR #273), AI recommendations (PR #274), logo integration (PR #275), power monitoring research (PR #276), UPnP discovery (PR #292), topology enhancements (PR #293), maintenance windows (PR #294), device inventory widget (PR #295), analytics dashboard (PR #296), Docker setup fix (PR #306). Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -317,7 +317,7 @@
 
 - [x] SNMP v2c/v3 discovery (gosnmp, credential-based -- PRs #204, #205)
 - [x] mDNS/Bonjour discovery (PR #248, issue #234)
-- [ ] UPnP/SSDP discovery
+- [x] UPnP/SSDP discovery (PR #292)
 - [ ] Tailscale plugin: tailnet device discovery via Tailscale API
 - [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
 - [ ] Tailscale plugin: Tailscale IP enrichment on existing device records
@@ -325,8 +325,9 @@
 - [ ] Tailscale plugin: MagicDNS hostname resolution
 - [ ] Tailscale plugin: dashboard "Tailscale" badge on tailnet devices
 - [ ] Scout over Tailscale: document and support agent communication via Tailscale IPs
-- [ ] Topology: real-time link utilization overlay
-- [ ] Topology: custom backgrounds, saved layouts
+- [x] Topology: real-time link utilization overlay (PR #293)
+- [x] Topology: saved layouts with localStorage persistence (PR #293)
+- [ ] Topology: custom backgrounds
 
 #### Monitoring (Pulse)
 
@@ -335,7 +336,7 @@
 - [x] Dependency-aware alerting (router down suppresses downstream alerts) (PR #261, issue #236)
 - [x] Alert notifications: webhook with HMAC-SHA256 signing (PR #203; email, Slack, PagerDuty TODO)
 - [x] Metrics history and time-series graphs (PR #243, issue #235)
-- [ ] Maintenance windows (suppress alerts during scheduled work)
+- [x] Maintenance windows (suppress alerts during scheduled work) (PR #294)
 
 #### Multi-Tenancy
 
@@ -357,18 +358,18 @@
 - [x] Cross-metric correlation detection (e.g., CPU spike + packet loss on same device)
 - [ ] Alert pattern learning (reduce sensitivity for chronic false positives)
 - [x] Change-point detection (CUSUM algorithm for permanent shifts in metric behavior)
-- [ ] Dashboard: anomaly indicators on metric charts (highlight deviations from baseline)
-- [ ] Dashboard: capacity forecast warnings on device detail pages
-- [ ] Dashboard: correlated alert grouping in alert list view
+- [x] Dashboard: anomaly indicators on device detail page (PR #296)
+- [x] Dashboard: capacity forecast warnings on device detail pages (PR #296)
+- [x] Dashboard: correlated alert grouping on device detail page (PR #296)
 - [x] API: `/api/v1/analytics/anomalies` and `/api/v1/analytics/forecasts/{device_id}` endpoints
 - [ ] Performance-profile-aware: disabled on micro, basic on small, full on medium+
 
 #### Device Inventory Management (#163)
 
 - [ ] Structured inventory fields on Device model: location, category, primary_role, justification, device_policy, owner
-- [ ] Stale device detection (configurable threshold, default 30 days inactive)
+- [x] Stale device detection (configurable threshold, default 30 days inactive) (PR #295)
 - [ ] Dashboard: inventory view with category filter, sort by last seen
-- [ ] Dashboard: inventory summary widget (counts by category, stale count)
+- [x] Dashboard: inventory summary widget (counts by category, stale count) (PR #295)
 - [ ] Bulk categorization endpoint (PATCH multiple devices)
 - [ ] Policy recommendations: thin-client for portables, full-workstation for desktops
 
