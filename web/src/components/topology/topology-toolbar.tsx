@@ -11,6 +11,7 @@ import {
   GitBranch,
   LayoutGrid,
   Download,
+  FileImage,
   Activity,
   Save,
   FolderOpen,
@@ -18,6 +19,7 @@ import {
   ArrowDown,
   ArrowRight,
 } from 'lucide-react'
+import { exportTopologyAsSvg } from '@/lib/topology-export'
 import type { SavedLayout } from './layout-storage'
 import type { ElkDirection } from './elk-layout'
 
@@ -72,6 +74,7 @@ export const TopologyToolbar = memo(function TopologyToolbar({
 }: TopologyToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow()
   const [exporting, setExporting] = useState(false)
+  const [exportingSvg, setExportingSvg] = useState(false)
   const [layoutsOpen, setLayoutsOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const layoutsRef = useRef<HTMLDivElement>(null)
@@ -109,6 +112,25 @@ export const TopologyToolbar = memo(function TopologyToolbar({
       toast.error('Failed to export topology')
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleExportSvg = async () => {
+    const element = flowRef.current
+    if (!element) return
+
+    setExportingSvg(true)
+    try {
+      const date = new Date().toISOString().split('T')[0]
+      await exportTopologyAsSvg(element, {
+        filename: `subnetree-topology-${date}.svg`,
+        backgroundColor: '#1a1a2e',
+      })
+      toast.success('Topology exported as SVG')
+    } catch {
+      toast.error('Failed to export topology as SVG')
+    } finally {
+      setExportingSvg(false)
     }
   }
 
@@ -327,6 +349,17 @@ export const TopologyToolbar = memo(function TopologyToolbar({
         style={{ color: 'var(--nv-text-secondary)' }}
       >
         <Download className="h-4 w-4" />
+      </button>
+
+      {/* Export SVG */}
+      <button
+        onClick={handleExportSvg}
+        disabled={exportingSvg}
+        title="Export as SVG"
+        className="rounded-md p-1.5 transition-colors hover:bg-[var(--nv-bg-hover)] disabled:opacity-50"
+        style={{ color: 'var(--nv-text-secondary)' }}
+      >
+        <FileImage className="h-4 w-4" />
       </button>
     </div>
   )
