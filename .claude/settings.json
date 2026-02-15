@@ -6,6 +6,16 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Run /dashboard to display the session control station with project state, priorities, and available actions."
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": "^(?!/)",
