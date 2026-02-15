@@ -1,0 +1,103 @@
+site_name: SubNetree
+site_url: https://subnetree.net/
+site_description: Modular, source-available network monitoring and management platform
+repo_url: https://github.com/HerbHall/subnetree
+repo_name: HerbHall/subnetree
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: green
+    accent: teal
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: guides/getting-started.md
+      - Development Setup: guides/development-setup.md
+      - Common Tasks: guides/common-tasks.md
+  - Deployment:
+      - Tailscale Deployment: guides/tailscale-deployment.md
+      - Tailscale Funnel: guides/tailscale-funnel.md
+      - Platform Notes: guides/platform-notes.md
+  - Troubleshooting: guides/troubleshooting.md
+  - Reference:
+      - Quick Reference: QUICK_REFERENCE.md
+      - Standards: STANDARDS.md
+      - Plugin Certification: plugin-certification.md
+  - Architecture:
+      - ADR-0001 Split Licensing Model: adr/0001-split-licensing-model.md
+      - ADR-0002 SQLite-First Database: adr/0002-sqlite-first-database.md
+      - ADR-0003 Plugin Architecture: adr/0003-plugin-architecture-caddy-model.md
+      - ADR-0004 Integer Protocol Versioning: adr/0004-integer-protocol-versioning.md
+      - ADR-0005 Hugo Website: adr/0005-hugo-website-github-pages.md
+      - ADR-0006 Architecture Patterns: adr/0006-architecture-pattern-adoption.md
+  - Requirements:
+      - Overview: requirements/README.md
+      - Product Vision: requirements/01-product-vision.md
+      - Architecture Overview: requirements/02-architecture-overview.md
+      - Technology Stack: requirements/03-technology-stack.md
+      - Plugin Architecture: requirements/04-plugin-architecture.md
+      - Event System: requirements/05-event-system.md
+      - Database Layer: requirements/06-database-layer.md
+      - Authentication: requirements/07-authentication.md
+      - Scout Agent: requirements/08-scout-agent.md
+      - Tailscale Integration: requirements/09-tailscale-integration.md
+      - Data Model: requirements/10-data-model.md
+      - API Design: requirements/11-api-design.md
+      - Brand Identity: requirements/12-brand-identity.md
+      - Dashboard Architecture: requirements/13-dashboard-architecture.md
+      - Topology Visualization: requirements/14-topology-visualization.md
+      - Credential Vault: requirements/15-credential-vault.md
+      - Observability: requirements/16-observability.md
+      - AI Analytics: requirements/17-ai-analytics.md
+      - Testing Strategy: requirements/18-testing-strategy.md
+      - Deployment: requirements/19-deployment.md
+      - Project Infrastructure: requirements/20-project-infrastructure.md
+      - Phased Roadmap: requirements/21-phased-roadmap.md
+      - Competitive Positioning: requirements/22-competitive-positioning.md
+      - Commercialization: requirements/23-commercialization.md
+      - System Requirements: requirements/24-system-requirements.md
+      - Operations & Maintenance: requirements/25-operations-maintenance.md
+      - Release & Distribution: requirements/26-release-distribution.md
+      - Non-Functional Requirements: requirements/27-non-functional-requirements.md
+      - Documentation Requirements: requirements/28-documentation-requirements.md
+  - Releases:
+      - v0.2.1: releases/v0.2.1.md
+      - v0.2.0: releases/v0.2.0.md
+      - v0.1.0-alpha: releases/v0.1.0-alpha.md

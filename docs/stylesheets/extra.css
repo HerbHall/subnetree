@@ -1,0 +1,26 @@
+/* SubNetree brand overrides for MkDocs Material */
+
+:root {
+  --md-primary-fg-color: #2E7D32;
+  --md-primary-fg-color--light: #4CAF50;
+  --md-primary-fg-color--dark: #1B5E20;
+  --md-accent-fg-color: #009688;
+}
+
+/* Task list checkbox styling */
+.md-typeset .task-list-indicator::before {
+  background-color: var(--md-primary-fg-color);
+}
+
+.md-typeset [type="checkbox"]:checked + .task-list-indicator::before {
+  background-color: var(--md-primary-fg-color);
+}
+
+/* Code block tweaks */
+.md-typeset pre > code {
+  border-radius: 6px;
+}
+
+.md-typeset code {
+  border-radius: 3px;
+}
