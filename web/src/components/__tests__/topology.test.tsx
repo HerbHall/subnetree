@@ -40,6 +40,7 @@ vi.mock('@xyflow/react', () => ({
   useNodesState: (init: unknown[]) => [init, vi.fn(), vi.fn()],
   useEdgesState: (init: unknown[]) => [init, vi.fn(), vi.fn()],
   getSmoothStepPath: () => ['M0,0 L100,100', 50, 50],
+  getBezierPath: () => ['M0,0 C50,0 50,100 100,100', 50, 50],
 }))
 
 // Mock html-to-image
@@ -591,6 +592,12 @@ describe('TopologyToolbar', () => {
     showMinimap: false,
     onMinimapToggle: vi.fn(),
     flowRef: { current: document.createElement('div') },
+    showUtilization: false,
+    onUtilizationToggle: vi.fn(),
+    savedLayouts: [] as import('@/components/topology/layout-storage').SavedLayout[],
+    onSaveLayout: vi.fn(),
+    onLoadLayout: vi.fn(),
+    onDeleteLayout: vi.fn(),
   }
 
   beforeEach(() => {
