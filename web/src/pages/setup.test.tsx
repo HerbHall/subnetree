@@ -36,6 +36,11 @@ vi.mock('@/api/settings', () => ({
   setScanInterface: vi.fn().mockResolvedValue({ interface_name: '' }),
 }))
 
+// Mock themes API
+vi.mock('@/api/themes', () => ({
+  setActiveTheme: vi.fn().mockResolvedValue({}),
+}))
+
 // Mock jwt-decode
 vi.mock('jwt-decode', () => ({
   jwtDecode: () => ({
@@ -295,23 +300,46 @@ describe('SetupPage', () => {
     })
   })
 
-  describe('Step 3 - Summary and Complete', () => {
+  describe('Step 3 - Theme Preference', () => {
     async function goToStep3() {
       await user.type(screen.getByLabelText(/username/i), 'admin')
       await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
       await user.type(screen.getByLabelText(/^password$/i), 'password123')
       await user.type(screen.getByLabelText(/confirm password/i), 'password123')
       await user.click(screen.getByRole('button', { name: /next/i }))
-      // Wait for async step 1→2 transition (setupApi + loginApi)
       await waitFor(() => {
         expect(screen.getByText(/configure network scanning/i)).toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: /next/i }))
     }
 
-    it('shows summary with entered data', async () => {
+    it('shows theme selection step', async () => {
       await renderSetupPage()
       await goToStep3()
+
+      expect(screen.getByText(/choose your preferred appearance/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('Step 4 - Summary and Complete', () => {
+    async function goToStep4() {
+      await user.type(screen.getByLabelText(/username/i), 'admin')
+      await user.type(screen.getByLabelText(/email/i), 'admin@test.com')
+      await user.type(screen.getByLabelText(/^password$/i), 'password123')
+      await user.type(screen.getByLabelText(/confirm password/i), 'password123')
+      await user.click(screen.getByRole('button', { name: /next/i }))
+      await waitFor(() => {
+        expect(screen.getByText(/configure network scanning/i)).toBeInTheDocument()
+      })
+      // Step 2 -> Step 3 (Theme)
+      await user.click(screen.getByRole('button', { name: /next/i }))
+      // Step 3 -> Step 4 (Summary)
+      await user.click(screen.getByRole('button', { name: /next/i }))
+    }
+
+    it('shows summary with entered data', async () => {
+      await renderSetupPage()
+      await goToStep4()
 
       expect(screen.getByText(/setup summary/i)).toBeInTheDocument()
       expect(screen.getByText('admin')).toBeInTheDocument()
@@ -321,7 +349,7 @@ describe('SetupPage', () => {
 
     it('shows complete setup button', async () => {
       await renderSetupPage()
-      await goToStep3()
+      await goToStep4()
 
       expect(screen.getByRole('button', { name: /complete setup/i })).toBeInTheDocument()
     })
@@ -330,7 +358,7 @@ describe('SetupPage', () => {
       const { setupApi, loginApi } = await import('@/api/auth')
 
       await renderSetupPage()
-      await goToStep3()
+      await goToStep4()
 
       // APIs called during step 1→2 transition, not on Complete
       expect(setupApi).toHaveBeenCalledWith('admin', 'admin@test.com', 'password123')
@@ -342,7 +370,7 @@ describe('SetupPage', () => {
       vi.mocked(setScanInterface).mockResolvedValue({ interface_name: '' })
 
       await renderSetupPage()
-      await goToStep3()
+      await goToStep4()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))
 
@@ -359,7 +387,7 @@ describe('SetupPage', () => {
       )
 
       await renderSetupPage()
-      await goToStep3()
+      await goToStep4()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))
 
@@ -371,7 +399,7 @@ describe('SetupPage', () => {
       vi.mocked(setScanInterface).mockRejectedValue(new Error('Failed to save settings'))
 
       await renderSetupPage()
-      await goToStep3()
+      await goToStep4()
 
       await user.click(screen.getByRole('button', { name: /complete setup/i }))
 
