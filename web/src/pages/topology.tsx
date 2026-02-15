@@ -8,6 +8,7 @@ import {
   Panel,
   type NodeTypes,
   type EdgeTypes,
+  type Edge,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
@@ -30,6 +31,7 @@ import {
   TopologyEdge as TopologyEdgeComponent,
   type TopologyEdgeType,
 } from '@/components/topology/topology-edge'
+import { UtilizationEdge } from '@/components/topology/utilization-edge'
 import {
   TopologyToolbar,
   type LayoutAlgorithm,
@@ -37,6 +39,14 @@ import {
 import { TopologyFilters } from '@/components/topology/topology-filters'
 import { NodeDetailPanel } from '@/components/topology/node-detail-panel'
 import { EdgeInfoPopover } from '@/components/topology/edge-info-popover'
+import {
+  saveLayout as saveLayoutToStorage,
+  loadLayout as loadLayoutFromStorage,
+  listLayouts,
+  deleteLayout as deleteLayoutFromStorage,
+  applyLayout as applyLayoutPositions,
+  type SavedLayout,
+} from '@/components/topology/layout-storage'
 import type {
   TopologyNode as APINode,
   TopologyEdge as APIEdge,
@@ -46,7 +56,11 @@ import type {
 
 // Register custom node & edge types outside the component to avoid re-creation
 const nodeTypes: NodeTypes = { device: DeviceNode }
-const edgeTypes: EdgeTypes = { topology: TopologyEdgeComponent }
+const defaultEdgeTypes: EdgeTypes = { topology: TopologyEdgeComponent }
+const utilizationEdgeTypes: EdgeTypes = {
+  topology: TopologyEdgeComponent,
+  utilization: UtilizationEdge,
+}
 
 const ALL_STATUSES: DeviceStatus[] = ['online', 'offline', 'degraded', 'unknown']
 
@@ -106,7 +120,6 @@ function hierarchicalLayout(
 ): DeviceNodeType[] {
   if (nodes.length === 0) return []
 
-  // Build adjacency list
   const adjacency = new Map<string, string[]>()
   for (const n of nodes) {
     adjacency.set(n.id, [])
@@ -116,11 +129,9 @@ function hierarchicalLayout(
     adjacency.get(e.target)?.push(e.source)
   }
 
-  // Find root nodes: routers, switches, firewalls first
   const infraTypes = new Set(['router', 'switch', 'firewall', 'access_point'])
   const roots = nodes.filter((n) => infraTypes.has(n.device_type))
 
-  // If no infrastructure nodes, pick the most connected node
   if (roots.length === 0) {
     const sorted = [...nodes].sort(
       (a, b) =>
@@ -130,7 +141,6 @@ function hierarchicalLayout(
     roots.push(sorted[0])
   }
 
-  // BFS to assign layers
   const layers = new Map<string, number>()
   const queue: string[] = []
   for (const r of roots) {
@@ -152,14 +162,12 @@ function hierarchicalLayout(
     }
   }
 
-  // Assign layers to any disconnected nodes
   for (const n of nodes) {
     if (!layers.has(n.id)) {
       layers.set(n.id, 0)
     }
   }
 
-  // Group nodes by layer
   const layerGroups = new Map<number, APINode[]>()
   for (const n of nodes) {
     const layer = layers.get(n.id) ?? 0
@@ -192,13 +200,9 @@ function hierarchicalLayout(
   })
 }
 
-/**
- * Grid layout: arrange nodes in an even grid, grouped by device type.
- */
 function gridLayout(nodes: APINode[]): DeviceNodeType[] {
   if (nodes.length === 0) return []
 
-  // Sort by device type then label for consistent ordering
   const sorted = [...nodes].sort((a, b) => {
     const typeCmp = a.device_type.localeCompare(b.device_type)
     if (typeCmp !== 0) return typeCmp
@@ -227,7 +231,6 @@ function gridLayout(nodes: APINode[]): DeviceNodeType[] {
   }))
 }
 
-/** Convert API edges to React Flow edge format. */
 function toFlowEdges(edges: APIEdge[]): TopologyEdgeType[] {
   return edges.map(
     (e): TopologyEdgeType => ({
@@ -240,8 +243,7 @@ function toFlowEdges(edges: APIEdge[]): TopologyEdgeType[] {
   )
 }
 
-/** Apply a layout algorithm to nodes. */
-function applyLayout(
+function applyAlgorithmLayout(
   algorithm: LayoutAlgorithm,
   nodes: APINode[],
   edges: APIEdge[]
@@ -257,7 +259,6 @@ function applyLayout(
   }
 }
 
-/** Check if a topology node matches a search query. */
 function nodeMatchesSearch(node: APINode, query: string): boolean {
   const q = query.toLowerCase()
   if (node.label.toLowerCase().includes(q)) return true
@@ -274,8 +275,11 @@ function nodeMatchesSearch(node: APINode, query: string): boolean {
 export function TopologyPage() {
   const [layout, setLayout] = useState<LayoutAlgorithm>('circular')
   const [showMinimap, setShowMinimap] = useState(false)
+  const [showUtilization, setShowUtilization] = useState(false)
+  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => listLayouts())
 
-  // Filter state
+  const edgeTypes = showUtilization ? utilizationEdgeTypes : defaultEdgeTypes
+
   const [statusFilter, setStatusFilter] = useState<Set<DeviceStatus>>(
     () => new Set(ALL_STATUSES)
   )
@@ -283,95 +287,68 @@ export function TopologyPage() {
   const [typeFilterInitialized, setTypeFilterInitialized] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Selection state
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdgeState | null>(null)
 
-  const {
-    data: topology,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  const { data: topology, isLoading, error, refetch } = useQuery({
     queryKey: ['topology'],
     queryFn: getTopology,
   })
 
-  // Initialize type filter when data loads (all types enabled by default)
   const presentTypes = useMemo(() => {
     if (!topology) return []
     const types = new Set<DeviceType>()
-    for (const n of topology.nodes) {
-      types.add(n.device_type)
-    }
+    for (const n of topology.nodes) { types.add(n.device_type) }
     return Array.from(types).sort()
   }, [topology])
 
-  // Initialize type filter to include all present types when data first loads
   if (presentTypes.length > 0 && !typeFilterInitialized) {
     setTypeFilter(new Set(presentTypes))
     setTypeFilterInitialized(true)
   }
 
-  // Build a lookup of API nodes by id for filter/search checks
   const apiNodeMap = useMemo(() => {
     if (!topology) return new Map<string, APINode>()
     const map = new Map<string, APINode>()
-    for (const n of topology.nodes) {
-      map.set(n.id, n)
-    }
+    for (const n of topology.nodes) { map.set(n.id, n) }
     return map
   }, [topology])
 
-  // Build a lookup of API edges by id
   const apiEdgeMap = useMemo(() => {
     if (!topology) return new Map<string, APIEdge>()
     const map = new Map<string, APIEdge>()
-    for (const e of topology.edges) {
-      map.set(e.id, e)
-    }
+    for (const e of topology.edges) { map.set(e.id, e) }
     return map
   }, [topology])
 
-  // Resolve the selected API node for the detail panel
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null
     return apiNodeMap.get(selectedNodeId) ?? null
   }, [selectedNodeId, apiNodeMap])
 
-  // Determine which node IDs are hidden by filters
   const hiddenNodeIds = useMemo(() => {
     const hidden = new Set<string>()
     for (const [id, node] of apiNodeMap) {
-      if (!statusFilter.has(node.status)) {
-        hidden.add(id)
-      } else if (!typeFilter.has(node.device_type)) {
-        hidden.add(id)
-      }
+      if (!statusFilter.has(node.status)) { hidden.add(id) }
+      else if (!typeFilter.has(node.device_type)) { hidden.add(id) }
     }
     return hidden
   }, [apiNodeMap, statusFilter, typeFilter])
 
-  // Determine which node IDs match the search
   const searchMatchIds = useMemo(() => {
-    if (!searchQuery.trim()) return null // null = no search active
+    if (!searchQuery.trim()) return null
     const matches = new Set<string>()
     for (const [id, node] of apiNodeMap) {
-      if (nodeMatchesSearch(node, searchQuery.trim())) {
-        matches.add(id)
-      }
+      if (nodeMatchesSearch(node, searchQuery.trim())) { matches.add(id) }
     }
     return matches
   }, [apiNodeMap, searchQuery])
 
-  // Transform API data to React Flow format using the selected layout
   const layoutNodes = useMemo<DeviceNodeType[]>(
-    () =>
-      topology ? applyLayout(layout, topology.nodes, topology.edges) : [],
+    () => topology ? applyAlgorithmLayout(layout, topology.nodes, topology.edges) : [],
     [topology, layout]
   )
 
-  // Apply filter/search state to nodes
   const initialNodes = useMemo<DeviceNodeType[]>(() => {
     return layoutNodes.map((node) => ({
       ...node,
@@ -384,59 +361,69 @@ export function TopologyPage() {
     }))
   }, [layoutNodes, hiddenNodeIds, searchMatchIds])
 
-  // Apply filter state to edges (hide if either endpoint is hidden)
-  const initialEdges = useMemo<TopologyEdgeType[]>(() => {
+  const initialEdges = useMemo<Edge[]>(() => {
     if (!topology) return []
+    if (showUtilization) {
+      return topology.edges.map((e): Edge => {
+        const hash = e.id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+        const utilization = e.speed
+          ? Math.min(100, Math.round((e.speed / 10000) * 100))
+          : hash % 101
+        return {
+          id: e.id, source: e.source, target: e.target, type: 'utilization',
+          data: { utilization, speed: e.speed, linkType: e.link_type },
+          hidden: hiddenNodeIds.has(e.source) || hiddenNodeIds.has(e.target),
+        }
+      })
+    }
     return toFlowEdges(topology.edges).map((edge) => ({
       ...edge,
       hidden: hiddenNodeIds.has(edge.source) || hiddenNodeIds.has(edge.target),
     }))
-  }, [topology, hiddenNodeIds])
+  }, [topology, hiddenNodeIds, showUtilization])
 
   const visibleCount = useMemo(
     () => initialNodes.filter((n) => !n.hidden).length,
     [initialNodes]
   )
 
-  // React Flow state -- allows drag-to-reposition
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<DeviceNodeType>(initialNodes)
-  const [edges, setEdges, onEdgesChangeRaw] = useEdgesState<TopologyEdgeType>(initialEdges)
+  const [edges, setEdges, onEdgesChangeRaw] = useEdgesState(initialEdges)
 
-  // Sync React Flow state when layout/filters/data change
-  useEffect(() => {
-    setNodes(initialNodes)
-  }, [initialNodes, setNodes])
-
-  useEffect(() => {
-    setEdges(initialEdges)
-  }, [initialEdges, setEdges])
+  useEffect(() => { setNodes(initialNodes) }, [initialNodes, setNodes])
+  useEffect(() => { setEdges(initialEdges) }, [initialEdges, setEdges])
 
   const onNodesChange: OnNodesChange<DeviceNodeType> = useCallback(
-    (changes) => onNodesChangeRaw(changes),
-    [onNodesChangeRaw]
+    (changes) => onNodesChangeRaw(changes), [onNodesChangeRaw]
+  )
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => onEdgesChangeRaw(changes), [onEdgesChangeRaw]
   )
 
-  const onEdgesChange: OnEdgesChange<TopologyEdgeType> = useCallback(
-    (changes) => onEdgesChangeRaw(changes),
-    [onEdgesChangeRaw]
-  )
+  const handleLayoutChange = useCallback((newLayout: LayoutAlgorithm) => { setLayout(newLayout) }, [])
+  const handleMinimapToggle = useCallback(() => { setShowMinimap((prev) => !prev) }, [])
+  const handleUtilizationToggle = useCallback(() => { setShowUtilization((prev) => !prev) }, [])
 
-  const handleLayoutChange = useCallback((newLayout: LayoutAlgorithm) => {
-    setLayout(newLayout)
-  }, [])
+  const handleSaveLayout = useCallback((name: string) => {
+    saveLayoutToStorage(name, nodes.map((n) => ({ id: n.id, position: n.position })))
+    setSavedLayouts(listLayouts())
+  }, [nodes])
 
-  const handleMinimapToggle = useCallback(() => {
-    setShowMinimap((prev) => !prev)
+  const handleLoadLayout = useCallback((id: string) => {
+    const saved = loadLayoutFromStorage(id)
+    if (!saved) return
+    setNodes((current) => applyLayoutPositions(current, saved))
+  }, [setNodes])
+
+  const handleDeleteLayout = useCallback((id: string) => {
+    deleteLayoutFromStorage(id)
+    setSavedLayouts(listLayouts())
   }, [])
 
   const handleStatusFilterChange = useCallback((status: DeviceStatus) => {
     setStatusFilter((prev) => {
       const next = new Set(prev)
-      if (next.has(status)) {
-        next.delete(status)
-      } else {
-        next.add(status)
-      }
+      if (next.has(status)) { next.delete(status) } else { next.add(status) }
       return next
     })
   }, [])
@@ -444,18 +431,12 @@ export function TopologyPage() {
   const handleTypeFilterChange = useCallback((type: DeviceType) => {
     setTypeFilter((prev) => {
       const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
-      } else {
-        next.add(type)
-      }
+      if (next.has(type)) { next.delete(type) } else { next.add(type) }
       return next
     })
   }, [])
 
-  const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query)
-  }, [])
+  const handleSearchChange = useCallback((query: string) => { setSearchQuery(query) }, [])
 
   const handleFilterReset = useCallback(() => {
     setStatusFilter(new Set(ALL_STATUSES))
@@ -463,66 +444,44 @@ export function TopologyPage() {
     setSearchQuery('')
   }, [presentTypes])
 
-  // Node click: show detail panel
   const handleNodeClick: NodeMouseHandler<DeviceNodeType> = useCallback(
-    (_event, node) => {
-      setSelectedNodeId(node.id)
-      setSelectedEdge(null)
-    },
-    []
+    (_event, node) => { setSelectedNodeId(node.id); setSelectedEdge(null) }, []
   )
 
-  // Edge click: show info popover near click position
-  const handleEdgeClick: EdgeMouseHandler<TopologyEdgeType> = useCallback(
+  const handleEdgeClick: EdgeMouseHandler = useCallback(
     (event, edge) => {
       const apiEdge = apiEdgeMap.get(edge.id)
       const sourceNode = apiNodeMap.get(edge.source)
       const targetNode = apiNodeMap.get(edge.target)
-
+      const edgeData = edge.data as Record<string, unknown> | undefined
       setSelectedEdge({
         id: edge.id,
         sourceLabel: sourceNode?.label || edge.source,
         targetLabel: targetNode?.label || edge.target,
-        linkType: apiEdge?.link_type || edge.data?.linkType || '',
+        linkType: apiEdge?.link_type || (edgeData?.linkType as string) || '',
         speed: apiEdge?.speed,
         position: { x: event.clientX, y: event.clientY },
       })
       setSelectedNodeId(null)
-    },
-    [apiEdgeMap, apiNodeMap]
+    }, [apiEdgeMap, apiNodeMap]
   )
 
-  // Pane click: dismiss all selections
-  const handlePaneClick = useCallback(() => {
-    setSelectedNodeId(null)
-    setSelectedEdge(null)
-  }, [])
+  const handlePaneClick = useCallback(() => { setSelectedNodeId(null); setSelectedEdge(null) }, [])
+  const handleNodeDetailClose = useCallback(() => { setSelectedNodeId(null) }, [])
+  const handleEdgePopoverDismiss = useCallback(() => { setSelectedEdge(null) }, [])
 
-  const handleNodeDetailClose = useCallback(() => {
-    setSelectedNodeId(null)
-  }, [])
-
-  const handleEdgePopoverDismiss = useCallback(() => {
-    setSelectedEdge(null)
-  }, [])
-
-  // Ref for the React Flow viewport container (used for PNG export)
   const flowRef = useRef<HTMLDivElement>(null)
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="h-[calc(100vh-4rem)] w-full relative rounded-lg border bg-muted/10">
-        {/* Toolbar skeleton */}
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
           <Skeleton className="h-10 w-64 rounded-lg" />
         </div>
-        {/* Filter panel skeleton */}
         <div className="absolute top-4 left-4 z-10 space-y-2">
           <Skeleton className="h-8 w-48 rounded-lg" />
           <Skeleton className="h-6 w-36 rounded-lg" />
         </div>
-        {/* Topology node skeletons arranged in a circle pattern */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative w-[400px] h-[400px]">
             {[...Array(6)].map((_, i) => {
@@ -530,14 +489,9 @@ export function TopologyPage() {
               const x = 175 + 150 * Math.cos(angle)
               const y = 175 + 150 * Math.sin(angle)
               return (
-                <Skeleton
-                  key={i}
-                  className="absolute h-12 w-12 rounded-lg"
-                  style={{ left: `${x}px`, top: `${y}px` }}
-                />
+                <Skeleton key={i} className="absolute h-12 w-12 rounded-lg" style={{ left: `${x}px`, top: `${y}px` }} />
               )
             })}
-            {/* Center loading indicator */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -550,7 +504,6 @@ export function TopologyPage() {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -571,7 +524,6 @@ export function TopologyPage() {
     )
   }
 
-  // Empty state
   if (!topology || topology.nodes.length === 0) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -582,9 +534,7 @@ export function TopologyPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Run a network scan to discover devices and build your topology map.
             </p>
-            <Button asChild>
-              <a href="/dashboard">Scan Network</a>
-            </Button>
+            <Button asChild><a href="/dashboard">Scan Network</a></Button>
           </CardContent>
         </Card>
       </div>
@@ -594,80 +544,40 @@ export function TopologyPage() {
   return (
     <div ref={flowRef} className="h-[calc(100vh-4rem)] w-full relative">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        onEdgeClick={handleEdgeClick}
-        onPaneClick={handlePaneClick}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        minZoom={0.1}
-        maxZoom={4}
-        fitView
+        nodes={nodes} edges={edges}
+        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick} onEdgeClick={handleEdgeClick} onPaneClick={handlePaneClick}
+        nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+        minZoom={0.1} maxZoom={4} fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         proOptions={{ hideAttribution: true }}
-        className="rounded-lg"
-        style={{ backgroundColor: 'var(--nv-bg-surface)' }}
+        className="rounded-lg" style={{ backgroundColor: 'var(--nv-bg-surface)' }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="var(--nv-border-subtle)"
-        />
-        <Controls
-          showInteractive={false}
-          className="!bg-[var(--nv-bg-card)] !border-[var(--nv-border-default)] !shadow-md [&>button]:!bg-[var(--nv-bg-card)] [&>button]:!border-[var(--nv-border-subtle)] [&>button]:!fill-[var(--nv-text-secondary)] [&>button:hover]:!bg-[var(--nv-bg-hover)]"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--nv-border-subtle)" />
+        <Controls showInteractive={false} className="!bg-[var(--nv-bg-card)] !border-[var(--nv-border-default)] !shadow-md [&>button]:!bg-[var(--nv-bg-card)] [&>button]:!border-[var(--nv-border-subtle)] [&>button]:!fill-[var(--nv-text-secondary)] [&>button:hover]:!bg-[var(--nv-bg-hover)]" />
         {showMinimap && (
-          <MiniMap
-            nodeStrokeWidth={3}
-            style={{
-              backgroundColor: 'var(--nv-bg-card)',
-              border: '1px solid var(--nv-border-default)',
-            }}
-            maskColor="rgba(0, 0, 0, 0.3)"
-          />
+          <MiniMap nodeStrokeWidth={3} style={{ backgroundColor: 'var(--nv-bg-card)', border: '1px solid var(--nv-border-default)' }} maskColor="rgba(0, 0, 0, 0.3)" />
         )}
         <Panel position="top-center">
           <TopologyToolbar
-            layout={layout}
-            onLayoutChange={handleLayoutChange}
-            showMinimap={showMinimap}
-            onMinimapToggle={handleMinimapToggle}
-            flowRef={flowRef}
+            layout={layout} onLayoutChange={handleLayoutChange}
+            showMinimap={showMinimap} onMinimapToggle={handleMinimapToggle} flowRef={flowRef}
+            showUtilization={showUtilization} onUtilizationToggle={handleUtilizationToggle}
+            savedLayouts={savedLayouts} onSaveLayout={handleSaveLayout}
+            onLoadLayout={handleLoadLayout} onDeleteLayout={handleDeleteLayout}
           />
         </Panel>
         <Panel position="top-left">
           <TopologyFilters
-            nodes={topology.nodes}
-            statusFilter={statusFilter}
-            onStatusFilterChange={handleStatusFilterChange}
-            typeFilter={typeFilter}
-            onTypeFilterChange={handleTypeFilterChange}
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            onReset={handleFilterReset}
-            visibleCount={visibleCount}
+            nodes={topology.nodes} statusFilter={statusFilter} onStatusFilterChange={handleStatusFilterChange}
+            typeFilter={typeFilter} onTypeFilterChange={handleTypeFilterChange}
+            searchQuery={searchQuery} onSearchChange={handleSearchChange}
+            onReset={handleFilterReset} visibleCount={visibleCount}
           />
         </Panel>
       </ReactFlow>
-
-      {/* Node detail sidebar */}
-      {selectedNode && (
-        <NodeDetailPanel node={selectedNode} onClose={handleNodeDetailClose} />
-      )}
-
-      {/* Edge info popover */}
-      {selectedEdge && (
-        <EdgeInfoPopover
-          edge={selectedEdge}
-          position={selectedEdge.position}
-          onDismiss={handleEdgePopoverDismiss}
-        />
-      )}
+      {selectedNode && <NodeDetailPanel node={selectedNode} onClose={handleNodeDetailClose} />}
+      {selectedEdge && <EdgeInfoPopover edge={selectedEdge} position={selectedEdge.position} onDismiss={handleEdgePopoverDismiss} />}
     </div>
   )
 }
