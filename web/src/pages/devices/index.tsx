@@ -77,13 +77,20 @@ const CATEGORY_OPTIONS = [
   'other',
 ]
 
+const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+function isDeviceStale(lastSeen: string): boolean {
+  if (!lastSeen) return false
+  return new Date().getTime() - new Date(lastSeen).getTime() > STALE_THRESHOLD_MS
+}
+
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const activeScan = useScanStore((s) => s.activeScan)
 
   // State from URL params or defaults
-  const statusFilter = (searchParams.get('status') as DeviceStatus | 'all') || 'all'
+  const statusFilter = (searchParams.get('status') as DeviceStatus | 'all' | 'stale') || 'all'
   const typeFilter = (searchParams.get('type') as DeviceType | 'all') || 'all'
   const categoryFilter = searchParams.get('category') || 'all'
   const ownerFilter = searchParams.get('owner') || 'all'
@@ -123,7 +130,7 @@ export function DevicesPage() {
       listDevices({
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        status: statusFilter !== 'all' && statusFilter !== 'stale' ? statusFilter : undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined,
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
         owner: ownerFilter !== 'all' ? ownerFilter : undefined,
@@ -252,12 +259,19 @@ export function DevicesPage() {
   const devices = useMemo(() => deviceList?.devices || [], [deviceList?.devices])
   const totalDevices = deviceList?.total || 0
 
-  // Client-side search filtering (search is not a server-side param here)
+  // Client-side search and stale filtering
   const filteredDevices = useMemo(() => {
-    if (!searchQuery) return devices
+    let result = devices
+
+    // Filter by stale status (client-side only)
+    if (statusFilter === 'stale') {
+      result = result.filter((d) => isDeviceStale(d.last_seen))
+    }
+
+    if (!searchQuery) return result
 
     const query = searchQuery.toLowerCase()
-    return devices.filter(
+    return result.filter(
       (d) =>
         d.hostname?.toLowerCase().includes(query) ||
         d.ip_addresses?.some((ip) => ip.includes(query)) ||
@@ -266,7 +280,7 @@ export function DevicesPage() {
         d.owner?.toLowerCase().includes(query) ||
         d.location?.toLowerCase().includes(query)
     )
-  }, [devices, searchQuery])
+  }, [devices, searchQuery, statusFilter])
 
   // Client-side sorting
   const sortedDevices = useMemo(() => {
@@ -489,6 +503,13 @@ export function DevicesPage() {
               status="offline"
               active={statusFilter === 'offline'}
               onClick={() => updateFilter('status', 'offline')}
+            />
+            <StatusPill
+              label="Stale"
+              count={inventorySummary?.stale_count ?? 0}
+              stale
+              active={statusFilter === 'stale'}
+              onClick={() => updateFilter('status', 'stale')}
             />
           </div>
 
@@ -744,7 +765,15 @@ export function DevicesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={device.status} />
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={device.status} />
+                        {isDeviceStale(device.last_seen) && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <AlertTriangle className="h-3 w-3" />
+                            Stale
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Button
@@ -1130,12 +1159,14 @@ function StatusPill({
   label,
   count,
   status,
+  stale,
   active,
   onClick,
 }: {
   label: string
   count: number
   status?: DeviceStatus
+  stale?: boolean
   active: boolean
   onClick: () => void
 }) {
@@ -1157,6 +1188,7 @@ function StatusPill({
       )}
     >
       {status && <span className={cn('h-1.5 w-1.5 rounded-full', colors[status])} />}
+      {stale && <AlertTriangle className="h-3 w-3" />}
       {label}
       <span className="opacity-60">({count})</span>
     </button>

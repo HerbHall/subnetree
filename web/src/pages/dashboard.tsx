@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { NLQueryBar } from '@/components/nl-query-bar'
 import { RecommendationsWidget } from '@/components/insight/recommendations'
+import { InventorySummaryWidget } from '@/components/dashboard/inventory-summary'
 
 const REFRESH_OPTIONS = [
   { label: '15s', value: 15 * 1000 },
@@ -550,6 +551,9 @@ export function DashboardPage() {
 
       {/* AI Recommendations */}
       <RecommendationsWidget />
+
+      {/* Device Inventory Summary */}
+      <InventorySummaryWidget />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
