@@ -193,7 +193,7 @@ func (s *SQLiteStore) ensureSchemaMetaTable(ctx context.Context) error {
 
 // normalizeVersion ensures the version string has a "v" prefix for semver comparison.
 func normalizeVersion(v string) string {
-	if len(v) > 0 && v[0] != 'v' {
+	if v != "" && v[0] != 'v' {
 		return "v" + v
 	}
 	return v
