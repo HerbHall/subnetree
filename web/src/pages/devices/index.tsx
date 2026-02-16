@@ -103,7 +103,7 @@ export function DevicesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('ip')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [pageSize, setPageSize] = useState(100)
+  const [pageSize, setPageSize] = useState(256)
   const [currentPage, setCurrentPage] = useState(1)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
