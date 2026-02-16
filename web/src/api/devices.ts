@@ -149,6 +149,15 @@ export async function getScan(id: string): Promise<Scan> {
   return api.get<Scan>(`/recon/scans/${id}`)
 }
 
+/**
+ * List recent scans for health metrics (sparkline, duration stats).
+ * Fetches up to 50 scans to compute trends over the requested range.
+ * @param _range Time range hint (unused by API, kept for future filtering)
+ */
+export async function listScanMetrics(_range = '7d'): Promise<Scan[]> {
+  return api.get<Scan[]>('/recon/scans?limit=50&offset=0')
+}
+
 // ============================================================================
 // Inventory Management
 // ============================================================================

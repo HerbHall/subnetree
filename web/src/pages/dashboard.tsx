@@ -40,6 +40,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { NLQueryBar } from '@/components/nl-query-bar'
 import { RecommendationsWidget } from '@/components/insight/recommendations'
 import { InventorySummaryWidget } from '@/components/dashboard/inventory-summary'
+import { ScanHealthWidget } from '@/components/dashboard/scan-health-widget'
 
 const REFRESH_OPTIONS = [
   { label: '15s', value: 15 * 1000 },
@@ -448,6 +449,9 @@ export function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Scan Health Widget */}
+      <ScanHealthWidget />
 
       {/* Fleet Utilization Widget */}
       <Card>
