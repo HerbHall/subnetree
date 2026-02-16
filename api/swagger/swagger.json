@@ -2921,6 +2921,37 @@
                 }
             }
         },
+        "/recon/metrics/health-score": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a 0-100 health score based on scan success rate, duration stability, device count stability, and other factors.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get health score",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.HealthScoreResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/metrics/raw": {
             "get": {
                 "security": [
@@ -5946,6 +5977,40 @@
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_recon.HealthScoreFactor": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "weight": {
+                    "type": "number"
+                }
+            }
+        },
+        "internal_recon.HealthScoreResponse": {
+            "type": "object",
+            "properties": {
+                "factors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_recon.HealthScoreFactor"
+                    }
+                },
+                "grade": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
                 }
             }
         },

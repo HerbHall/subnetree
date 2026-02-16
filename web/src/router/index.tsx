@@ -51,6 +51,9 @@ const DocumentationPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/pages/settings').then((m) => ({ default: m.SettingsPage }))
 )
+const ScanAnalyticsPage = lazy(() =>
+  import('@/pages/scan-analytics').then((m) => ({ default: m.ScanAnalyticsPage }))
+)
 const AboutPage = lazy(() =>
   import('@/pages/about').then((m) => ({ default: m.AboutPage }))
 )
@@ -97,6 +100,7 @@ export const router = createBrowserRouter([
           { path: '/vault', element: <SuspensePage><VaultPage /></SuspensePage> },
           { path: '/timeline', element: <SuspensePage><TimelinePage /></SuspensePage> },
           { path: '/documentation', element: <SuspensePage><DocumentationPage /></SuspensePage> },
+          { path: '/scan-analytics', element: <SuspensePage><ScanAnalyticsPage /></SuspensePage> },
           { path: '/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
           { path: '/about', element: <SuspensePage><AboutPage /></SuspensePage> },
         ],

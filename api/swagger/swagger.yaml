@@ -1081,6 +1081,28 @@ definitions:
       timestamp:
         type: string
     type: object
+  internal_recon.HealthScoreFactor:
+    properties:
+      detail:
+        type: string
+      name:
+        type: string
+      score:
+        type: number
+      weight:
+        type: number
+    type: object
+  internal_recon.HealthScoreResponse:
+    properties:
+      factors:
+        items:
+          $ref: '#/definitions/internal_recon.HealthScoreFactor'
+        type: array
+      grade:
+        type: string
+      score:
+        type: integer
+    type: object
   internal_recon.ImportResult:
     properties:
       created:
@@ -3350,6 +3372,26 @@ paths:
       security:
       - BearerAuth: []
       summary: List scan metrics aggregates
+      tags:
+      - recon
+  /recon/metrics/health-score:
+    get:
+      description: Returns a 0-100 health score based on scan success rate, duration
+        stability, device count stability, and other factors.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.HealthScoreResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get health score
       tags:
       - recon
   /recon/metrics/raw:

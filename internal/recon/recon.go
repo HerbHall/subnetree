@@ -256,6 +256,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices/{id}/scans", Handler: m.handleDeviceScans},
 		{Method: "GET", Path: "/inventory/summary", Handler: m.handleInventorySummary},
 		{Method: "PATCH", Path: "/devices/bulk", Handler: m.handleBulkUpdateDevices},
+		{Method: "GET", Path: "/metrics/health-score", Handler: m.handleHealthScore},
 		{Method: "GET", Path: "/metrics/aggregates", Handler: m.handleListMetricsAggregates},
 		{Method: "GET", Path: "/metrics/raw", Handler: m.handleListRawMetrics},
 		{Method: "GET", Path: "/movements", Handler: m.handleListServiceMovements},

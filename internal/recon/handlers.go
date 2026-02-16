@@ -1001,6 +1001,26 @@ func (m *Module) handleListMetricsAggregates(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, aggs)
 }
 
+// handleHealthScore returns the computed network health score.
+//
+//	@Summary		Get health score
+//	@Description	Returns a 0-100 health score based on scan success rate, duration stability, device count stability, and other factors.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	HealthScoreResponse
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/metrics/health-score [get]
+func (m *Module) handleHealthScore(w http.ResponseWriter, r *http.Request) {
+	result, err := m.getHealthScore(r.Context())
+	if err != nil {
+		m.logger.Error("failed to compute health score", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to compute health score")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 // handleListRawMetrics returns recent raw scan metrics.
 //
 //	@Summary		List raw scan metrics
