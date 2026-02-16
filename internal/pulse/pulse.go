@@ -164,6 +164,16 @@ func (m *Module) executeCheck(ctx context.Context, check Check) {
 		)
 	}
 
+	// Update device last_seen on successful checks.
+	if result.Success && check.DeviceID != "" {
+		if err := m.store.UpdateDeviceLastSeen(ctx, check.DeviceID, time.Now()); err != nil {
+			m.logger.Debug("failed to update device last_seen",
+				zap.String("device_id", check.DeviceID),
+				zap.Error(err),
+			)
+		}
+	}
+
 	// Process alert state machine.
 	if m.alerter != nil {
 		m.alerter.ProcessResult(ctx, check, result)
