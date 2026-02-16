@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   RefreshCw,
-  Radar,
   LayoutGrid,
   List,
   Search,
@@ -20,6 +19,7 @@ import {
   AlertCircle,
   AlertTriangle,
   MapPin,
+  Radar,
   Tag,
   User,
   X,
@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeviceCard, DeviceCardCompact } from '@/components/device-card'
 import { CreateDeviceDialog } from '@/components/create-device-dialog'
+import { ScanButton } from '@/components/scan-button'
 import {
   listDevices,
   deleteDevice,
@@ -37,7 +38,6 @@ import {
   getInventorySummary,
   bulkUpdateDevices,
 } from '@/api/devices'
-import { useScanStore } from '@/stores/scan'
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
@@ -87,7 +87,6 @@ function isDeviceStale(lastSeen: string): boolean {
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
-  const activeScan = useScanStore((s) => s.activeScan)
 
   // State from URL params or defaults
   const statusFilter = (searchParams.get('status') as DeviceStatus | 'all' | 'stale') || 'all'
@@ -416,18 +415,7 @@ export function DevicesPage() {
             Add Device
           </Button>
 
-          <Button
-            onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending || !!activeScan}
-            className="gap-2"
-          >
-            {scanMutation.isPending || activeScan ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Radar className="h-4 w-4" />
-            )}
-            {activeScan ? 'Scanning...' : 'Scan Network'}
-          </Button>
+          <ScanButton onScan={() => scanMutation.mutate()} isPending={scanMutation.isPending} />
 
           <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
@@ -662,9 +650,7 @@ export function DevicesPage() {
                   <Plus className="h-4 w-4" />
                   Add Device
                 </Button>
-                <Button onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending}>
-                  {scanMutation.isPending ? 'Scanning...' : 'Scan Network'}
-                </Button>
+                <ScanButton onScan={() => scanMutation.mutate()} isPending={scanMutation.isPending} />
               </div>
             </>
           ) : (
