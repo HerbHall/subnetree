@@ -41,6 +41,11 @@ vi.mock('@/api/themes', () => ({
   setActiveTheme: vi.fn().mockResolvedValue({}),
 }))
 
+// Mock system API (health check used for version display)
+vi.mock('@/api/system', () => ({
+  getHealth: vi.fn().mockResolvedValue({ status: 'healthy', version: 'v0.6.1-test' }),
+}))
+
 // Mock jwt-decode
 vi.mock('jwt-decode', () => ({
   jwtDecode: () => ({

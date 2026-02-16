@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, Lock, Clock, FileText, Settings, Info, LogOut } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import { getHealth } from '@/api/system'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,6 +27,13 @@ export function AppLayout() {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: getHealth,
+    staleTime: 60 * 1000,
+  })
+  const version = health?.version
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const goToDashboard = useCallback(() => navigate('/dashboard'), [navigate])
@@ -95,6 +104,11 @@ export function AppLayout() {
             <LogOut className="h-4 w-4" />
             Sign out
           </Button>
+          {version?.version && (
+            <div className="px-3 py-2 text-xs text-[var(--nv-text-muted)]">
+              v{version.version}
+            </div>
+          )}
         </div>
       </aside>
       <main className="flex-1 p-6">

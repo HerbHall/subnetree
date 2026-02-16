@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { setupApi, loginApi, checkSetupRequired } from '@/api/auth'
 import { getNetworkInterfaces, setScanInterface, type NetworkInterface } from '@/api/settings'
 import { setActiveTheme } from '@/api/themes'
+import { getHealth } from '@/api/system'
 import { detectColorScheme } from '@/lib/theme-preference'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -115,6 +117,13 @@ export function SetupPage() {
   const navigate = useNavigate()
   const [setupComplete, setSetupComplete] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(true)
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: getHealth,
+    staleTime: 60 * 1000,
+  })
+  const version = health?.version
 
   // Guard: check if setup is already complete
   useEffect(() => {
@@ -690,6 +699,10 @@ export function SetupPage() {
             </div>
           </div>
         )}
+
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          SubNetree {version?.version || ''}
+        </p>
       </CardContent>
     </Card>
   )
