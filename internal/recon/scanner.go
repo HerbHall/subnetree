@@ -177,6 +177,9 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 	// Infer topology links from ARP data.
 	o.inferTopologyLinks(ctx, subnet, alive)
 
+	// Detect service movements between scans.
+	o.detectAndPublishServiceMovements(ctx, alive)
+
 	// Update scan record.
 	scan := &models.ScanResult{
 		ID:      scanID,
@@ -263,6 +266,49 @@ func firstUsableIP(ipNet *net.IPNet) string {
 	}
 	ip[len(ip)-1]++
 	return ip.String()
+}
+
+// detectAndPublishServiceMovements compares the current scan's service map
+// against the previous scan and publishes events for any detected movements.
+func (o *ScanOrchestrator) detectAndPublishServiceMovements(ctx context.Context, alive []HostResult) {
+	previous, err := o.store.GetPreviousServiceMap(ctx)
+	if err != nil {
+		o.logger.Error("failed to get previous service map", zap.Error(err))
+		return
+	}
+
+	// Build current service map from alive hosts.
+	// Note: Until port scanning is implemented in the scan pipeline, the
+	// current map will also be empty. This wiring is ready for when port
+	// data becomes available.
+	current := make(map[string][]int)
+	for _, host := range alive {
+		device, devErr := o.store.GetDeviceByIP(ctx, host.IP)
+		if devErr != nil || device == nil {
+			continue
+		}
+		// Ports will be populated once the scan pipeline includes port scanning.
+		current[device.ID] = []int{}
+	}
+
+	movements := detectServiceMovements(previous, current)
+
+	for i := range movements {
+		if saveErr := o.store.SaveServiceMovement(ctx, movements[i]); saveErr != nil {
+			o.logger.Error("failed to save service movement",
+				zap.Int("port", movements[i].Port),
+				zap.Error(saveErr),
+			)
+			continue
+		}
+		o.publishEvent(ctx, TopicServiceMoved, ServiceMovedEvent{Movement: movements[i]})
+		o.logger.Info("service movement detected",
+			zap.Int("port", movements[i].Port),
+			zap.String("from", movements[i].FromDevice),
+			zap.String("to", movements[i].ToDevice),
+			zap.String("service", movements[i].ServiceName),
+		)
+	}
 }
 
 func (o *ScanOrchestrator) publishEvent(ctx context.Context, topic string, payload any) {

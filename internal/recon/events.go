@@ -14,6 +14,7 @@ const (
 	TopicScanStarted      = "recon.scan.started"
 	TopicScanCompleted    = "recon.scan.completed"
 	TopicScanProgress     = "recon.scan.progress"
+	TopicServiceMoved     = "recon.service.moved"
 )
 
 // DeviceLostEvent is the payload for TopicDeviceLost events.
@@ -34,4 +35,9 @@ type ScanProgressEvent struct {
 	ScanID     string `json:"scan_id"`
 	HostsAlive int    `json:"hosts_alive"`
 	SubnetSize int    `json:"subnet_size"`
+}
+
+// ServiceMovedEvent is the payload for TopicServiceMoved events.
+type ServiceMovedEvent struct {
+	Movement ServiceMovement `json:"movement"`
 }

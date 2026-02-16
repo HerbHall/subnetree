@@ -970,6 +970,32 @@ type SNMPInterfaceResponse struct {
 	OperStatus  int    `json:"oper_status"`
 }
 
+// handleListServiceMovements returns recent service movements.
+//
+//	@Summary		List service movements
+//	@Description	Returns recent service movements where a port migrated from one device to another.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			limit	query		int	false	"Max results"	default(50)
+//	@Success		200		{array}		ServiceMovement
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/movements [get]
+func (m *Module) handleListServiceMovements(w http.ResponseWriter, r *http.Request) {
+	limit := queryInt(r, "limit", 50)
+
+	movements, err := m.store.ListServiceMovements(r.Context(), limit)
+	if err != nil {
+		m.logger.Error("failed to list service movements", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list service movements")
+		return
+	}
+	if movements == nil {
+		movements = []ServiceMovement{}
+	}
+	writeJSON(w, http.StatusOK, movements)
+}
+
 // handleSNMPDiscover triggers SNMP discovery for a specific target.
 //
 //	@Summary		SNMP discover

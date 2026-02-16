@@ -128,5 +128,29 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     5,
+			Description: "create service_movements table for port migration tracking",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`CREATE TABLE IF NOT EXISTS recon_service_movements (
+						id TEXT PRIMARY KEY,
+						port INTEGER NOT NULL,
+						protocol TEXT NOT NULL DEFAULT 'tcp',
+						service_name TEXT NOT NULL DEFAULT '',
+						from_device_id TEXT NOT NULL,
+						to_device_id TEXT NOT NULL,
+						detected_at TEXT NOT NULL
+					)`,
+					`CREATE INDEX IF NOT EXISTS idx_service_movements_detected_at ON recon_service_movements(detected_at)`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }
