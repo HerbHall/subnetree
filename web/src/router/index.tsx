@@ -39,6 +39,9 @@ const ServiceMapPage = lazy(() =>
 const VaultPage = lazy(() =>
   import('@/pages/vault').then((m) => ({ default: m.VaultPage }))
 )
+const TimelinePage = lazy(() =>
+  import('@/pages/timeline').then((m) => ({ default: m.TimelinePage }))
+)
 const DocumentationPage = lazy(() =>
   import('@/pages/documentation').then((m) => ({ default: m.DocumentationPage }))
 )
@@ -88,6 +91,7 @@ export const router = createBrowserRouter([
           { path: '/monitoring', element: <SuspensePage><MonitoringPage /></SuspensePage> },
           { path: '/services', element: <SuspensePage><ServiceMapPage /></SuspensePage> },
           { path: '/vault', element: <SuspensePage><VaultPage /></SuspensePage> },
+          { path: '/timeline', element: <SuspensePage><TimelinePage /></SuspensePage> },
           { path: '/documentation', element: <SuspensePage><DocumentationPage /></SuspensePage> },
           { path: '/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
           { path: '/about', element: <SuspensePage><AboutPage /></SuspensePage> },

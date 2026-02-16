@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, Lock, FileText, Settings, Info, LogOut } from 'lucide-react'
+import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, Lock, Clock, FileText, Settings, Info, LogOut } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/monitoring', label: 'Monitoring', icon: Activity },
   { to: '/services', label: 'Services', icon: Layers },
   { to: '/vault', label: 'Vault', icon: Lock },
+  { to: '/timeline', label: 'Timeline', icon: Clock },
   { to: '/documentation', label: 'Docs', icon: FileText },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/about', label: 'About', icon: Info },
@@ -33,6 +34,7 @@ export function AppLayout() {
   const goToMonitoring = useCallback(() => navigate('/monitoring'), [navigate])
   const goToServices = useCallback(() => navigate('/services'), [navigate])
   const goToVault = useCallback(() => navigate('/vault'), [navigate])
+  const goToTimeline = useCallback(() => navigate('/timeline'), [navigate])
   const goToDocs = useCallback(() => navigate('/documentation'), [navigate])
   const goToSettings = useCallback(() => navigate('/settings'), [navigate])
 
@@ -46,10 +48,11 @@ export function AppLayout() {
       { key: '5', handler: goToMonitoring, description: 'Go to Monitoring' },
       { key: '6', handler: goToServices, description: 'Go to Services' },
       { key: '7', handler: goToVault, description: 'Go to Vault' },
-      { key: '8', handler: goToDocs, description: 'Go to Docs' },
-      { key: '9', handler: goToSettings, description: 'Go to Settings' },
+      { key: '8', handler: goToTimeline, description: 'Go to Timeline' },
+      { key: '9', handler: goToDocs, description: 'Go to Docs' },
+      { key: '0', handler: goToSettings, description: 'Go to Settings' },
     ],
-    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToAgents, goToMonitoring, goToServices, goToVault, goToDocs, goToSettings]
+    [openShortcuts, goToDashboard, goToDevices, goToTopology, goToAgents, goToMonitoring, goToServices, goToVault, goToTimeline, goToDocs, goToSettings]
   )
 
   useKeyboardShortcuts(shortcuts)
