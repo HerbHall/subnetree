@@ -359,7 +359,7 @@ func TestInferDeviceType(t *testing.T) {
 			want: models.DeviceTypeRouter,
 		},
 		{
-			name: "descr_routeros",
+			name: "descr_routeros", //nolint:misspell // RouterOS is MikroTik's OS name
 			info: &SNMPSystemInfo{Description: "MikroTik RouterOS 7.x"},
 			want: models.DeviceTypeRouter,
 		},

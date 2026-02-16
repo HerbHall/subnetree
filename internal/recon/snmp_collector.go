@@ -477,7 +477,7 @@ func classifyBySysDescr(sysDescr string) models.DeviceType {
 	switch {
 	// Routers.
 	case strings.Contains(lower, "router"),
-		strings.Contains(lower, "routeros"),
+		strings.Contains(lower, "routeros"), //nolint:misspell // RouterOS is MikroTik's OS name
 		strings.Contains(lower, "mikrotik"):
 		return models.DeviceTypeRouter
 
