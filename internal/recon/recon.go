@@ -2,7 +2,9 @@ package recon
 
 import (
 	"context"
+	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -106,6 +108,20 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 		if v := deps.Config.GetString("schedule.subnet"); v != "" {
 			m.cfg.Schedule.Subnet = v
 		}
+	}
+
+	// Allow disabling discovery via environment for QC/testing containers.
+	// Viper's Sub() does not inherit AutomaticEnv, so plugin-scoped env vars
+	// like NV_RECON_MDNS_ENABLED are not visible to the sub-Viper. We check
+	// them explicitly here.
+	if v := os.Getenv("NV_RECON_MDNS_ENABLED"); strings.EqualFold(v, "false") {
+		m.cfg.MDNSEnabled = false
+	}
+	if v := os.Getenv("NV_RECON_UPNP_ENABLED"); strings.EqualFold(v, "false") {
+		m.cfg.UPNPEnabled = false
+	}
+	if v := os.Getenv("NV_RECON_SCHEDULE_ENABLED"); strings.EqualFold(v, "false") {
+		m.cfg.Schedule.Enabled = false
 	}
 
 	// Run database migrations.

@@ -35,6 +35,9 @@ services:
       - NV_LOG_LEVEL=debug
       - NV_DEV_MODE=true
       - NV_SEED_DATA=true
+      - NV_RECON_MDNS_ENABLED=false
+      - NV_RECON_UPNP_ENABLED=false
+      - NV_RECON_SCHEDULE_ENABLED=false
       - SUBNETREE_VAULT_PASSPHRASE=QCVaultPass123!
     cap_add:
       - NET_RAW
