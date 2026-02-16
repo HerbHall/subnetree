@@ -634,3 +634,193 @@ func extractOIDPrefix(oid string) string {
 	}
 	return oid[:lastDot]
 }
+
+// ---------------------------------------------------------------------------
+// FDB (Forwarding Database) table walking
+// ---------------------------------------------------------------------------
+
+// FDBEntry represents a single forwarding database entry from a switch.
+type FDBEntry struct {
+	MACAddress string // Colon-separated MAC (AA:BB:CC:DD:EE:FF)
+	BridgePort int    // Bridge port number from dot1dTpFdbPort
+	IfIndex    int    // Mapped interface index via dot1dBasePortIfIndex
+	IfName     string // Human-readable port name (e.g. "Gi0/1")
+	Status     int    // FDB status: 1=other, 2=invalid, 3=learned, 4=self, 5=mgmt
+}
+
+// FDB status constants from BRIDGE-MIB dot1dTpFdbStatus.
+const (
+	fdbStatusOther   = 1
+	fdbStatusInvalid = 2
+	fdbStatusLearned = 3
+	fdbStatusSelf    = 4
+	fdbStatusMgmt    = 5
+)
+
+// WalkFDB performs a BulkWalk of the BRIDGE-MIB forwarding database on a
+// target switch. It returns all learned FDB entries with bridge port numbers
+// mapped to interface indices and names. If the default community returns no
+// entries, it attempts a Cisco VLAN-indexed community string (community@1).
+func (c *SNMPCollector) WalkFDB(ctx context.Context, target string, cred CredentialAccessor, credID string) ([]FDBEntry, error) {
+	if cred == nil || credID == "" {
+		return nil, fmt.Errorf("SNMP credential required for FDB walk")
+	}
+
+	snmpCred, err := cred.GetCredential(ctx, credID)
+	if err != nil {
+		return nil, fmt.Errorf("get SNMP credential %s: %w", credID, err)
+	}
+
+	g := &gosnmp.GoSNMP{
+		Target:    target,
+		Port:      161,
+		Version:   gosnmp.Version2c,
+		Community: snmpCred.Community,
+		Timeout:   5 * time.Second,
+		Retries:   1,
+		MaxOids:   60,
+	}
+
+	if err = g.ConnectIPv4(); err != nil {
+		return nil, fmt.Errorf("SNMP connect to %s: %w", target, err)
+	}
+	defer func() {
+		_ = g.Conn.Close()
+	}()
+
+	entries, err := c.walkFDBTables(g)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no entries found, try Cisco VLAN-indexed community string pattern.
+	if len(entries) == 0 && snmpCred.Community != "" {
+		g.Community = snmpCred.Community + "@1"
+		entries, err = c.walkFDBTables(g)
+		if err != nil {
+			c.logger.Debug("Cisco VLAN community FDB walk failed",
+				zap.String("target", target),
+				zap.Error(err),
+			)
+			return nil, nil
+		}
+	}
+
+	c.logger.Debug("FDB walk completed",
+		zap.String("target", target),
+		zap.Int("entries", len(entries)),
+	)
+	return entries, nil
+}
+
+// walkFDBTables performs the actual SNMP BulkWalk of dot1dTpFdbPort,
+// dot1dTpFdbStatus, dot1dBasePortIfIndex, and ifName tables. It assembles
+// FDBEntry records, filtering out self and invalid entries.
+func (c *SNMPCollector) walkFDBTables(g *gosnmp.GoSNMP) ([]FDBEntry, error) {
+	// Walk dot1dTpFdbPort: MAC (in OID suffix) -> bridge port number.
+	fdbPortPDUs, err := g.BulkWalkAll(OIDFdbPort)
+	if err != nil {
+		return nil, fmt.Errorf("walk dot1dTpFdbPort: %w", err)
+	}
+	if len(fdbPortPDUs) == 0 {
+		return nil, nil
+	}
+
+	// Walk dot1dTpFdbStatus to filter learned entries.
+	fdbStatusPDUs, err := g.BulkWalkAll(OIDFdbStatus)
+	if err != nil {
+		return nil, fmt.Errorf("walk dot1dTpFdbStatus: %w", err)
+	}
+	statusByMAC := make(map[string]int, len(fdbStatusPDUs))
+	for i := range fdbStatusPDUs {
+		mac := extractMACFromOID(fdbStatusPDUs[i].Name)
+		if mac != "" {
+			statusByMAC[mac] = parsePDUInt(fdbStatusPDUs[i])
+		}
+	}
+
+	// Walk dot1dBasePortIfIndex: bridge port -> ifIndex.
+	portIfIndexPDUs, err := g.BulkWalkAll(OIDBasePortIfIndex)
+	if err != nil {
+		c.logger.Debug("dot1dBasePortIfIndex walk failed, port-to-ifIndex unavailable",
+			zap.Error(err))
+	}
+	portToIfIndex := make(map[int]int, len(portIfIndexPDUs))
+	for i := range portIfIndexPDUs {
+		bPort := extractOIDIndex(portIfIndexPDUs[i].Name)
+		if bPort > 0 {
+			portToIfIndex[bPort] = parsePDUInt(portIfIndexPDUs[i])
+		}
+	}
+
+	// Walk ifName for human-readable port names.
+	ifNamePDUs, err := g.BulkWalkAll(OIDIfName)
+	if err != nil {
+		c.logger.Debug("ifName walk failed, using ifIndex for port names",
+			zap.Error(err))
+	}
+	ifIndexToName := make(map[int]string, len(ifNamePDUs))
+	for i := range ifNamePDUs {
+		idx := extractOIDIndex(ifNamePDUs[i].Name)
+		if idx > 0 {
+			ifIndexToName[idx] = parsePDUString(ifNamePDUs[i])
+		}
+	}
+
+	// Assemble entries.
+	entries := make([]FDBEntry, 0, len(fdbPortPDUs))
+	for i := range fdbPortPDUs {
+		mac := extractMACFromOID(fdbPortPDUs[i].Name)
+		if mac == "" {
+			continue
+		}
+
+		status, hasStatus := statusByMAC[mac]
+		if hasStatus && (status == fdbStatusSelf || status == fdbStatusInvalid) {
+			continue
+		}
+
+		bridgePort := parsePDUInt(fdbPortPDUs[i])
+		if bridgePort <= 0 {
+			continue
+		}
+
+		entry := FDBEntry{
+			MACAddress: mac,
+			BridgePort: bridgePort,
+			Status:     status,
+		}
+
+		if ifIdx, ok := portToIfIndex[bridgePort]; ok {
+			entry.IfIndex = ifIdx
+			if name, nameOk := ifIndexToName[ifIdx]; nameOk {
+				entry.IfName = name
+			}
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+// extractMACFromOID extracts a MAC address from the last 6 decimal octets of
+// an SNMP OID suffix. For example, OID ".1.3.6.1.2.1.17.4.3.1.2.0.0.94.0.1.1"
+// yields "00:00:5E:00:01:01".
+func extractMACFromOID(oid string) string {
+	parts := strings.Split(strings.TrimPrefix(oid, "."), ".")
+	if len(parts) < 6 {
+		return ""
+	}
+
+	macParts := parts[len(parts)-6:]
+	octets := make([]string, 6)
+	for i, p := range macParts {
+		val, err := strconv.Atoi(p)
+		if err != nil || val < 0 || val > 255 {
+			return ""
+		}
+		octets[i] = fmt.Sprintf("%02X", val)
+	}
+	return strings.Join(octets, ":")
+}

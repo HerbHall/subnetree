@@ -919,6 +919,18 @@ func (s *ReconStore) RemoveARPLinksForDevice(ctx context.Context, deviceID strin
 	return nil
 }
 
+// RemoveFDBLinksForDevice removes FDB-inferred topology links where the given
+// device is the source (switch). Called before re-inserting fresh FDB data.
+func (s *ReconStore) RemoveFDBLinksForDevice(ctx context.Context, deviceID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM recon_topology_links WHERE link_type = 'fdb' AND source_device_id = ?`,
+		deviceID)
+	if err != nil {
+		return fmt.Errorf("remove FDB links for device %s: %w", deviceID, err)
+	}
+	return nil
+}
+
 // BulkUpdateDevices applies the same partial update to all devices matching the given IDs.
 // Returns the number of updated rows.
 func (s *ReconStore) BulkUpdateDevices(ctx context.Context, ids []string, params UpdateDeviceParams) (int, error) {

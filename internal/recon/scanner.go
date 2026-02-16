@@ -3,6 +3,7 @@ package recon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -30,15 +31,28 @@ type OUIResolver interface {
 	Lookup(mac string) string
 }
 
+// SNMPWalker walks FDB tables on SNMP-enabled switches.
+type SNMPWalker interface {
+	WalkFDB(ctx context.Context, target string, cred CredentialAccessor, credID string) ([]FDBEntry, error)
+}
+
+// CredentialLookup finds SNMP credentials for a device.
+type CredentialLookup interface {
+	FindSNMPCredentialForDevice(ctx context.Context, deviceID string) (credID string, err error)
+}
+
 // ScanOrchestrator coordinates ICMP scanning, ARP enrichment, OUI lookup,
 // device persistence, and event publishing.
 type ScanOrchestrator struct {
-	store  *ReconStore
-	bus    plugin.EventBus
-	oui    OUIResolver
-	pinger PingScanner
-	arp    ARPTableReader
-	logger *zap.Logger
+	store      *ReconStore
+	bus        plugin.EventBus
+	oui        OUIResolver
+	pinger     PingScanner
+	arp        ARPTableReader
+	snmpWalker SNMPWalker
+	credLookup CredentialLookup
+	credAccess CredentialAccessor
+	logger     *zap.Logger
 }
 
 // NewScanOrchestrator creates a new orchestrator.
@@ -58,6 +72,21 @@ func NewScanOrchestrator(
 		arp:    arp,
 		logger: logger,
 	}
+}
+
+// SetSNMPWalker configures the SNMP FDB walker used during scan post-processing.
+func (o *ScanOrchestrator) SetSNMPWalker(w SNMPWalker) {
+	o.snmpWalker = w
+}
+
+// SetCredentialLookup configures the credential lookup used for FDB walks.
+func (o *ScanOrchestrator) SetCredentialLookup(cl CredentialLookup) {
+	o.credLookup = cl
+}
+
+// SetCredentialAccessor configures the credential accessor used for FDB walks.
+func (o *ScanOrchestrator) SetCredentialAccessor(ca CredentialAccessor) {
+	o.credAccess = ca
 }
 
 // scanStage represents a named post-scan processing stage.
@@ -216,6 +245,7 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		{"port-scan", func(ctx context.Context) { o.portScanInfraDevices(ctx, alive, arpTable) }},
 		{"classify", func(ctx context.Context) { o.classifyDevices(ctx, alive, arpTable) }},
 		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
+		{"fdb-walk", func(ctx context.Context) { o.walkSwitchFDBTables(ctx) }},
 		{"topology-links", func(ctx context.Context) { o.inferTopologyLinks(ctx, subnet, alive) }},
 		{"service-movements", func(ctx context.Context) { o.detectAndPublishServiceMovements(ctx, alive) }},
 	})
@@ -565,6 +595,108 @@ func (o *ScanOrchestrator) detectUnmanagedSwitches(ctx context.Context, alive []
 	if updatedCount > 0 {
 		o.logger.Info("unmanaged switch detection updated devices",
 			zap.Int("count", updatedCount))
+	}
+}
+
+// walkSwitchFDBTables queries all classified switches for their BRIDGE-MIB
+// forwarding database and creates topology links from FDB entries.
+func (o *ScanOrchestrator) walkSwitchFDBTables(ctx context.Context) {
+	if o.snmpWalker == nil || o.credLookup == nil || o.credAccess == nil {
+		return
+	}
+
+	switches, _, err := o.store.ListDevices(ctx, ListDevicesOptions{DeviceType: "switch", Limit: 500})
+	if err != nil {
+		o.logger.Error("failed to list switches for FDB walk", zap.Error(err))
+		return
+	}
+
+	var totalLinks int
+	for i := range switches {
+		if ctx.Err() != nil {
+			return
+		}
+
+		sw := &switches[i]
+		if sw.ClassificationConfidence < 50 {
+			continue
+		}
+		if len(sw.IPAddresses) == 0 {
+			continue
+		}
+
+		credID, credErr := o.credLookup.FindSNMPCredentialForDevice(ctx, sw.ID)
+		if credErr != nil || credID == "" {
+			o.logger.Debug("no SNMP credential for switch, skipping FDB walk",
+				zap.String("device_id", sw.ID),
+				zap.String("ip", sw.IPAddresses[0]),
+			)
+			continue
+		}
+
+		entries, walkErr := o.snmpWalker.WalkFDB(ctx, sw.IPAddresses[0], o.credAccess, credID)
+		if walkErr != nil {
+			o.logger.Warn("FDB walk failed for switch",
+				zap.String("device_id", sw.ID),
+				zap.String("ip", sw.IPAddresses[0]),
+				zap.Error(walkErr),
+			)
+			continue
+		}
+
+		if len(entries) == 0 {
+			continue
+		}
+
+		// Remove stale FDB links for this switch before inserting fresh ones.
+		if removeErr := o.store.RemoveFDBLinksForDevice(ctx, sw.ID); removeErr != nil {
+			o.logger.Error("failed to remove old FDB links",
+				zap.String("device_id", sw.ID),
+				zap.Error(removeErr),
+			)
+		}
+
+		for j := range entries {
+			targetDevice, devErr := o.store.GetDeviceByMAC(ctx, entries[j].MACAddress)
+			if devErr != nil || targetDevice == nil {
+				continue
+			}
+			if targetDevice.ID == sw.ID {
+				continue
+			}
+
+			portName := entries[j].IfName
+			if portName == "" && entries[j].IfIndex > 0 {
+				portName = fmt.Sprintf("ifIndex:%d", entries[j].IfIndex)
+			}
+
+			link := &TopologyLink{
+				SourceDeviceID: sw.ID,
+				TargetDeviceID: targetDevice.ID,
+				SourcePort:     portName,
+				LinkType:       "fdb",
+			}
+			if upsertErr := o.store.UpsertTopologyLink(ctx, link); upsertErr != nil {
+				o.logger.Error("failed to upsert FDB topology link",
+					zap.String("switch", sw.ID),
+					zap.String("target", targetDevice.ID),
+					zap.Error(upsertErr),
+				)
+				continue
+			}
+			totalLinks++
+		}
+
+		o.logger.Debug("FDB walk created topology links",
+			zap.String("switch_id", sw.ID),
+			zap.Int("fdb_entries", len(entries)),
+		)
+	}
+
+	if totalLinks > 0 {
+		o.logger.Info("FDB topology links created",
+			zap.Int("total_links", totalLinks),
+		)
 	}
 }
 

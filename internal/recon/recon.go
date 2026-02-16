@@ -142,8 +142,11 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 func (m *Module) Start(_ context.Context) error {
 	m.scanCtx, m.scanCancel = context.WithCancel(context.Background())
 
-	// Initialize SNMP collector.
+	// Initialize SNMP collector and wire it into the scan orchestrator
+	// for FDB table walks during post-scan processing.
 	m.snmpCollector = NewSNMPCollector(m.logger.Named("snmp"))
+	m.orchestrator.SetSNMPWalker(m.snmpCollector)
+	m.orchestrator.SetCredentialLookup(m)
 
 	// Start device-lost checker background goroutine.
 	m.wg.Add(1)
@@ -207,10 +210,37 @@ func (m *Module) Start(_ context.Context) error {
 	return nil
 }
 
+// Store returns the module's ReconStore for direct database operations.
+// Used by the seed data system to populate demo data.
+func (m *Module) Store() *ReconStore {
+	return m.store
+}
+
 // SetCredentialAccessor sets the credential accessor used for SNMP discovery.
 // Called from the composition root after all plugins are initialized.
 func (m *Module) SetCredentialAccessor(ca CredentialAccessor) {
 	m.credAccessor = ca
+	if m.orchestrator != nil {
+		m.orchestrator.SetCredentialAccessor(ca)
+	}
+}
+
+// FindSNMPCredentialForDevice implements CredentialLookup by delegating to the
+// Module's credProvider (roles.CredentialProvider).
+func (m *Module) FindSNMPCredentialForDevice(ctx context.Context, deviceID string) (string, error) {
+	if m.credProvider == nil {
+		return "", nil
+	}
+	creds, err := m.credProvider.CredentialsForDevice(ctx, deviceID)
+	if err != nil {
+		return "", err
+	}
+	for i := range creds {
+		if creds[i].Type == "snmp_v2c" || creds[i].Type == "snmp_v3" {
+			return creds[i].ID, nil
+		}
+	}
+	return "", nil
 }
 
 func (m *Module) Stop(_ context.Context) error {
