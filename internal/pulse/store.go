@@ -273,6 +273,18 @@ func (s *PulseStore) InsertResult(ctx context.Context, r *CheckResult) error {
 	return nil
 }
 
+// UpdateDeviceLastSeen updates the last_seen timestamp on a device after a successful check.
+func (s *PulseStore) UpdateDeviceLastSeen(ctx context.Context, deviceID string, t time.Time) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET last_seen = ? WHERE id = ?`,
+		t.UTC().Format(time.RFC3339), deviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("update device last_seen: %w", err)
+	}
+	return nil
+}
+
 // ListResults returns check results for a device, ordered by checked_at descending.
 // If limit <= 0, defaults to 100.
 func (s *PulseStore) ListResults(ctx context.Context, deviceID string, limit int) ([]CheckResult, error) {
