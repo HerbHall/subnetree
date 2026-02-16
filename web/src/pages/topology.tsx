@@ -9,6 +9,7 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type Edge,
+  type Node,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
@@ -25,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getTopology } from '@/api/devices'
 import {
   DeviceNode,
+  type DeviceNodeData,
   type DeviceNodeType,
 } from '@/components/topology/device-node'
 import {
@@ -41,6 +43,8 @@ import {
   type ElkDirection,
 } from '@/components/topology/elk-layout'
 import { TopologyFilters } from '@/components/topology/topology-filters'
+import { TopologyViewTabs } from '@/components/topology/topology-view-tabs'
+import { GroupNode } from '@/components/topology/group-node'
 import { NodeDetailPanel } from '@/components/topology/node-detail-panel'
 import { EdgeInfoPopover } from '@/components/topology/edge-info-popover'
 import {
@@ -51,6 +55,14 @@ import {
   applyLayout as applyLayoutPositions,
   type SavedLayout,
 } from '@/components/topology/layout-storage'
+import {
+  type ViewMode,
+  groupByType,
+  groupByStatus,
+  groupBySubnet,
+  layoutGroups,
+  type GroupNodeData,
+} from '@/lib/topology-grouping'
 import type {
   TopologyNode as APINode,
   TopologyEdge as APIEdge,
@@ -59,7 +71,7 @@ import type {
 } from '@/api/types'
 
 // Register custom node & edge types outside the component to avoid re-creation
-const nodeTypes: NodeTypes = { device: DeviceNode }
+const nodeTypes: NodeTypes = { device: DeviceNode, group: GroupNode }
 const defaultEdgeTypes: EdgeTypes = { topology: TopologyEdgeComponent }
 const utilizationEdgeTypes: EdgeTypes = {
   topology: TopologyEdgeComponent,
@@ -201,6 +213,7 @@ export function TopologyPage() {
   const [showMinimap, setShowMinimap] = useState(false)
   const [showUtilization, setShowUtilization] = useState(false)
   const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([])
+  const [viewMode, setViewMode] = useState<ViewMode>('all')
 
   // Load saved layouts from API on mount.
   useEffect(() => {
@@ -298,7 +311,41 @@ export function TopologyPage() {
 
   const layoutNodes = layout === 'hierarchical' ? elkNodes : syncLayoutNodes
 
-  const initialNodes = useMemo<DeviceNodeType[]>(() => {
+  // Compute grouped layout when a grouped view mode is active
+  const groupedResult = useMemo(() => {
+    if (viewMode === 'all' || !topology || topology.nodes.length === 0) return null
+    const groupFn =
+      viewMode === 'by-type' ? groupByType
+      : viewMode === 'by-status' ? groupByStatus
+      : groupBySubnet
+    const groups = groupFn(topology.nodes)
+    return layoutGroups(groups, topology.nodes, viewMode)
+  }, [topology, viewMode])
+
+  type AnyNodeType = Node<DeviceNodeData | GroupNodeData>
+
+  const initialNodes = useMemo<AnyNodeType[]>(() => {
+    if (viewMode !== 'all' && groupedResult) {
+      // Grouped mode: group container nodes first, then device children
+      const allNodes: AnyNodeType[] = [
+        ...groupedResult.groupNodes.map((gn) => ({
+          ...gn,
+          // Group nodes are visible if any child is visible
+          hidden: gn.data.count === 0,
+        })),
+        ...groupedResult.deviceNodes.map((dn) => ({
+          ...dn,
+          hidden: hiddenNodeIds.has(dn.id),
+          data: {
+            ...dn.data,
+            highlighted: searchMatchIds !== null && searchMatchIds.has(dn.id),
+            dimmed: searchMatchIds !== null && !searchMatchIds.has(dn.id),
+          },
+        })),
+      ]
+      return allNodes
+    }
+    // Flat "all devices" mode -- original behavior
     return layoutNodes.map((node) => ({
       ...node,
       hidden: hiddenNodeIds.has(node.id),
@@ -308,7 +355,7 @@ export function TopologyPage() {
         dimmed: searchMatchIds !== null && !searchMatchIds.has(node.id),
       },
     }))
-  }, [layoutNodes, hiddenNodeIds, searchMatchIds])
+  }, [viewMode, groupedResult, layoutNodes, hiddenNodeIds, searchMatchIds])
 
   const initialEdges = useMemo<Edge[]>(() => {
     if (!topology) return []
@@ -332,17 +379,17 @@ export function TopologyPage() {
   }, [topology, hiddenNodeIds, showUtilization])
 
   const visibleCount = useMemo(
-    () => initialNodes.filter((n) => !n.hidden).length,
+    () => initialNodes.filter((n) => !n.hidden && n.type !== 'group').length,
     [initialNodes]
   )
 
-  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<DeviceNodeType>(initialNodes)
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChangeRaw] = useEdgesState(initialEdges)
 
   useEffect(() => { setNodes(initialNodes) }, [initialNodes, setNodes])
   useEffect(() => { setEdges(initialEdges) }, [initialEdges, setEdges])
 
-  const onNodesChange: OnNodesChange<DeviceNodeType> = useCallback(
+  const onNodesChange: OnNodesChange<AnyNodeType> = useCallback(
     (changes) => onNodesChangeRaw(changes), [onNodesChangeRaw]
   )
   const onEdgesChange: OnEdgesChange = useCallback(
@@ -351,6 +398,7 @@ export function TopologyPage() {
 
   const handleLayoutChange = useCallback((newLayout: LayoutAlgorithm) => { setLayout(newLayout) }, [])
   const handleDirectionChange = useCallback((dir: ElkDirection) => { setDirection(dir) }, [])
+  const handleViewModeChange = useCallback((mode: ViewMode) => { setViewMode(mode) }, [])
   const handleMinimapToggle = useCallback(() => { setShowMinimap((prev) => !prev) }, [])
   const handleUtilizationToggle = useCallback(() => { setShowUtilization((prev) => !prev) }, [])
 
@@ -396,8 +444,13 @@ export function TopologyPage() {
     setSearchQuery('')
   }, [presentTypes])
 
-  const handleNodeClick: NodeMouseHandler<DeviceNodeType> = useCallback(
-    (_event, node) => { setSelectedNodeId(node.id); setSelectedEdge(null) }, []
+  const handleNodeClick: NodeMouseHandler<AnyNodeType> = useCallback(
+    (_event, node) => {
+      // Only select device nodes for the detail panel, not group containers
+      if (node.type === 'group') return
+      setSelectedNodeId(node.id)
+      setSelectedEdge(null)
+    }, []
   )
 
   const handleEdgeClick: EdgeMouseHandler = useCallback(
@@ -511,14 +564,17 @@ export function TopologyPage() {
           <MiniMap nodeStrokeWidth={3} style={{ backgroundColor: 'var(--nv-bg-card)', border: '1px solid var(--nv-border-default)' }} maskColor="rgba(0, 0, 0, 0.3)" />
         )}
         <Panel position="top-center">
-          <TopologyToolbar
-            layout={layout} onLayoutChange={handleLayoutChange}
-            direction={direction} onDirectionChange={handleDirectionChange}
-            showMinimap={showMinimap} onMinimapToggle={handleMinimapToggle} flowRef={flowRef}
-            showUtilization={showUtilization} onUtilizationToggle={handleUtilizationToggle}
-            savedLayouts={savedLayouts} onSaveLayout={handleSaveLayout}
-            onLoadLayout={handleLoadLayout} onDeleteLayout={handleDeleteLayout}
-          />
+          <div className="flex flex-col items-center gap-2">
+            <TopologyViewTabs viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+            <TopologyToolbar
+              layout={layout} onLayoutChange={handleLayoutChange}
+              direction={direction} onDirectionChange={handleDirectionChange}
+              showMinimap={showMinimap} onMinimapToggle={handleMinimapToggle} flowRef={flowRef}
+              showUtilization={showUtilization} onUtilizationToggle={handleUtilizationToggle}
+              savedLayouts={savedLayouts} onSaveLayout={handleSaveLayout}
+              onLoadLayout={handleLoadLayout} onDeleteLayout={handleDeleteLayout}
+            />
+          </div>
         </Panel>
         <Panel position="top-left">
           <TopologyFilters
