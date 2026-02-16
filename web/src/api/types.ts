@@ -114,6 +114,10 @@ export interface TopologyNode {
   manufacturer: string
   /** Open port numbers discovered on this device (optional, populated when available). */
   open_ports?: number[]
+  /** ID of the parent device in the network hierarchy. */
+  parent_device_id?: string
+  /** Network layer: 0=unknown, 1=gateway, 2=distribution, 3=access, 4=endpoint. */
+  network_layer?: number
 }
 
 /** Topology edge (connection between devices). */

@@ -3003,6 +3003,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/recon/hierarchy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all devices organized in a parent-child hierarchy with network layers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get network hierarchy",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_recon.DeviceTreeNode"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/inventory/summary": {
             "get": {
                 "security": [
@@ -5171,6 +5205,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Dell Inc."
                 },
+                "network_layer": {
+                    "description": "0=unknown, 1=gateway, 2=distribution, 3=access, 4=endpoint",
+                    "type": "integer",
+                    "example": 4
+                },
                 "notes": {
                     "type": "string",
                     "example": "Production web server"
@@ -5182,6 +5221,10 @@ const docTemplate = `{
                 "owner": {
                     "type": "string",
                     "example": "platform-team"
+                },
+                "parent_device_id": {
+                    "description": "Network hierarchy metadata from hierarchy inference.",
+                    "type": "string"
                 },
                 "primary_role": {
                     "type": "string",
@@ -6228,6 +6271,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_recon.DeviceTreeNode": {
+            "type": "object",
+            "properties": {
+                "child_count": {
+                    "type": "integer"
+                },
+                "device_type": {
+                    "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceType"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip_addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "network_layer": {
+                    "type": "integer"
+                },
+                "parent_device_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStatus"
+                }
+            }
+        },
         "internal_recon.DiagDNSRequest": {
             "type": "object",
             "properties": {
@@ -6689,6 +6764,12 @@ const docTemplate = `{
                 "manufacturer": {
                     "type": "string",
                     "example": "Dell Inc."
+                },
+                "network_layer": {
+                    "type": "integer"
+                },
+                "parent_device_id": {
+                    "type": "string"
                 },
                 "status": {
                     "allOf": [

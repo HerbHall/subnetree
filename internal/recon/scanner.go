@@ -247,6 +247,7 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
 		{"fdb-walk", func(ctx context.Context) { o.walkSwitchFDBTables(ctx) }},
 		{"topology-links", func(ctx context.Context) { o.inferTopologyLinks(ctx, subnet, alive) }},
+		{"hierarchy", func(ctx context.Context) { o.inferHierarchy(ctx) }},
 		{"service-movements", func(ctx context.Context) { o.detectAndPublishServiceMovements(ctx, alive) }},
 	})
 
@@ -697,6 +698,14 @@ func (o *ScanOrchestrator) walkSwitchFDBTables(ctx context.Context) {
 		o.logger.Info("FDB topology links created",
 			zap.Int("total_links", totalLinks),
 		)
+	}
+}
+
+// inferHierarchy runs network hierarchy inference after topology links are built.
+func (o *ScanOrchestrator) inferHierarchy(ctx context.Context) {
+	inferrer := NewHierarchyInferrer(o.store, o.logger)
+	if err := inferrer.InferHierarchy(ctx); err != nil {
+		o.logger.Error("hierarchy inference failed", zap.Error(err))
 	}
 }
 

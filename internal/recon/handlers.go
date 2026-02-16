@@ -46,13 +46,15 @@ type TopologyGraph struct {
 
 // TopologyNode represents a device in the topology graph.
 type TopologyNode struct {
-	ID           string              `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	Label        string              `json:"label" example:"web-server-01"`
-	DeviceType   models.DeviceType   `json:"device_type" example:"server"`
-	Status       models.DeviceStatus `json:"status" example:"online"`
-	IPAddresses  []string            `json:"ip_addresses"`
-	MACAddress   string              `json:"mac_address,omitempty" example:"00:1a:2b:3c:4d:5e"`
-	Manufacturer string              `json:"manufacturer,omitempty" example:"Dell Inc."`
+	ID             string              `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Label          string              `json:"label" example:"web-server-01"`
+	DeviceType     models.DeviceType   `json:"device_type" example:"server"`
+	Status         models.DeviceStatus `json:"status" example:"online"`
+	IPAddresses    []string            `json:"ip_addresses"`
+	MACAddress     string              `json:"mac_address,omitempty" example:"00:1a:2b:3c:4d:5e"`
+	Manufacturer   string              `json:"manufacturer,omitempty" example:"Dell Inc."`
+	ParentDeviceID string              `json:"parent_device_id,omitempty"`
+	NetworkLayer   int                 `json:"network_layer,omitempty"`
 }
 
 // TopologyEdge represents a link in the topology graph.
@@ -261,13 +263,15 @@ func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 			label = d.IPAddresses[0]
 		}
 		graph.Nodes = append(graph.Nodes, TopologyNode{
-			ID:           d.ID,
-			Label:        label,
-			DeviceType:   d.DeviceType,
-			Status:       d.Status,
-			IPAddresses:  d.IPAddresses,
-			MACAddress:   d.MACAddress,
-			Manufacturer: d.Manufacturer,
+			ID:             d.ID,
+			Label:          label,
+			DeviceType:     d.DeviceType,
+			Status:         d.Status,
+			IPAddresses:    d.IPAddresses,
+			MACAddress:     d.MACAddress,
+			Manufacturer:   d.Manufacturer,
+			ParentDeviceID: d.ParentDeviceID,
+			NetworkLayer:   d.NetworkLayer,
 		})
 	}
 
@@ -283,6 +287,29 @@ func (m *Module) handleTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, graph)
+}
+
+// handleGetHierarchy returns the device tree organized by network layers.
+//
+//	@Summary		Get network hierarchy
+//	@Description	Returns all devices organized in a parent-child hierarchy with network layers
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{array}		DeviceTreeNode
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/recon/hierarchy [get]
+func (m *Module) handleGetHierarchy(w http.ResponseWriter, r *http.Request) {
+	tree, err := m.store.GetDeviceTree(r.Context())
+	if err != nil {
+		m.logger.Error("failed to get hierarchy", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to get hierarchy")
+		return
+	}
+	if tree == nil {
+		tree = []DeviceTreeNode{}
+	}
+	writeJSON(w, http.StatusOK, tree)
 }
 
 // handleListTopologyLayouts returns all saved topology layouts.

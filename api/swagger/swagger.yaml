@@ -365,6 +365,10 @@ definitions:
       manufacturer:
         example: Dell Inc.
         type: string
+      network_layer:
+        description: 0=unknown, 1=gateway, 2=distribution, 3=access, 4=endpoint
+        example: 4
+        type: integer
       notes:
         example: Production web server
         type: string
@@ -373,6 +377,9 @@ definitions:
         type: string
       owner:
         example: platform-team
+        type: string
+      parent_device_id:
+        description: Network hierarchy metadata from hierarchy inference.
         type: string
       primary_role:
         example: web-server
@@ -1091,6 +1098,27 @@ definitions:
       timestamp:
         type: string
     type: object
+  internal_recon.DeviceTreeNode:
+    properties:
+      child_count:
+        type: integer
+      device_type:
+        $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceType'
+      hostname:
+        type: string
+      id:
+        type: string
+      ip_addresses:
+        items:
+          type: string
+        type: array
+      network_layer:
+        type: integer
+      parent_device_id:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStatus'
+    type: object
   internal_recon.DiagDNSRequest:
     properties:
       target:
@@ -1397,6 +1425,10 @@ definitions:
         type: string
       manufacturer:
         example: Dell Inc.
+        type: string
+      network_layer:
+        type: integer
+      parent_device_id:
         type: string
       status:
         allOf:
@@ -3565,6 +3597,28 @@ paths:
       security:
       - BearerAuth: []
       summary: TCP port check
+      tags:
+      - recon
+  /recon/hierarchy:
+    get:
+      description: Returns all devices organized in a parent-child hierarchy with
+        network layers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.DeviceTreeNode'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get network hierarchy
       tags:
       - recon
   /recon/inventory/summary:

@@ -218,13 +218,15 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 			device_type, os, status, discovery_method, agent_id,
 			first_seen, last_seen, notes, tags, custom_fields,
 			location, category, primary_role, owner,
-			classification_confidence, classification_source, classification_signals
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			classification_confidence, classification_source, classification_signals,
+			parent_device_id, network_layer
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
 		device.Location, device.Category, device.PrimaryRole, device.Owner,
 		device.ClassificationConfidence, device.ClassificationSource, device.ClassificationSignals,
+		device.ParentDeviceID, device.NetworkLayer,
 	)
 	if err != nil {
 		return false, fmt.Errorf("insert device: %w", err)
@@ -241,7 +243,8 @@ func (s *ReconStore) GetDevice(ctx context.Context, id string) (*models.Device, 
 		device_type, os, status, discovery_method, agent_id,
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
-		classification_confidence, classification_source, classification_signals
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
 		FROM recon_devices WHERE id = ?`, id))
 }
 
@@ -252,7 +255,8 @@ func (s *ReconStore) GetDeviceByMAC(ctx context.Context, mac string) (*models.De
 		device_type, os, status, discovery_method, agent_id,
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
-		classification_confidence, classification_source, classification_signals
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
 		FROM recon_devices WHERE mac_address = ?`, mac))
 }
 
@@ -264,7 +268,8 @@ func (s *ReconStore) GetDeviceByIP(ctx context.Context, ip string) (*models.Devi
 		device_type, os, status, discovery_method, agent_id,
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
-		classification_confidence, classification_source, classification_signals
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
 		FROM recon_devices WHERE ip_addresses LIKE ?`, "%\""+ip+"\"%"))
 }
 
@@ -275,7 +280,8 @@ func (s *ReconStore) GetDeviceByHostname(ctx context.Context, hostname string) (
 		device_type, os, status, discovery_method, agent_id,
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
-		classification_confidence, classification_source, classification_signals
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
 		FROM recon_devices WHERE hostname = ?`, hostname))
 }
 
@@ -329,7 +335,8 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 		"device_type, os, status, discovery_method, agent_id, "+
 		"first_seen, last_seen, notes, tags, custom_fields, "+
 		"location, category, primary_role, owner, "+
-		"classification_confidence, classification_source, classification_signals "+
+		"classification_confidence, classification_source, classification_signals, "+
+		"parent_device_id, network_layer "+
 		"FROM recon_devices WHERE "+where+" ORDER BY last_seen DESC LIMIT ? OFFSET ?",
 		queryArgs...)
 	if err != nil {
@@ -506,7 +513,8 @@ func (s *ReconStore) FindStaleDevices(ctx context.Context, threshold time.Time) 
 		device_type, os, status, discovery_method, agent_id,
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
-		classification_confidence, classification_source, classification_signals
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
 		FROM recon_devices WHERE status = ? AND last_seen < ?`,
 		string(models.DeviceStatusOnline), threshold,
 	)
@@ -563,6 +571,7 @@ func (s *ReconStore) scanDevice(row *sql.Row) (*models.Device, error) {
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
 		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 		&d.ClassificationConfidence, &d.ClassificationSource, &d.ClassificationSignals,
+		&d.ParentDeviceID, &d.NetworkLayer,
 	)
 	if err != nil {
 		return nil, err
@@ -587,6 +596,7 @@ func (s *ReconStore) scanDeviceRow(rows *sql.Rows) (*models.Device, error) {
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
 		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 		&d.ClassificationConfidence, &d.ClassificationSource, &d.ClassificationSignals,
+		&d.ParentDeviceID, &d.NetworkLayer,
 	)
 	if err != nil {
 		return nil, err
@@ -743,13 +753,15 @@ func (s *ReconStore) InsertManualDevice(ctx context.Context, device *models.Devi
 			device_type, os, status, discovery_method, agent_id,
 			first_seen, last_seen, notes, tags, custom_fields,
 			location, category, primary_role, owner,
-			classification_confidence, classification_source, classification_signals
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			classification_confidence, classification_source, classification_signals,
+			parent_device_id, network_layer
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
 		device.Location, device.Category, device.PrimaryRole, device.Owner,
 		device.ClassificationConfidence, device.ClassificationSource, device.ClassificationSignals,
+		device.ParentDeviceID, device.NetworkLayer,
 	)
 	if err != nil {
 		return fmt.Errorf("insert manual device: %w", err)
@@ -1334,4 +1346,93 @@ func (s *ReconStore) GetWeeklyAggregatesInRange(ctx context.Context, start, end 
 		result = append(result, a)
 	}
 	return result, rows.Err()
+}
+
+// DeviceTreeNode represents a device with hierarchy information for the tree view.
+type DeviceTreeNode struct {
+	ID             string              `json:"id"`
+	Hostname       string              `json:"hostname"`
+	DeviceType     models.DeviceType   `json:"device_type"`
+	Status         models.DeviceStatus `json:"status"`
+	IPAddresses    []string            `json:"ip_addresses"`
+	ParentDeviceID string              `json:"parent_device_id,omitempty"`
+	NetworkLayer   int                 `json:"network_layer"`
+	ChildCount     int                 `json:"child_count"`
+}
+
+// UpdateDeviceHierarchy updates the parent and network layer for a single device.
+func (s *ReconStore) UpdateDeviceHierarchy(ctx context.Context, deviceID, parentDeviceID string, networkLayer int) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET parent_device_id = ?, network_layer = ? WHERE id = ?`,
+		parentDeviceID, networkLayer, deviceID)
+	if err != nil {
+		return fmt.Errorf("update device hierarchy: %w", err)
+	}
+	return nil
+}
+
+// GetDeviceTree returns all devices with hierarchy metadata and child counts.
+func (s *ReconStore) GetDeviceTree(ctx context.Context) ([]DeviceTreeNode, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT d.id, d.hostname, d.device_type, d.status, d.ip_addresses,
+			d.parent_device_id, d.network_layer,
+			(SELECT COUNT(*) FROM recon_devices c WHERE c.parent_device_id = d.id) AS child_count
+		FROM recon_devices d
+		ORDER BY d.network_layer ASC, d.hostname ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("get device tree: %w", err)
+	}
+	defer rows.Close()
+
+	var nodes []DeviceTreeNode
+	for rows.Next() {
+		var n DeviceTreeNode
+		var dt, status, ipsJSON string
+		if err := rows.Scan(&n.ID, &n.Hostname, &dt, &status, &ipsJSON,
+			&n.ParentDeviceID, &n.NetworkLayer, &n.ChildCount); err != nil {
+			return nil, fmt.Errorf("scan device tree row: %w", err)
+		}
+		n.DeviceType = models.DeviceType(dt)
+		n.Status = models.DeviceStatus(status)
+		_ = json.Unmarshal([]byte(ipsJSON), &n.IPAddresses)
+		nodes = append(nodes, n)
+	}
+	return nodes, rows.Err()
+}
+
+// ClearHierarchy resets parent_device_id and network_layer for all devices
+// to allow fresh inference. Does not affect manually set parents.
+func (s *ReconStore) ClearHierarchy(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET parent_device_id = '', network_layer = 0`)
+	if err != nil {
+		return fmt.Errorf("clear hierarchy: %w", err)
+	}
+	return nil
+}
+
+// ListAllDevices returns all devices without pagination (for hierarchy inference).
+func (s *ReconStore) ListAllDevices(ctx context.Context) ([]models.Device, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT
+		id, hostname, ip_addresses, mac_address, manufacturer,
+		device_type, os, status, discovery_method, agent_id,
+		first_seen, last_seen, notes, tags, custom_fields,
+		location, category, primary_role, owner,
+		classification_confidence, classification_source, classification_signals,
+		parent_device_id, network_layer
+		FROM recon_devices`)
+	if err != nil {
+		return nil, fmt.Errorf("list all devices: %w", err)
+	}
+	defer rows.Close()
+
+	var devices []models.Device
+	for rows.Next() {
+		d, scanErr := s.scanDeviceRow(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		devices = append(devices, *d)
+	}
+	return devices, rows.Err()
 }

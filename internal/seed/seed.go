@@ -30,6 +30,10 @@ func SeedDemoNetwork(ctx context.Context, reconStore *recon.ReconStore) error {
 		return fmt.Errorf("seed topology: %w", err)
 	}
 
+	if err := seedHierarchy(ctx, reconStore, deviceIDs); err != nil {
+		return fmt.Errorf("seed hierarchy: %w", err)
+	}
+
 	if err := seedScanHistory(ctx, reconStore, len(devices), now); err != nil {
 		return fmt.Errorf("seed scans: %w", err)
 	}
@@ -359,6 +363,61 @@ func seedTopologyLinks(ctx context.Context, store *recon.ReconStore, ids map[str
 	for i := range links {
 		if err := store.UpsertTopologyLink(ctx, &links[i]); err != nil {
 			return fmt.Errorf("link %s->%s: %w", links[i].SourcePort, links[i].TargetPort, err)
+		}
+	}
+
+	return nil
+}
+
+// seedHierarchy assigns network layers and parent device IDs to seeded devices.
+// This runs after devices and topology links are created.
+func seedHierarchy(ctx context.Context, store *recon.ReconStore, ids map[string]string) error {
+	type assignment struct {
+		hostname string
+		parent   string // hostname of parent (empty for root)
+		layer    int
+	}
+
+	assignments := []assignment{
+		// Gateway layer (1): routers, firewalls
+		{"pfsense-fw", "ubiquiti-gateway", models.NetworkLayerGateway},
+		{"ubiquiti-gateway", "", models.NetworkLayerGateway},
+
+		// Distribution layer (2): core/managed switch
+		{"cisco-switch-01", "ubiquiti-gateway", models.NetworkLayerDistribution},
+
+		// Access layer (3): edge switch, AP
+		{"tp-link-switch", "cisco-switch-01", models.NetworkLayerAccess},
+		{"unifi-ap-lr", "cisco-switch-01", models.NetworkLayerAccess},
+
+		// Endpoint layer (4): everything else
+		{"proxmox-host", "cisco-switch-01", models.NetworkLayerEndpoint},
+		{"docker-host", "cisco-switch-01", models.NetworkLayerEndpoint},
+		{"synology-nas", "cisco-switch-01", models.NetworkLayerEndpoint},
+		{"hp-laserjet", "cisco-switch-01", models.NetworkLayerEndpoint},
+		{"gaming-pc", "tp-link-switch", models.NetworkLayerEndpoint},
+		{"work-desktop", "tp-link-switch", models.NetworkLayerEndpoint},
+		{"media-center", "tp-link-switch", models.NetworkLayerEndpoint},
+		{"macbook-pro", "unifi-ap-lr", models.NetworkLayerEndpoint},
+		{"thinkpad-t14", "unifi-ap-lr", models.NetworkLayerEndpoint},
+		{"iphone-15-pro", "unifi-ap-lr", models.NetworkLayerEndpoint},
+		{"pixel-8", "unifi-ap-lr", models.NetworkLayerEndpoint},
+		{"galaxy-tab-s9", "unifi-ap-lr", models.NetworkLayerEndpoint},
+		{"smart-plug-living", "ubiquiti-gateway", models.NetworkLayerEndpoint},
+		{"cam-front-door", "ubiquiti-gateway", models.NetworkLayerEndpoint},
+	}
+
+	for _, a := range assignments {
+		deviceID, ok := ids[a.hostname]
+		if !ok {
+			continue
+		}
+		parentID := ""
+		if a.parent != "" {
+			parentID = ids[a.parent]
+		}
+		if err := store.UpdateDeviceHierarchy(ctx, deviceID, parentID, a.layer); err != nil {
+			return fmt.Errorf("hierarchy %s: %w", a.hostname, err)
 		}
 	}
 

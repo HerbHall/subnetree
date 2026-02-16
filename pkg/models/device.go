@@ -73,4 +73,17 @@ type Device struct {
 	ClassificationConfidence int    `json:"classification_confidence,omitempty" example:"75"`
 	ClassificationSource     string `json:"classification_source,omitempty" example:"snmp_bridge_mib"`
 	ClassificationSignals    string `json:"classification_signals,omitempty"` // JSON-encoded signal breakdown
+
+	// Network hierarchy metadata from hierarchy inference.
+	ParentDeviceID string `json:"parent_device_id,omitempty"`
+	NetworkLayer   int    `json:"network_layer,omitempty" example:"4"` // 0=unknown, 1=gateway, 2=distribution, 3=access, 4=endpoint
 }
+
+// Network layer constants for hierarchy inference.
+const (
+	NetworkLayerUnknown      = 0 // Unclassified
+	NetworkLayerGateway      = 1 // Routers, firewalls
+	NetworkLayerDistribution = 2 // L3 switches, core switches
+	NetworkLayerAccess       = 3 // L2 switches, APs
+	NetworkLayerEndpoint     = 4 // Servers, desktops, IoT, etc.
+)
