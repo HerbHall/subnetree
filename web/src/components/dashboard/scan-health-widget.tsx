@@ -113,7 +113,7 @@ function computeStats(scans: Scan[]) {
   }
 }
 
-function CustomTooltip({ active, payload }: TooltipContentProps<number, string>) {
+function CustomTooltip({ active, payload }: Partial<TooltipContentProps<number, string>>) {
   if (!active || !payload || payload.length === 0) return null
   const data = payload[0].payload as DurationPoint
   return (
