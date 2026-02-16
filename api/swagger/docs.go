@@ -2721,6 +2721,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/recon/movements": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns recent service movements where a port migrated from one device to another.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "List service movements",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_recon.ServiceMovement"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/scan": {
             "post": {
                 "security": [
@@ -5673,6 +5716,32 @@ const docTemplate = `{
                 "subnet": {
                     "type": "string",
                     "example": "192.168.1.0/24"
+                }
+            }
+        },
+        "internal_recon.ServiceMovement": {
+            "type": "object",
+            "properties": {
+                "detected_at": {
+                    "type": "string"
+                },
+                "from_device_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "to_device_id": {
+                    "type": "string"
                 }
             }
         },

@@ -1090,6 +1090,23 @@ definitions:
         example: 192.168.1.0/24
         type: string
     type: object
+  internal_recon.ServiceMovement:
+    properties:
+      detected_at:
+        type: string
+      from_device_id:
+        type: string
+      id:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+      service_name:
+        type: string
+      to_device_id:
+        type: string
+    type: object
   internal_recon.TopologyEdge:
     properties:
       id:
@@ -3093,6 +3110,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Inventory summary
+      tags:
+      - recon
+  /recon/movements:
+    get:
+      description: Returns recent service movements where a port migrated from one
+        device to another.
+      parameters:
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.ServiceMovement'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List service movements
       tags:
       - recon
   /recon/scan:

@@ -205,6 +205,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices/{id}/scans", Handler: m.handleDeviceScans},
 		{Method: "GET", Path: "/inventory/summary", Handler: m.handleInventorySummary},
 		{Method: "PATCH", Path: "/devices/bulk", Handler: m.handleBulkUpdateDevices},
+		{Method: "GET", Path: "/movements", Handler: m.handleListServiceMovements},
 		{Method: "POST", Path: "/snmp/discover", Handler: m.handleSNMPDiscover},
 		{Method: "GET", Path: "/snmp/system/{device_id}", Handler: m.handleSNMPSystemInfo},
 		{Method: "GET", Path: "/snmp/interfaces/{device_id}", Handler: m.handleSNMPInterfaces},
