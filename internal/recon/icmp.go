@@ -17,6 +17,7 @@ type HostResult struct {
 	RTT    time.Duration
 	Alive  bool
 	Method string // "icmp" or "arp"
+	TTL    int    // IP TTL from response (0 if unknown)
 }
 
 // ICMPScanner pings hosts in a subnet using ICMP.
@@ -68,10 +69,10 @@ func (s *ICMPScanner) Scan(ctx context.Context, subnet *net.IPNet, results chan<
 		go func(ip string) {
 			defer func() { <-sem }()
 
-			alive, rtt := s.pingHost(ctx, ip, privileged)
+			alive, rtt, ttl := s.pingHost(ctx, ip, privileged)
 			if alive {
 				select {
-				case results <- HostResult{IP: ip, RTT: rtt, Alive: true, Method: "icmp"}:
+				case results <- HostResult{IP: ip, RTT: rtt, Alive: true, Method: "icmp", TTL: ttl}:
 				case <-ctx.Done():
 				}
 			}
@@ -96,16 +97,24 @@ func (s *ICMPScanner) Scan(ctx context.Context, subnet *net.IPNet, results chan<
 }
 
 // pingHost pings a single host and returns whether it is alive.
-func (s *ICMPScanner) pingHost(ctx context.Context, ip string, privileged bool) (alive bool, rtt time.Duration) {
+func (s *ICMPScanner) pingHost(ctx context.Context, ip string, privileged bool) (alive bool, rtt time.Duration, ttl int) {
 	pinger, err := probing.NewPinger(ip)
 	if err != nil {
 		s.logger.Debug("failed to create pinger", zap.String("ip", ip), zap.Error(err))
-		return false, 0
+		return false, 0, 0
 	}
 
 	pinger.Count = s.pingCount
 	pinger.Timeout = s.pingTimeout
 	pinger.SetPrivileged(privileged)
+
+	// Capture TTL from first received packet.
+	var receivedTTL int
+	pinger.OnRecv = func(pkt *probing.Packet) {
+		if receivedTTL == 0 {
+			receivedTTL = pkt.TTL
+		}
+	}
 
 	// Run with context for cancellation support.
 	done := make(chan struct{})
@@ -120,14 +129,31 @@ func (s *ICMPScanner) pingHost(ctx context.Context, ip string, privileged bool) 
 	case <-done:
 	case <-ctx.Done():
 		pinger.Stop()
-		return false, 0
+		return false, 0, 0
 	}
 
 	stats := pinger.Statistics()
 	if stats.PacketsRecv > 0 {
-		return true, stats.AvgRtt
+		return true, stats.AvgRtt, receivedTTL
 	}
-	return false, 0
+	return false, 0, 0
+}
+
+// InferOSFromTTL returns an OS hint based on the ICMP TTL value.
+// TTL values are decremented at each hop, so we check ranges.
+func InferOSFromTTL(ttl int) string {
+	switch {
+	case ttl == 0:
+		return ""
+	case ttl >= 225: // 255 minus up to 30 hops
+		return "network_equipment" // Cisco IOS, Juniper JUNOS, most switches/routers
+	case ttl >= 110 && ttl <= 128:
+		return "windows"
+	case ttl >= 35 && ttl <= 64:
+		return "linux" // Also macOS, FreeBSD, Linux-based switches (Ubiquiti)
+	default:
+		return ""
+	}
 }
 
 // expandSubnet returns all host IPs in a subnet (excluding network and broadcast).
