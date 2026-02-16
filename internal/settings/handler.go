@@ -321,6 +321,11 @@ func (h *Handler) handleListThemes(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500	{object}	SettingsProblemDetail	"Internal server error"
 //	@Router			/settings/themes/{id} [get]
 func (h *Handler) handleGetTheme(w http.ResponseWriter, r *http.Request) {
+	// Ensure built-in themes are seeded (theme-provider fetches before list).
+	if err := h.ensureBuiltInThemes(r.Context()); err != nil {
+		h.logger.Error("failed to ensure built-in themes", zap.Error(err))
+	}
+
 	id := r.PathValue("id")
 	setting, err := h.settings.Get(r.Context(), themeKeyPrefix+id)
 	if err != nil {
