@@ -51,7 +51,7 @@ const (
 	WeightUPnPDeviceType  = 25 // UPnP device type URN
 	WeightMDNSService     = 20 // mDNS vendor-specific service
 	WeightPortProfile     = 15 // Port combination fingerprint
-	WeightOUIVendor       = 15 // OUI manufacturer hint
+	WeightOUIVendor       = 25 // OUI manufacturer hint
 	WeightTTLNetwork      = 10 // TTL=255 (network equipment)
 	WeightSNMPSysDescr    = 10 // sysDescr keyword match
 )

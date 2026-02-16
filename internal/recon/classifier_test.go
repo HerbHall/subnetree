@@ -165,7 +165,7 @@ func TestClassify_LLDPHighPriority(t *testing.T) {
 
 	result := Classify(signals)
 
-	// LLDP(40) for Router vs OUI(15) for Switch -> Router wins
+	// LLDP(40) for Router vs OUI(25) for Switch -> Router wins
 	if result.DeviceType != models.DeviceTypeRouter {
 		t.Errorf("expected Router (LLDP higher weight), got %s", result.DeviceType)
 	}
@@ -186,7 +186,7 @@ func TestClassify_TTLBoost(t *testing.T) {
 
 	result := Classify(signals)
 
-	// OUI(15) + TTL(10) both say Router = 25
+	// OUI(25) + TTL(10) both say Router = 35
 	if result.DeviceType != models.DeviceTypeRouter {
 		t.Errorf("expected Router, got %s", result.DeviceType)
 	}
@@ -217,7 +217,7 @@ func TestClassify_AllSignalsAgree(t *testing.T) {
 	if result.DeviceType != models.DeviceTypeSwitch {
 		t.Errorf("expected Switch, got %s", result.DeviceType)
 	}
-	// OUI(15) + sysDescr(10) + BRIDGE-MIB(35) + sysServices(30) + LLDP(40) + Port(15) = 145, capped at 100
+	// OUI(25) + sysDescr(10) + BRIDGE-MIB(35) + sysServices(30) + LLDP(40) + Port(15) = 155, capped at 100
 	if result.Confidence != 100 {
 		t.Errorf("expected confidence capped at 100, got %d", result.Confidence)
 	}

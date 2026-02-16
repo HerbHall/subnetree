@@ -137,16 +137,20 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 		if device.DiscoveryMethod != "" {
 			method = device.DiscoveryMethod
 		}
+		deviceType := string(existing.DeviceType)
+		if existing.DeviceType == models.DeviceTypeUnknown && device.DeviceType != models.DeviceTypeUnknown {
+			deviceType = string(device.DeviceType)
+		}
 
 		newStatus := string(models.DeviceStatusOnline)
 
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE recon_devices SET
 				ip_addresses = ?, mac_address = ?, manufacturer = ?,
-				status = ?, discovery_method = ?, last_seen = ?
+				status = ?, discovery_method = ?, device_type = ?, last_seen = ?
 			WHERE id = ?`,
 			string(ipsJSON), mac, manufacturer,
-			newStatus, string(method), now,
+			newStatus, string(method), deviceType, now,
 			existing.ID,
 		)
 		if err != nil {

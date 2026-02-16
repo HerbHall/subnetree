@@ -723,6 +723,79 @@ func TestUpsertDevice_RecordsStatusChange(t *testing.T) {
 	}
 }
 
+func TestUpsertDevice_UpdatesDeviceTypeFromUnknown(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create device with unknown type.
+	device := &models.Device{
+		Hostname:    "test-host",
+		IPAddresses: []string{"192.168.1.100"},
+		MACAddress:  "AA:BB:CC:DD:EE:FF",
+		DeviceType:  models.DeviceTypeUnknown,
+		Status:      models.DeviceStatusOnline,
+	}
+	created, err := s.UpsertDevice(ctx, device)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !created {
+		t.Fatal("expected device to be created")
+	}
+
+	// Upsert again with a classification.
+	device2 := &models.Device{
+		IPAddresses: []string{"192.168.1.100"},
+		MACAddress:  "AA:BB:CC:DD:EE:FF",
+		DeviceType:  models.DeviceTypeRouter,
+		Status:      models.DeviceStatusOnline,
+	}
+	created2, err := s.UpsertDevice(ctx, device2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created2 {
+		t.Fatal("expected update, not create")
+	}
+
+	// Verify device type was updated.
+	got, err := s.GetDeviceByMAC(ctx, "AA:BB:CC:DD:EE:FF")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.DeviceType != models.DeviceTypeRouter {
+		t.Errorf("DeviceType = %q, want %q", got.DeviceType, models.DeviceTypeRouter)
+	}
+}
+
+func TestUpsertDevice_DoesNotDowngradeDeviceType(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create device with router type.
+	device := &models.Device{
+		IPAddresses: []string{"192.168.1.200"},
+		MACAddress:  "11:22:33:44:55:66",
+		DeviceType:  models.DeviceTypeRouter,
+		Status:      models.DeviceStatusOnline,
+	}
+	_, _ = s.UpsertDevice(ctx, device)
+
+	// Upsert with a different type -- should NOT overwrite.
+	device2 := &models.Device{
+		IPAddresses: []string{"192.168.1.200"},
+		MACAddress:  "11:22:33:44:55:66",
+		DeviceType:  models.DeviceTypeSwitch,
+		Status:      models.DeviceStatusOnline,
+	}
+	_, _ = s.UpsertDevice(ctx, device2)
+
+	got, _ := s.GetDeviceByMAC(ctx, "11:22:33:44:55:66")
+	if got.DeviceType != models.DeviceTypeRouter {
+		t.Errorf("DeviceType = %q, want %q (should not be overwritten)", got.DeviceType, models.DeviceTypeRouter)
+	}
+}
+
 func TestListDevices_FilterByType(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
