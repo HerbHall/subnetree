@@ -49,7 +49,7 @@ type ChangelogListResponse struct {
 //	@Param			since		query		string	false	"Start date (RFC3339)"
 //	@Param			until		query		string	false	"End date (RFC3339)"
 //	@Success		200			{object}	ChangelogListResponse
-//	@Failure		500			{object}	models.APIProblem
+//	@Failure		500			{object}	map[string]any
 //	@Router			/autodoc/changes [get]
 func (m *Module) handleListChanges(w http.ResponseWriter, r *http.Request) {
 	filter := ListFilter{
@@ -95,7 +95,7 @@ func (m *Module) handleListChanges(w http.ResponseWriter, r *http.Request) {
 //	@Param			since	query		string	false	"Custom start date (RFC3339)"
 //	@Param			until	query		string	false	"Custom end date (RFC3339)"
 //	@Success		200		{string}	string	"Markdown text"
-//	@Failure		500		{object}	models.APIProblem
+//	@Failure		500		{object}	map[string]any
 //	@Router			/autodoc/export [get]
 func (m *Module) handleExport(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
@@ -147,7 +147,7 @@ func (m *Module) handleExport(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	Stats
-//	@Failure		500	{object}	models.APIProblem
+//	@Failure		500	{object}	map[string]any
 //	@Router			/autodoc/stats [get]
 func (m *Module) handleStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := m.store.GetStats(r.Context())

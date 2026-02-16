@@ -714,6 +714,51 @@ definitions:
         example: admin
         type: string
     type: object
+  internal_autodoc.ChangelogEntry:
+    properties:
+      created_at:
+        type: string
+      details:
+        items:
+          type: integer
+        type: array
+      device_id:
+        type: string
+      event_type:
+        type: string
+      id:
+        type: string
+      source_module:
+        type: string
+      summary:
+        type: string
+    type: object
+  internal_autodoc.ChangelogListResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/internal_autodoc.ChangelogEntry'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  internal_autodoc.Stats:
+    properties:
+      entries_by_type:
+        additionalProperties:
+          type: integer
+        type: object
+      latest_entry:
+        $ref: '#/definitions/internal_autodoc.ChangelogEntry'
+      oldest_entry:
+        $ref: '#/definitions/internal_autodoc.ChangelogEntry'
+      total_entries:
+        type: integer
+    type: object
   internal_catalog.RecommendationResponse:
     properties:
       count:
@@ -1506,6 +1551,105 @@ paths:
       summary: Check setup status
       tags:
       - auth
+  /autodoc/changes:
+    get:
+      description: Returns a paginated list of auto-documentation changelog entries
+        with optional filters.
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Filter by event type
+        in: query
+        name: event_type
+        type: string
+      - description: Start date (RFC3339)
+        in: query
+        name: since
+        type: string
+      - description: End date (RFC3339)
+        in: query
+        name: until
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_autodoc.ChangelogListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List changelog entries
+      tags:
+      - autodoc
+  /autodoc/export:
+    get:
+      description: Generates a markdown summary of changelog entries for the given
+        time range.
+      parameters:
+      - default: 7d
+        description: 'Time range: 7d, 30d, or custom'
+        in: query
+        name: range
+        type: string
+      - description: Custom start date (RFC3339)
+        in: query
+        name: since
+        type: string
+      - description: Custom end date (RFC3339)
+        in: query
+        name: until
+        type: string
+      produces:
+      - text/markdown
+      responses:
+        "200":
+          description: Markdown text
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Export changelog as markdown
+      tags:
+      - autodoc
+  /autodoc/stats:
+    get:
+      description: Returns aggregate statistics about the auto-documentation changelog.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_autodoc.Stats'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Changelog statistics
+      tags:
+      - autodoc
   /catalog/entries:
     get:
       description: Returns the full tool catalog for client-side filtering.

@@ -435,7 +435,7 @@ function ChangelogEntryCard({ entry }: { entry: ChangelogEntry }) {
                 <span>via {entry.source_module}</span>
               )}
             </div>
-            {expanded && entry.details && (
+            {expanded && entry.details != null && (
               <pre className="mt-3 p-3 rounded bg-muted/50 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto">
                 {JSON.stringify(entry.details, null, 2)}
               </pre>
