@@ -250,7 +250,7 @@ describe('DeviceNode', () => {
     const nodeContainer = container.querySelector('.rounded-lg')
     const style = nodeContainer?.getAttribute('style') ?? ''
     expect(style).toContain('box-shadow')
-    expect(style).toContain('rgba(74, 222, 128')
+    expect(style).toContain('var(--nv-topo-glow-highlight)')
   })
 })
 
