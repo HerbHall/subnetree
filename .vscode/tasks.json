@@ -109,6 +109,32 @@
       "type": "shell",
       "command": "make clean",
       "problemMatcher": []
+    },
+    {
+      "label": "Docker: QC Build & Run",
+      "detail": "Build from source + seed data for manual QC testing",
+      "type": "shell",
+      "command": "make docker-qc",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "group": "test"
+    },
+    {
+      "label": "Docker: QC Smoke Test",
+      "detail": "Build, start, run smoke tests, tear down",
+      "type": "shell",
+      "command": "make docker-qc-smoke",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "group": "test"
+    },
+    {
+      "label": "Docker: QC Teardown",
+      "detail": "Stop QC container and remove volumes",
+      "type": "shell",
+      "command": "make docker-qc-down",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
     }
   ]
 }
