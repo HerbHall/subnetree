@@ -174,7 +174,7 @@ Every GitHub issue must be developed on its own branch:
 
 ## Research Integration
 
-Development is coordinated with HomeLab research via `D:\DevSpace\.coordination\`:
+Development is coordinated with HomeLab research via `.coordination/` (gitignored, local-only):
 
 - **Check for new findings**: `/dashboard` automatically surfaces unprocessed `RF-NNN` entries at session start
 - **File a research request**: `/dashboard` option 10 creates an `RN-NNN` entry in `research-needs.md`

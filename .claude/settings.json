@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Coordination files at D:\\DevSpace\\.coordination\\. If work reveals a research question, suggest: 'Consider /dashboard option 10 to file a research request.' If there are unprocessed RF-NNN findings in research-findings.md, mention briefly."
+            "prompt": "Coordination files at .coordination/. If work reveals a research question, suggest: 'Consider /dashboard option 10 to file a research request.' If there are unprocessed RF-NNN findings in research-findings.md, mention briefly."
           }
         ]
       }
