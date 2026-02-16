@@ -847,6 +847,18 @@ func (s *ReconStore) GetInventorySummary(ctx context.Context, staleDays int) (*I
 	return summary, nil
 }
 
+// RemoveARPLinksForDevice removes ARP-inferred topology links for a device
+// that now has LLDP-discovered links (LLDP is more accurate).
+func (s *ReconStore) RemoveARPLinksForDevice(ctx context.Context, deviceID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM recon_topology_links WHERE link_type = 'arp' AND (source_device_id = ? OR target_device_id = ?)`,
+		deviceID, deviceID)
+	if err != nil {
+		return fmt.Errorf("remove ARP links for device %s: %w", deviceID, err)
+	}
+	return nil
+}
+
 // BulkUpdateDevices applies the same partial update to all devices matching the given IDs.
 // Returns the number of updated rows.
 func (s *ReconStore) BulkUpdateDevices(ctx context.Context, ids []string, params UpdateDeviceParams) (int, error) {
