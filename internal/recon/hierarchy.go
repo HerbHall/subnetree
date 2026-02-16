@@ -98,17 +98,17 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 	}
 
 	assignments := make(map[string]*HierarchyAssignment, len(devices))
-	for _, d := range devices {
-		assignments[d.ID] = &HierarchyAssignment{DeviceID: d.ID}
+	for i := range devices {
+		assignments[devices[i].ID] = &HierarchyAssignment{DeviceID: devices[i].ID}
 	}
 
 	// Step 1: Identify gateway devices (routers and firewalls).
 	var gatewayID string
-	for _, d := range devices {
-		if d.DeviceType == models.DeviceTypeRouter || d.DeviceType == models.DeviceTypeFirewall {
-			assignments[d.ID].NetworkLayer = models.NetworkLayerGateway
+	for i := range devices {
+		if devices[i].DeviceType == models.DeviceTypeRouter || devices[i].DeviceType == models.DeviceTypeFirewall {
+			assignments[devices[i].ID].NetworkLayer = models.NetworkLayerGateway
 			if gatewayID == "" {
-				gatewayID = d.ID
+				gatewayID = devices[i].ID
 			}
 		}
 	}
@@ -116,10 +116,10 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 	// If we found multiple routers/firewalls, link them: firewalls -> first router
 	// or if no router, the first gateway is the root.
 	var firstRouterID string
-	for _, d := range devices {
-		if d.DeviceType == models.DeviceTypeRouter {
+	for i := range devices {
+		if devices[i].DeviceType == models.DeviceTypeRouter {
 			if firstRouterID == "" {
-				firstRouterID = d.ID
+				firstRouterID = devices[i].ID
 			}
 			break
 		}
@@ -130,30 +130,30 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 
 	// Set firewall -> router parent if both exist.
 	if firstRouterID != "" {
-		for _, d := range devices {
-			if d.DeviceType == models.DeviceTypeFirewall && d.ID != firstRouterID {
+		for i := range devices {
+			if devices[i].DeviceType == models.DeviceTypeFirewall && devices[i].ID != firstRouterID {
 				// Check if there's a direct link between firewall and router.
-				assignments[d.ID].ParentDeviceID = firstRouterID
+				assignments[devices[i].ID].ParentDeviceID = firstRouterID
 			}
 		}
 	}
 
 	// Step 2: Classify switches.
-	for _, d := range devices {
-		if d.DeviceType != models.DeviceTypeSwitch {
+	for i := range devices {
+		if devices[i].DeviceType != models.DeviceTypeSwitch {
 			continue
 		}
 		// Check if the switch has a direct link to the gateway.
 		isDistribution := false
 		if firstRouterID != "" {
-			for _, tgt := range linksFromSource[d.ID] {
+			for _, tgt := range linksFromSource[devices[i].ID] {
 				if tgt == firstRouterID {
 					isDistribution = true
 					break
 				}
 			}
 			if !isDistribution {
-				for _, src := range linksToTarget[d.ID] {
+				for _, src := range linksToTarget[devices[i].ID] {
 					if src == firstRouterID {
 						isDistribution = true
 						break
@@ -163,65 +163,65 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 		}
 
 		if isDistribution {
-			assignments[d.ID].NetworkLayer = models.NetworkLayerDistribution
-			assignments[d.ID].ParentDeviceID = firstRouterID
+			assignments[devices[i].ID].NetworkLayer = models.NetworkLayerDistribution
+			assignments[devices[i].ID].ParentDeviceID = firstRouterID
 		} else {
-			assignments[d.ID].NetworkLayer = models.NetworkLayerAccess
+			assignments[devices[i].ID].NetworkLayer = models.NetworkLayerAccess
 		}
 	}
 
 	// Step 3: Assign parents for access-layer switches.
 	// An access switch's parent is the distribution switch it connects to.
-	for _, d := range devices {
-		if d.DeviceType != models.DeviceTypeSwitch {
+	for i := range devices {
+		if devices[i].DeviceType != models.DeviceTypeSwitch {
 			continue
 		}
-		if assignments[d.ID].NetworkLayer != models.NetworkLayerAccess {
+		if assignments[devices[i].ID].NetworkLayer != models.NetworkLayerAccess {
 			continue
 		}
 		// Look for an upstream switch (distribution layer).
-		for _, tgt := range linksFromSource[d.ID] {
+		for _, tgt := range linksFromSource[devices[i].ID] {
 			if tgtDev, ok := deviceByID[tgt]; ok && tgtDev.DeviceType == models.DeviceTypeSwitch {
 				if assignments[tgt].NetworkLayer == models.NetworkLayerDistribution {
-					assignments[d.ID].ParentDeviceID = tgt
+					assignments[devices[i].ID].ParentDeviceID = tgt
 					break
 				}
 			}
 		}
-		for _, src := range linksToTarget[d.ID] {
-			if assignments[d.ID].ParentDeviceID != "" {
+		for _, src := range linksToTarget[devices[i].ID] {
+			if assignments[devices[i].ID].ParentDeviceID != "" {
 				break
 			}
 			if srcDev, ok := deviceByID[src]; ok && srcDev.DeviceType == models.DeviceTypeSwitch {
 				if assignments[src].NetworkLayer == models.NetworkLayerDistribution {
-					assignments[d.ID].ParentDeviceID = src
+					assignments[devices[i].ID].ParentDeviceID = src
 					break
 				}
 			}
 		}
 		// If still no parent, assign to gateway.
-		if assignments[d.ID].ParentDeviceID == "" && firstRouterID != "" {
-			assignments[d.ID].ParentDeviceID = firstRouterID
+		if assignments[devices[i].ID].ParentDeviceID == "" && firstRouterID != "" {
+			assignments[devices[i].ID].ParentDeviceID = firstRouterID
 		}
 	}
 
 	// Step 4: Access points get layer 3 (access) with parent = router or nearest switch.
-	for _, d := range devices {
-		if d.DeviceType != models.DeviceTypeAccessPoint {
+	for i := range devices {
+		if devices[i].DeviceType != models.DeviceTypeAccessPoint {
 			continue
 		}
-		assignments[d.ID].NetworkLayer = models.NetworkLayerAccess
+		assignments[devices[i].ID].NetworkLayer = models.NetworkLayerAccess
 		// Find parent from topology links.
-		for _, src := range linksToTarget[d.ID] {
+		for _, src := range linksToTarget[devices[i].ID] {
 			if srcDev, ok := deviceByID[src]; ok {
 				if srcDev.DeviceType == models.DeviceTypeSwitch || srcDev.DeviceType == models.DeviceTypeRouter {
-					assignments[d.ID].ParentDeviceID = src
+					assignments[devices[i].ID].ParentDeviceID = src
 					break
 				}
 			}
 		}
-		if assignments[d.ID].ParentDeviceID == "" && firstRouterID != "" {
-			assignments[d.ID].ParentDeviceID = firstRouterID
+		if assignments[devices[i].ID].ParentDeviceID == "" && firstRouterID != "" {
+			assignments[devices[i].ID].ParentDeviceID = firstRouterID
 		}
 	}
 
@@ -249,8 +249,8 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 
 	// Step 6: Assign remaining devices with no parent to the gateway.
 	// Also set their layer to endpoint.
-	for _, d := range devices {
-		a := assignments[d.ID]
+	for i := range devices {
+		a := assignments[devices[i].ID]
 		if a.NetworkLayer != models.NetworkLayerUnknown {
 			continue
 		}
@@ -259,15 +259,15 @@ func InferHierarchyFromData(devices []models.Device, links []TopologyLink) []Hie
 	}
 
 	// Assign parentless non-infrastructure devices to the gateway.
-	for _, d := range devices {
-		a := assignments[d.ID]
+	for i := range devices {
+		a := assignments[devices[i].ID]
 		if a.ParentDeviceID != "" {
 			continue
 		}
 		if a.NetworkLayer == models.NetworkLayerGateway {
 			continue
 		}
-		if firstRouterID != "" && d.ID != firstRouterID {
+		if firstRouterID != "" && devices[i].ID != firstRouterID {
 			a.ParentDeviceID = firstRouterID
 		}
 	}
