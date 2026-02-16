@@ -395,7 +395,7 @@ func isValidTarget(target string) bool {
 	}
 	// Basic hostname validation: must have at least one dot or be a single label,
 	// no spaces, reasonable length.
-	if len(target) > 253 || len(target) == 0 {
+	if len(target) > 253 || target == "" {
 		return false
 	}
 	if strings.ContainsAny(target, " \t\n\r") {
