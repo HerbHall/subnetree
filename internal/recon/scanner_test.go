@@ -447,3 +447,61 @@ func TestExpandSubnet_TooLarge(t *testing.T) {
 		t.Errorf("expected nil for /15 subnet (too large), got %d hosts", len(hosts))
 	}
 }
+
+func TestRunStages_AllExecuted(t *testing.T) {
+	orch, _, _ := setupOrchestrator(t,
+		&mockPingScanner{}, &mockARPReader{}, &mockOUI{table: map[string]string{}})
+
+	var executed []string
+	stages := []scanStage{
+		{"stage-a", func(_ context.Context) { executed = append(executed, "a") }},
+		{"stage-b", func(_ context.Context) { executed = append(executed, "b") }},
+		{"stage-c", func(_ context.Context) { executed = append(executed, "c") }},
+	}
+
+	orch.runStages(context.Background(), stages)
+
+	if len(executed) != 3 {
+		t.Fatalf("executed %d stages, want 3", len(executed))
+	}
+	for i, want := range []string{"a", "b", "c"} {
+		if executed[i] != want {
+			t.Errorf("stage %d = %q, want %q", i, executed[i], want)
+		}
+	}
+}
+
+func TestRunStages_CancelBetweenStages(t *testing.T) {
+	orch, _, _ := setupOrchestrator(t,
+		&mockPingScanner{}, &mockARPReader{}, &mockOUI{table: map[string]string{}})
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var executed []string
+	stages := []scanStage{
+		{"stage-a", func(_ context.Context) {
+			executed = append(executed, "a")
+			cancel() // Cancel after first stage.
+		}},
+		{"stage-b", func(_ context.Context) { executed = append(executed, "b") }},
+		{"stage-c", func(_ context.Context) { executed = append(executed, "c") }},
+	}
+
+	orch.runStages(ctx, stages)
+
+	if len(executed) != 1 {
+		t.Fatalf("executed %d stages, want 1 (only stage-a before cancel)", len(executed))
+	}
+	if executed[0] != "a" {
+		t.Errorf("first stage = %q, want a", executed[0])
+	}
+}
+
+func TestRunStages_EmptyStages(t *testing.T) {
+	orch, _, _ := setupOrchestrator(t,
+		&mockPingScanner{}, &mockARPReader{}, &mockOUI{table: map[string]string{}})
+
+	// Should not panic on empty stages.
+	orch.runStages(context.Background(), nil)
+	orch.runStages(context.Background(), []scanStage{})
+}

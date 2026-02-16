@@ -59,6 +59,24 @@ func NewScanOrchestrator(
 	}
 }
 
+// scanStage represents a named post-scan processing stage.
+type scanStage struct {
+	name string
+	run  func(ctx context.Context)
+}
+
+// runStages executes stages sequentially, checking for cancellation between each.
+func (o *ScanOrchestrator) runStages(ctx context.Context, stages []scanStage) {
+	for _, stage := range stages {
+		if ctx.Err() != nil {
+			o.logger.Warn("scan cancelled, skipping remaining stages",
+				zap.String("skipped", stage.name))
+			return
+		}
+		stage.run(ctx)
+	}
+}
+
 // RunScan executes a full network scan for the given subnet.
 func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 	_, ipNet, err := net.ParseCIDR(subnet)
@@ -179,20 +197,14 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		}
 	}
 
-	// Port scan infrastructure devices for fingerprinting.
-	o.portScanInfraDevices(ctx, alive, arpTable)
-
-	// Classify devices using composite scoring.
-	o.classifyDevices(ctx, alive, arpTable)
-
-	// Detect potential unmanaged switches via ARP/MAC heuristics.
-	o.detectUnmanagedSwitches(ctx, alive, arpTable)
-
-	// Infer topology links from ARP data.
-	o.inferTopologyLinks(ctx, subnet, alive)
-
-	// Detect service movements between scans.
-	o.detectAndPublishServiceMovements(ctx, alive)
+	// Run post-scan processing stages.
+	o.runStages(ctx, []scanStage{
+		{"port-scan", func(ctx context.Context) { o.portScanInfraDevices(ctx, alive, arpTable) }},
+		{"classify", func(ctx context.Context) { o.classifyDevices(ctx, alive, arpTable) }},
+		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
+		{"topology-links", func(ctx context.Context) { o.inferTopologyLinks(ctx, subnet, alive) }},
+		{"service-movements", func(ctx context.Context) { o.detectAndPublishServiceMovements(ctx, alive) }},
+	})
 
 	// Update scan record.
 	scan := &models.ScanResult{
