@@ -22,6 +22,7 @@ import (
 
 	_ "github.com/HerbHall/subnetree/api/swagger"
 	"github.com/HerbHall/subnetree/internal/auth"
+	"github.com/HerbHall/subnetree/internal/autodoc"
 	"github.com/HerbHall/subnetree/internal/catalog"
 	"github.com/HerbHall/subnetree/internal/config"
 	"github.com/HerbHall/subnetree/internal/dashboard"
@@ -157,6 +158,7 @@ func main() {
 		insight.New(),
 		docs.New(),
 		mqtt.New(),
+		autodoc.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
