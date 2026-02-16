@@ -29,6 +29,7 @@ type Module struct {
 	snmpCollector *SNMPCollector
 	mdns          *MDNSListener
 	upnp          *UPNPDiscoverer
+	scheduler     *ScanScheduler
 	credAccessor  CredentialAccessor
 	credProvider  roles.CredentialProvider
 	activeScans   sync.Map // scanID -> context.CancelFunc
@@ -88,6 +89,21 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 		}
 		if d := deps.Config.GetDuration("upnp_interval"); d > 0 {
 			m.cfg.UPNPInterval = d
+		}
+		if deps.Config.IsSet("schedule.enabled") {
+			m.cfg.Schedule.Enabled = deps.Config.GetBool("schedule.enabled")
+		}
+		if d := deps.Config.GetDuration("schedule.interval"); d > 0 {
+			m.cfg.Schedule.Interval = d
+		}
+		if v := deps.Config.GetString("schedule.quiet_start"); v != "" {
+			m.cfg.Schedule.QuietStart = v
+		}
+		if v := deps.Config.GetString("schedule.quiet_end"); v != "" {
+			m.cfg.Schedule.QuietEnd = v
+		}
+		if v := deps.Config.GetString("schedule.subnet"); v != "" {
+			m.cfg.Schedule.Subnet = v
 		}
 	}
 
@@ -156,6 +172,28 @@ func (m *Module) Start(_ context.Context) error {
 		)
 	}
 
+	// Start scan scheduler if enabled.
+	if m.cfg.Schedule.Enabled && m.cfg.Schedule.Subnet != "" {
+		m.scheduler = NewScanScheduler(
+			m.cfg.Schedule,
+			m.orchestrator,
+			m.store,
+			&m.activeScans,
+			&m.wg,
+			m.newScanContext,
+			m.logger.Named("scheduler"),
+		)
+		m.wg.Add(1)
+		go func() {
+			defer m.wg.Done()
+			m.scheduler.Run(m.scanCtx)
+		}()
+		m.logger.Info("scan scheduler enabled",
+			zap.Duration("interval", m.cfg.Schedule.Interval),
+			zap.String("subnet", m.cfg.Schedule.Subnet),
+		)
+	}
+
 	m.logger.Info("recon module started")
 	return nil
 }
@@ -168,6 +206,9 @@ func (m *Module) SetCredentialAccessor(ca CredentialAccessor) {
 
 func (m *Module) Stop(_ context.Context) error {
 	m.logger.Info("recon module stopping, cancelling active scans")
+	if m.scheduler != nil {
+		m.scheduler.Stop()
+	}
 	if m.scanCancel != nil {
 		m.scanCancel()
 	}
