@@ -30,6 +30,7 @@ type Module struct {
 	mdns          *MDNSListener
 	upnp          *UPNPDiscoverer
 	scheduler     *ScanScheduler
+	consolidator  *ScanConsolidator
 	credAccessor  CredentialAccessor
 	credProvider  roles.CredentialProvider
 	activeScans   sync.Map // scanID -> context.CancelFunc
@@ -194,6 +195,14 @@ func (m *Module) Start(_ context.Context) error {
 		)
 	}
 
+	// Start scan metrics consolidator background goroutine.
+	m.consolidator = NewScanConsolidator(m.store, m.logger.Named("consolidation"))
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		m.consolidator.Run(m.scanCtx)
+	}()
+
 	m.logger.Info("recon module started")
 	return nil
 }
@@ -247,6 +256,8 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices/{id}/scans", Handler: m.handleDeviceScans},
 		{Method: "GET", Path: "/inventory/summary", Handler: m.handleInventorySummary},
 		{Method: "PATCH", Path: "/devices/bulk", Handler: m.handleBulkUpdateDevices},
+		{Method: "GET", Path: "/metrics/aggregates", Handler: m.handleListMetricsAggregates},
+		{Method: "GET", Path: "/metrics/raw", Handler: m.handleListRawMetrics},
 		{Method: "GET", Path: "/movements", Handler: m.handleListServiceMovements},
 		{Method: "POST", Path: "/snmp/discover", Handler: m.handleSNMPDiscover},
 		{Method: "GET", Path: "/snmp/system/{device_id}", Handler: m.handleSNMPSystemInfo},

@@ -171,5 +171,37 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     7,
+			Description: "create scan_metrics_aggregates table for weekly/monthly rollups",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`CREATE TABLE IF NOT EXISTS recon_scan_metrics_aggregates (
+						id TEXT PRIMARY KEY,
+						period TEXT NOT NULL,
+						period_start TEXT NOT NULL,
+						period_end TEXT NOT NULL,
+						scan_count INTEGER NOT NULL,
+						avg_duration_ms REAL,
+						avg_ping_phase_ms REAL,
+						avg_enrich_ms REAL,
+						avg_devices_found REAL,
+						max_devices_found INTEGER,
+						min_devices_found INTEGER,
+						avg_hosts_alive REAL,
+						total_new_devices INTEGER,
+						failed_scans INTEGER NOT NULL DEFAULT 0,
+						created_at TEXT NOT NULL DEFAULT (datetime('now'))
+					)`,
+					`CREATE UNIQUE INDEX IF NOT EXISTS idx_scan_agg_period ON recon_scan_metrics_aggregates(period, period_start)`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

@@ -961,6 +961,73 @@ func queryInt(r *http.Request, key string, defaultVal int) int {
 }
 
 // ============================================================================
+// Metrics Aggregate Handlers
+// ============================================================================
+
+// handleListMetricsAggregates returns time-bucketed scan metric aggregates.
+//
+//	@Summary		List scan metrics aggregates
+//	@Description	Returns weekly or monthly aggregates of scan performance metrics.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			period	query		string	false	"Aggregation period (weekly or monthly)"	default(weekly)
+//	@Param			limit	query		int		false	"Max results"								default(52)
+//	@Success		200		{array}		ScanMetricsAggregate
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/metrics/aggregates [get]
+func (m *Module) handleListMetricsAggregates(w http.ResponseWriter, r *http.Request) {
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "weekly"
+	}
+	if period != "weekly" && period != "monthly" {
+		writeError(w, http.StatusBadRequest, "period must be 'weekly' or 'monthly'")
+		return
+	}
+
+	limit := queryInt(r, "limit", 52)
+
+	aggs, err := m.store.ListScanMetricsAggregates(r.Context(), period, limit)
+	if err != nil {
+		m.logger.Error("failed to list metrics aggregates", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list metrics aggregates")
+		return
+	}
+	if aggs == nil {
+		aggs = []ScanMetricsAggregate{}
+	}
+	writeJSON(w, http.StatusOK, aggs)
+}
+
+// handleListRawMetrics returns recent raw scan metrics.
+//
+//	@Summary		List raw scan metrics
+//	@Description	Returns recent individual scan performance metrics.
+//	@Tags			recon
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			limit	query		int	false	"Max results"	default(30)
+//	@Success		200		{array}		models.ScanMetrics
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/recon/metrics/raw [get]
+func (m *Module) handleListRawMetrics(w http.ResponseWriter, r *http.Request) {
+	limit := queryInt(r, "limit", 30)
+
+	metrics, err := m.store.ListRawMetrics(r.Context(), limit)
+	if err != nil {
+		m.logger.Error("failed to list raw metrics", zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to list raw metrics")
+		return
+	}
+	if metrics == nil {
+		metrics = []models.ScanMetrics{}
+	}
+	writeJSON(w, http.StatusOK, metrics)
+}
+
+// ============================================================================
 // SNMP Handlers
 // ============================================================================
 

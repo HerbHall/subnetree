@@ -86,6 +86,25 @@ type DeviceStatusChange struct {
 	ChangedAt time.Time `json:"changed_at"`
 }
 
+// ScanMetricsAggregate represents a time-bucketed aggregate of scan metrics.
+type ScanMetricsAggregate struct {
+	ID              string  `json:"id"`
+	Period          string  `json:"period"`
+	PeriodStart     string  `json:"period_start"`
+	PeriodEnd       string  `json:"period_end"`
+	ScanCount       int     `json:"scan_count"`
+	AvgDurationMs   float64 `json:"avg_duration_ms"`
+	AvgPingPhaseMs  float64 `json:"avg_ping_phase_ms"`
+	AvgEnrichMs     float64 `json:"avg_enrich_ms"`
+	AvgDevicesFound float64 `json:"avg_devices_found"`
+	MaxDevicesFound int     `json:"max_devices_found"`
+	MinDevicesFound int     `json:"min_devices_found"`
+	AvgHostsAlive   float64 `json:"avg_hosts_alive"`
+	TotalNewDevices int     `json:"total_new_devices"`
+	FailedScans     int     `json:"failed_scans"`
+	CreatedAt       string  `json:"created_at"`
+}
+
 // ScanSummary is a lightweight scan record for device scan history.
 type ScanSummary struct {
 	ID        string `json:"id"`
@@ -1071,4 +1090,199 @@ func (s *ReconStore) DeleteTopologyLayout(ctx context.Context, id string) error 
 		return fmt.Errorf("topology layout not found: %s", id)
 	}
 	return nil
+}
+
+// SaveScanMetricsAggregate inserts a pre-computed aggregate record.
+// Uses INSERT OR IGNORE to be idempotent against the unique (period, period_start) index.
+func (s *ReconStore) SaveScanMetricsAggregate(ctx context.Context, agg *ScanMetricsAggregate) error {
+	if agg.ID == "" {
+		agg.ID = uuid.New().String()
+	}
+	if agg.CreatedAt == "" {
+		agg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO recon_scan_metrics_aggregates (
+			id, period, period_start, period_end, scan_count,
+			avg_duration_ms, avg_ping_phase_ms, avg_enrich_ms,
+			avg_devices_found, max_devices_found, min_devices_found,
+			avg_hosts_alive, total_new_devices, failed_scans, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		agg.ID, agg.Period, agg.PeriodStart, agg.PeriodEnd, agg.ScanCount,
+		agg.AvgDurationMs, agg.AvgPingPhaseMs, agg.AvgEnrichMs,
+		agg.AvgDevicesFound, agg.MaxDevicesFound, agg.MinDevicesFound,
+		agg.AvgHostsAlive, agg.TotalNewDevices, agg.FailedScans, agg.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert scan metrics aggregate: %w", err)
+	}
+	return nil
+}
+
+// ListScanMetricsAggregates returns aggregates for the given period, ordered by period_start descending.
+func (s *ReconStore) ListScanMetricsAggregates(ctx context.Context, period string, limit int) ([]ScanMetricsAggregate, error) {
+	if limit <= 0 {
+		limit = 52
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, period, period_start, period_end, scan_count,
+			avg_duration_ms, avg_ping_phase_ms, avg_enrich_ms,
+			avg_devices_found, max_devices_found, min_devices_found,
+			avg_hosts_alive, total_new_devices, failed_scans, created_at
+		FROM recon_scan_metrics_aggregates
+		WHERE period = ?
+		ORDER BY period_start DESC
+		LIMIT ?`, period, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list scan metrics aggregates: %w", err)
+	}
+	defer rows.Close()
+
+	var result []ScanMetricsAggregate
+	for rows.Next() {
+		var a ScanMetricsAggregate
+		if err := rows.Scan(
+			&a.ID, &a.Period, &a.PeriodStart, &a.PeriodEnd, &a.ScanCount,
+			&a.AvgDurationMs, &a.AvgPingPhaseMs, &a.AvgEnrichMs,
+			&a.AvgDevicesFound, &a.MaxDevicesFound, &a.MinDevicesFound,
+			&a.AvgHostsAlive, &a.TotalNewDevices, &a.FailedScans, &a.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan aggregate row: %w", err)
+		}
+		result = append(result, a)
+	}
+	return result, rows.Err()
+}
+
+// GetRawMetricsSince returns raw scan metrics with created_at >= since.
+func (s *ReconStore) GetRawMetricsSince(ctx context.Context, since time.Time) ([]models.ScanMetrics, error) {
+	sinceStr := since.UTC().Format(time.RFC3339)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT scan_id, duration_ms, ping_phase_ms, enrich_phase_ms, post_process_ms,
+			hosts_scanned, hosts_alive, devices_created, devices_updated, created_at
+		FROM recon_scan_metrics
+		WHERE created_at >= ?
+		ORDER BY created_at ASC`, sinceStr)
+	if err != nil {
+		return nil, fmt.Errorf("get raw metrics since: %w", err)
+	}
+	defer rows.Close()
+
+	var result []models.ScanMetrics
+	for rows.Next() {
+		var m models.ScanMetrics
+		if err := rows.Scan(
+			&m.ScanID, &m.DurationMs, &m.PingPhaseMs, &m.EnrichPhaseMs, &m.PostProcessMs,
+			&m.HostsScanned, &m.HostsAlive, &m.DevicesCreated, &m.DevicesUpdated, &m.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan raw metrics row: %w", err)
+		}
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+// GetRawMetricsInRange returns raw scan metrics within the given time range.
+func (s *ReconStore) GetRawMetricsInRange(ctx context.Context, start, end time.Time) ([]models.ScanMetrics, error) {
+	startStr := start.UTC().Format(time.RFC3339)
+	endStr := end.UTC().Format(time.RFC3339)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT scan_id, duration_ms, ping_phase_ms, enrich_phase_ms, post_process_ms,
+			hosts_scanned, hosts_alive, devices_created, devices_updated, created_at
+		FROM recon_scan_metrics
+		WHERE created_at >= ? AND created_at < ?
+		ORDER BY created_at ASC`, startStr, endStr)
+	if err != nil {
+		return nil, fmt.Errorf("get raw metrics in range: %w", err)
+	}
+	defer rows.Close()
+
+	var result []models.ScanMetrics
+	for rows.Next() {
+		var m models.ScanMetrics
+		if err := rows.Scan(
+			&m.ScanID, &m.DurationMs, &m.PingPhaseMs, &m.EnrichPhaseMs, &m.PostProcessMs,
+			&m.HostsScanned, &m.HostsAlive, &m.DevicesCreated, &m.DevicesUpdated, &m.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan raw metrics row: %w", err)
+		}
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+// ListRawMetrics returns the most recent raw scan metrics.
+func (s *ReconStore) ListRawMetrics(ctx context.Context, limit int) ([]models.ScanMetrics, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT scan_id, duration_ms, ping_phase_ms, enrich_phase_ms, post_process_ms,
+			hosts_scanned, hosts_alive, devices_created, devices_updated, created_at
+		FROM recon_scan_metrics
+		ORDER BY created_at DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list raw metrics: %w", err)
+	}
+	defer rows.Close()
+
+	var result []models.ScanMetrics
+	for rows.Next() {
+		var m models.ScanMetrics
+		if err := rows.Scan(
+			&m.ScanID, &m.DurationMs, &m.PingPhaseMs, &m.EnrichPhaseMs, &m.PostProcessMs,
+			&m.HostsScanned, &m.HostsAlive, &m.DevicesCreated, &m.DevicesUpdated, &m.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan raw metrics row: %w", err)
+		}
+		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+// PruneMetricsBefore deletes raw scan metrics older than the given time.
+// Returns the number of deleted rows.
+func (s *ReconStore) PruneMetricsBefore(ctx context.Context, before time.Time) (int64, error) {
+	beforeStr := before.UTC().Format(time.RFC3339)
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM recon_scan_metrics WHERE created_at < ?`, beforeStr)
+	if err != nil {
+		return 0, fmt.Errorf("prune scan metrics: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	return n, nil
+}
+
+// GetWeeklyAggregatesInRange returns weekly aggregates within the given time range.
+func (s *ReconStore) GetWeeklyAggregatesInRange(ctx context.Context, start, end time.Time) ([]ScanMetricsAggregate, error) {
+	startStr := start.UTC().Format(time.RFC3339)
+	endStr := end.UTC().Format(time.RFC3339)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, period, period_start, period_end, scan_count,
+			avg_duration_ms, avg_ping_phase_ms, avg_enrich_ms,
+			avg_devices_found, max_devices_found, min_devices_found,
+			avg_hosts_alive, total_new_devices, failed_scans, created_at
+		FROM recon_scan_metrics_aggregates
+		WHERE period = 'weekly' AND period_start >= ? AND period_start < ?
+		ORDER BY period_start ASC`, startStr, endStr)
+	if err != nil {
+		return nil, fmt.Errorf("get weekly aggregates in range: %w", err)
+	}
+	defer rows.Close()
+
+	var result []ScanMetricsAggregate
+	for rows.Next() {
+		var a ScanMetricsAggregate
+		if err := rows.Scan(
+			&a.ID, &a.Period, &a.PeriodStart, &a.PeriodEnd, &a.ScanCount,
+			&a.AvgDurationMs, &a.AvgPingPhaseMs, &a.AvgEnrichMs,
+			&a.AvgDevicesFound, &a.MaxDevicesFound, &a.MinDevicesFound,
+			&a.AvgHostsAlive, &a.TotalNewDevices, &a.FailedScans, &a.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan weekly aggregate row: %w", err)
+		}
+		result = append(result, a)
+	}
+	return result, rows.Err()
 }
