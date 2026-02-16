@@ -563,7 +563,7 @@ export function TopologyPage() {
         {showMinimap && (
           <MiniMap nodeStrokeWidth={3} style={{ backgroundColor: 'var(--nv-bg-card)', border: '1px solid var(--nv-border-default)' }} maskColor="rgba(0, 0, 0, 0.3)" />
         )}
-        <Panel position="top-center">
+        <Panel position="top-right">
           <div className="flex flex-col items-center gap-2">
             <TopologyViewTabs viewMode={viewMode} onViewModeChange={handleViewModeChange} />
             <TopologyToolbar

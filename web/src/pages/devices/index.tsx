@@ -101,9 +101,9 @@ export function DevicesPage() {
   // Local UI state
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortField, setSortField] = useState<SortField>('hostname')
+  const [sortField, setSortField] = useState<SortField>('ip')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [pageSize, setPageSize] = useState(25)
+  const [pageSize, setPageSize] = useState(100)
   const [currentPage, setCurrentPage] = useState(1)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -686,7 +686,7 @@ export function DevicesPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium w-10">
+                  <th className="px-4 py-1.5 text-left font-medium w-10">
                     <input
                       type="checkbox"
                       checked={selectedIds.size === sortedDevices.length && sortedDevices.length > 0}
@@ -706,12 +706,12 @@ export function DevicesPage() {
                   <SortableHeader field="device_type" current={sortField} onClick={handleSort}>
                     Type {getSortIcon('device_type')}
                   </SortableHeader>
-                  <th className="px-4 py-3 text-left font-medium">Category</th>
-                  <th className="px-4 py-3 text-left font-medium">Owner</th>
+                  <th className="px-4 py-1.5 text-left font-medium">Category</th>
+                  <th className="px-4 py-1.5 text-left font-medium">Owner</th>
                   <SortableHeader field="status" current={sortField} onClick={handleSort}>
                     Status {getSortIcon('status')}
                   </SortableHeader>
-                  <th className="px-4 py-3 text-left font-medium w-12">
+                  <th className="px-4 py-1.5 text-left font-medium w-12">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -728,7 +728,7 @@ export function DevicesPage() {
                         vState === 'checking' && 'opacity-50',
                       )}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(device.id)}
@@ -737,7 +737,7 @@ export function DevicesPage() {
                           onClick={(e) => e.stopPropagation()}
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         <Link
                           to={`/devices/${device.id}`}
                           className="font-medium hover:text-primary"
@@ -745,30 +745,30 @@ export function DevicesPage() {
                           {device.hostname || 'Unknown'}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs">
+                      <td className="px-4 py-1.5 font-mono text-xs">
                         {device.ip_addresses?.[0] || '-'}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-1.5 text-muted-foreground">
                         {device.manufacturer || '-'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         <span className="capitalize">{device.device_type}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         {device.category ? (
                           <span className="capitalize text-sm">{device.category}</span>
                         ) : (
                           <span className="text-muted-foreground/50 text-sm">--</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         {device.owner ? (
                           <span className="text-sm">{device.owner}</span>
                         ) : (
                           <span className="text-muted-foreground/50 text-sm">--</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         <div className="flex items-center gap-1.5">
                           {vState === 'checking' ? (
                             <VerificationBadge state="checking" />
@@ -788,7 +788,7 @@ export function DevicesPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -1140,7 +1140,7 @@ function SortableHeader({
   return (
     <th
       className={cn(
-        'px-4 py-3 text-left font-medium cursor-pointer hover:bg-muted/80 transition-colors select-none',
+        'px-4 py-1.5 text-left font-medium cursor-pointer hover:bg-muted/80 transition-colors select-none',
         current === field && 'text-foreground'
       )}
       onClick={() => onClick(field)}
