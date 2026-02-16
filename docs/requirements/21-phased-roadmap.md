@@ -121,7 +121,7 @@
 - [x] ICMP ping sweep
 - [x] ARP scanning
 - [x] OUI manufacturer lookup (embedded database)
-- [ ] LLDP/CDP neighbor discovery for topology (deferred to Phase 2)
+- [x] LLDP/CDP neighbor discovery for topology (LLDP via SNMP -- PR #370, v0.6.0)
 - [x] Device persistence in SQLite
 - [x] Publishes `recon.device.discovered` events
 
@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0 features shipped: mDNS discovery (PR #248), metrics history (PR #243), dependency-aware alert suppression (PR #261), Linux Scout (PR #262). v0.4.1 features shipped: MkDocs site (PR #270), LLM BYOK providers (PR #271), NL query bar (PR #272), LLM settings UI (PR #273), AI recommendations (PR #274), logo integration (PR #275), power monitoring research (PR #276), UPnP discovery (PR #292), topology enhancements (PR #293), maintenance windows (PR #294), device inventory widget (PR #295), analytics dashboard (PR #296), Docker setup fix (PR #306). Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -343,19 +343,19 @@
 #### Integration Foundation (Gateway P0)
 
 - [x] Prometheus `/metrics` endpoint (shipped in Phase 1 -- `/metrics` at server root)
-- [ ] MQTT publisher for Home Assistant auto-discovery (device status, alerts, metrics as HA sensors)
-- [ ] Alertmanager-compatible webhook format for alert notifications
-- [ ] CSV import/export (universal device inventory interchange)
-- [ ] Tier-aware default configuration (auto-detect hardware tier, set scan interval/retention/modules)
+- [x] MQTT publisher for Home Assistant auto-discovery (device status, alerts, metrics as HA sensors) (PR #316, v0.5.0)
+- [x] Alertmanager-compatible webhook format for alert notifications (PR #314, v0.5.0)
+- [x] CSV import/export (universal device inventory interchange) (PR #315, v0.5.0)
+- [x] Tier-aware default configuration (auto-detect hardware tier, set scan interval/retention/modules) (PR #317, v0.5.0)
 
 #### Recommendation Engine Framework
 
 Framework for hardware-aware growth recommendations. SubNetree uses Scout's hardware profiles to suggest modules and ecosystem tools the user's hardware can support. Full implementation in Phase 3-4; framework here enables the data model and basic recommendations.
 
-- [ ] `pkg/catalog/` data model: Go structs for catalog entries (tool name, category, hardware requirements, features, growth triggers, integration status)
-- [ ] Embedded catalog: `catalog.yaml` compiled into binary via `//go:embed` with SubNetree modules + top 15 ecosystem tools (~50 KB)
-- [ ] Hardware capability assessment: compare Scout's hardware profile (CPU, RAM, disk) against catalog entry requirements
-- [ ] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage
+- [x] `pkg/catalog/` data model: Go structs for catalog entries (tool name, category, hardware requirements, features, growth triggers, integration status) (PR #313, v0.5.0)
+- [x] Embedded catalog: `catalog.yaml` compiled into binary via `//go:embed` with SubNetree modules + top 15 ecosystem tools (~50 KB) (PR #313, v0.5.0)
+- [x] Hardware capability assessment: compare Scout's hardware profile (CPU, RAM, disk) against catalog entry requirements (PR #313, v0.5.0)
+- [x] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage (PR #313, v0.5.0)
 - [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring")
 
 #### Multi-Tenancy
@@ -401,7 +401,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Utilization grading per device (A-F rating based on efficiency) (PR #195)
 - [x] Dashboard: service map view (device -> services -> utilization) (PR #195)
 - [x] Dashboard: underutilized/overloaded device lists (PR #195)
-- [ ] Service movement detection (service appears on new device)
+- [x] Service movement detection (service appears on new device) (PR #288, v0.6.0)
 
 #### Infrastructure
 
