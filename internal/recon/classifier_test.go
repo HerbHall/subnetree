@@ -124,7 +124,7 @@ func TestClassify_CombinedSignals(t *testing.T) {
 	if result.DeviceType != models.DeviceTypeSwitch {
 		t.Errorf("expected Switch, got %s", result.DeviceType)
 	}
-	// OUI(15) + Port(15) + BRIDGE-MIB(35) = 65
+	// Expected: OUI weight + Port weight + BRIDGE-MIB weight
 	expectedConfidence := WeightOUIVendor + WeightPortProfile + WeightSNMPBridgeMIB
 	if result.Confidence != expectedConfidence {
 		t.Errorf("expected confidence %d, got %d", expectedConfidence, result.Confidence)
@@ -146,8 +146,7 @@ func TestClassify_ConflictingSignals(t *testing.T) {
 
 	result := Classify(signals)
 
-	// Switch: BRIDGE-MIB(35) + Port(15) = 50
-	// Router: OUI(15)
+	// Switch wins: BRIDGE-MIB weight + Port weight > Router OUI weight alone
 	if result.DeviceType != models.DeviceTypeSwitch {
 		t.Errorf("expected Switch (higher aggregate), got %s", result.DeviceType)
 	}
