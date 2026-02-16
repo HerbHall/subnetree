@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { TEST_USER } from './helpers'
 
 test.describe('Authentication', () => {
   test('login page renders the sign-in form', async ({ page }) => {
@@ -67,5 +68,34 @@ test.describe('Authentication', () => {
     // Click again to hide
     await page.getByLabel('Hide password').click()
     await expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
+  test('successful login redirects to dashboard', async ({ page }) => {
+    await page.goto('/login')
+
+    // Wait for setup status check to complete
+    await expect(page.getByText('Sign in to SubNetree')).toBeVisible({ timeout: 15_000 })
+
+    await page.getByLabel('Username').fill(TEST_USER.username)
+    await page.getByLabel('Password').fill(TEST_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    // Should redirect to dashboard after successful login
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  })
+
+  test('successful login shows username in sidebar', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByText('Sign in to SubNetree')).toBeVisible({ timeout: 15_000 })
+
+    await page.getByLabel('Username').fill(TEST_USER.username)
+    await page.getByLabel('Password').fill(TEST_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 })
+
+    // The sidebar should show the logged-in username
+    await expect(page.getByText(TEST_USER.username)).toBeVisible()
   })
 })

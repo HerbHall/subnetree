@@ -60,6 +60,7 @@ web/coverage/
 web/test-results/
 web/playwright-report/
 web/blob-report/
+web/e2e/.auth/
 *.tsbuildinfo
 
 # Embedded dashboard build (copied from web/dist/)
