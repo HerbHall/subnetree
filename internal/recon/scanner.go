@@ -450,7 +450,7 @@ func (o *ScanOrchestrator) classifyDevices(ctx context.Context, alive []HostResu
 // patterns after classification. Devices with infrastructure vendor OUIs that
 // have no SNMP, no open ports, and remain unclassified are candidates.
 func (o *ScanOrchestrator) detectUnmanagedSwitches(ctx context.Context, alive []HostResult, arpTable map[string]string) {
-	var infos []UnmanagedDeviceInfo
+	infos := make([]UnmanagedDeviceInfo, 0, len(alive))
 
 	for _, host := range alive {
 		if ctx.Err() != nil {

@@ -71,7 +71,7 @@ func DetectUnmanagedSwitches(devices []UnmanagedDeviceInfo) []UnmanagedSwitchCan
 		return nil
 	}
 
-	var candidates []UnmanagedSwitchCandidate
+	candidates := make([]UnmanagedSwitchCandidate, 0, len(devices))
 
 	// Track infrastructure OUI count per manufacturer for clustering bonus.
 	infraCount := countInfraManufacturers(devices)
