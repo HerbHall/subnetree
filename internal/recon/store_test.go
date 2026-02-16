@@ -796,6 +796,212 @@ func TestUpsertDevice_DoesNotDowngradeDeviceType(t *testing.T) {
 	}
 }
 
+func TestUpsertDevice_MergesMetadataOnUpdate(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Step 1: Create a device with minimal fields (like mDNS discovery).
+	d1 := &models.Device{
+		IPAddresses:     []string{"192.168.1.50"},
+		MACAddress:      "AA:BB:CC:11:22:33",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	created, err := s.UpsertDevice(ctx, d1)
+	if err != nil {
+		t.Fatalf("first UpsertDevice: %v", err)
+	}
+	if !created {
+		t.Fatal("expected created=true for new device")
+	}
+
+	// Verify initial state has no metadata.
+	got, err := s.GetDevice(ctx, d1.ID)
+	if err != nil {
+		t.Fatalf("GetDevice after create: %v", err)
+	}
+	if got.Hostname != "" {
+		t.Errorf("initial Hostname = %q, want empty", got.Hostname)
+	}
+
+	// Step 2: Upsert again with rich metadata (like seed data).
+	d2 := &models.Device{
+		IPAddresses:     []string{"192.168.1.50"},
+		MACAddress:      "AA:BB:CC:11:22:33",
+		Hostname:        "home-server",
+		Manufacturer:    "Dell",
+		OS:              "Ubuntu 22.04",
+		Location:        "Server Rack A",
+		Category:        "production",
+		PrimaryRole:     "web-server",
+		Owner:           "admin",
+		Tags:            []string{"critical", "monitored"},
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: "seed",
+	}
+	created, err = s.UpsertDevice(ctx, d2)
+	if err != nil {
+		t.Fatalf("second UpsertDevice: %v", err)
+	}
+	if created {
+		t.Fatal("expected created=false for existing device")
+	}
+
+	// Step 3: Verify all metadata fields were merged.
+	got, err = s.GetDevice(ctx, d1.ID)
+	if err != nil {
+		t.Fatalf("GetDevice after update: %v", err)
+	}
+	if got.Hostname != "home-server" {
+		t.Errorf("Hostname = %q, want %q", got.Hostname, "home-server")
+	}
+	if got.Manufacturer != "Dell" {
+		t.Errorf("Manufacturer = %q, want %q", got.Manufacturer, "Dell")
+	}
+	if got.OS != "Ubuntu 22.04" {
+		t.Errorf("OS = %q, want %q", got.OS, "Ubuntu 22.04")
+	}
+	if got.Location != "Server Rack A" {
+		t.Errorf("Location = %q, want %q", got.Location, "Server Rack A")
+	}
+	if got.Category != "production" {
+		t.Errorf("Category = %q, want %q", got.Category, "production")
+	}
+	if got.PrimaryRole != "web-server" {
+		t.Errorf("PrimaryRole = %q, want %q", got.PrimaryRole, "web-server")
+	}
+	if got.Owner != "admin" {
+		t.Errorf("Owner = %q, want %q", got.Owner, "admin")
+	}
+	if len(got.Tags) != 2 {
+		t.Errorf("Tags count = %d, want 2", len(got.Tags))
+	}
+}
+
+func TestUpsertDevice_DoesNotOverwriteMetadataWithEmpty(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Step 1: Create a device with full metadata (like seed data first).
+	d1 := &models.Device{
+		IPAddresses:     []string{"192.168.1.60"},
+		MACAddress:      "AA:BB:CC:44:55:66",
+		Hostname:        "nas-server",
+		Manufacturer:    "Synology",
+		OS:              "DSM 7.2",
+		Location:        "Basement",
+		Category:        "storage",
+		PrimaryRole:     "file-server",
+		Owner:           "home-user",
+		Tags:            []string{"backup", "media"},
+		DeviceType:      models.DeviceTypeNAS,
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: "seed",
+	}
+	created, err := s.UpsertDevice(ctx, d1)
+	if err != nil {
+		t.Fatalf("first UpsertDevice: %v", err)
+	}
+	if !created {
+		t.Fatal("expected created=true")
+	}
+
+	// Step 2: Re-discover via mDNS with minimal fields (no hostname, os, etc.).
+	d2 := &models.Device{
+		IPAddresses:     []string{"192.168.1.60"},
+		MACAddress:      "AA:BB:CC:44:55:66",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	created, err = s.UpsertDevice(ctx, d2)
+	if err != nil {
+		t.Fatalf("second UpsertDevice: %v", err)
+	}
+	if created {
+		t.Fatal("expected created=false")
+	}
+
+	// Step 3: Verify metadata was NOT overwritten with empty strings.
+	got, err := s.GetDevice(ctx, d1.ID)
+	if err != nil {
+		t.Fatalf("GetDevice: %v", err)
+	}
+	if got.Hostname != "nas-server" {
+		t.Errorf("Hostname = %q, want %q (should not be overwritten)", got.Hostname, "nas-server")
+	}
+	if got.Manufacturer != "Synology" {
+		t.Errorf("Manufacturer = %q, want %q", got.Manufacturer, "Synology")
+	}
+	if got.OS != "DSM 7.2" {
+		t.Errorf("OS = %q, want %q", got.OS, "DSM 7.2")
+	}
+	if got.Location != "Basement" {
+		t.Errorf("Location = %q, want %q", got.Location, "Basement")
+	}
+	if got.Category != "storage" {
+		t.Errorf("Category = %q, want %q", got.Category, "storage")
+	}
+	if got.PrimaryRole != "file-server" {
+		t.Errorf("PrimaryRole = %q, want %q", got.PrimaryRole, "file-server")
+	}
+	if got.Owner != "home-user" {
+		t.Errorf("Owner = %q, want %q", got.Owner, "home-user")
+	}
+	if len(got.Tags) != 2 {
+		t.Errorf("Tags count = %d, want 2 (should not be cleared)", len(got.Tags))
+	}
+}
+
+func TestUpsertDevice_MergesTags(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create device with initial tags.
+	d1 := &models.Device{
+		IPAddresses:     []string{"192.168.1.70"},
+		MACAddress:      "AA:BB:CC:77:88:99",
+		Tags:            []string{"network", "critical"},
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, err := s.UpsertDevice(ctx, d1)
+	if err != nil {
+		t.Fatalf("first UpsertDevice: %v", err)
+	}
+
+	// Upsert with overlapping + new tags.
+	d2 := &models.Device{
+		IPAddresses:     []string{"192.168.1.70"},
+		MACAddress:      "AA:BB:CC:77:88:99",
+		Tags:            []string{"critical", "monitored"},
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+	}
+	_, err = s.UpsertDevice(ctx, d2)
+	if err != nil {
+		t.Fatalf("second UpsertDevice: %v", err)
+	}
+
+	got, err := s.GetDevice(ctx, d1.ID)
+	if err != nil {
+		t.Fatalf("GetDevice: %v", err)
+	}
+
+	// Should have union of tags: network, critical, monitored.
+	if len(got.Tags) != 3 {
+		t.Errorf("Tags count = %d, want 3 (union of both sets)", len(got.Tags))
+	}
+	tagMap := make(map[string]bool)
+	for _, tag := range got.Tags {
+		tagMap[tag] = true
+	}
+	for _, expected := range []string{"network", "critical", "monitored"} {
+		if !tagMap[expected] {
+			t.Errorf("missing expected tag %q in %v", expected, got.Tags)
+		}
+	}
+}
+
 func TestListDevices_FilterByType(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()

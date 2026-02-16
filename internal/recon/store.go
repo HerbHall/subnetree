@@ -152,6 +152,49 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 		if device.Manufacturer != "" {
 			manufacturer = device.Manufacturer
 		}
+		hostname := existing.Hostname
+		if device.Hostname != "" {
+			hostname = device.Hostname
+		}
+		osField := existing.OS
+		if device.OS != "" {
+			osField = device.OS
+		}
+		location := existing.Location
+		if device.Location != "" {
+			location = device.Location
+		}
+		category := existing.Category
+		if device.Category != "" {
+			category = device.Category
+		}
+		primaryRole := existing.PrimaryRole
+		if device.PrimaryRole != "" {
+			primaryRole = device.PrimaryRole
+		}
+		owner := existing.Owner
+		if device.Owner != "" {
+			owner = device.Owner
+		}
+		// Merge tags: combine both sets.
+		mergedTags := existing.Tags
+		if len(device.Tags) > 0 {
+			tagSet := make(map[string]bool)
+			for _, t := range existing.Tags {
+				tagSet[t] = true
+			}
+			for _, t := range device.Tags {
+				tagSet[t] = true
+			}
+			mergedTags = make([]string, 0, len(tagSet))
+			for t := range tagSet {
+				mergedTags = append(mergedTags, t)
+			}
+		}
+		tagsJSON, _ := json.Marshal(mergedTags)
+		if mergedTags == nil {
+			tagsJSON = []byte("[]")
+		}
 		method := existing.DiscoveryMethod
 		if device.DiscoveryMethod != "" {
 			method = device.DiscoveryMethod
@@ -176,10 +219,12 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE recon_devices SET
 				ip_addresses = ?, mac_address = ?, manufacturer = ?,
+				hostname = ?, os = ?, location = ?, category = ?, primary_role = ?, owner = ?, tags = ?,
 				status = ?, discovery_method = ?, device_type = ?, last_seen = ?,
 				classification_confidence = ?, classification_source = ?, classification_signals = ?
 			WHERE id = ?`,
 			string(ipsJSON), mac, manufacturer,
+			hostname, osField, location, category, primaryRole, owner, string(tagsJSON),
 			newStatus, string(method), deviceType, now,
 			classConfidence, classSource, classSignals,
 			existing.ID,
