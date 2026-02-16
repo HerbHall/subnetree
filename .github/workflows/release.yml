@@ -71,3 +71,27 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke-test:
+    name: Smoke Test Docker Image
+    needs: release
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/herbhall/subnetree:latest
+
+      - name: Run smoke tests
+        run: |
+          chmod +x tools/docker-smoke-test.sh
+          ./tools/docker-smoke-test.sh --ci ghcr.io/herbhall/subnetree:latest

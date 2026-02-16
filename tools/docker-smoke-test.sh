@@ -8,15 +8,30 @@
 #   ./tools/docker-smoke-test.sh                              # Defaults
 #   ./tools/docker-smoke-test.sh subnetree:local 19998 subnetree-test
 #
+# CI mode (auto-detected via CI env var, or set --ci flag):
+#   CI=true ./tools/docker-smoke-test.sh ghcr.io/herbhall/subnetree:latest
+#   ./tools/docker-smoke-test.sh --ci ghcr.io/herbhall/subnetree:latest
+#
 # Prerequisites:
-#   - Docker Desktop running
+#   - Docker running
 #   - curl available
 
 set -euo pipefail
 
-IMAGE="${1:-subnetree:local}"
-PORT="${2:-19998}"
-CONTAINER="${3:-subnetree-test}"
+# Parse --ci flag
+CI_MODE="${CI:-false}"
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--ci" ]; then
+        CI_MODE=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+IMAGE="${ARGS[0]:-subnetree:local}"
+PORT="${ARGS[1]:-19998}"
+CONTAINER="${ARGS[2]:-subnetree-test}"
 BASE_URL="http://127.0.0.1:${PORT}"
 PASS=0
 FAIL=0
@@ -43,12 +58,18 @@ log_fail() {
     FAIL=$((FAIL + 1))
     REPORT="${REPORT}FAIL: $1\n"
     echo "[FAIL] $1"
+    if [ "$CI_MODE" = "true" ]; then
+        echo "::error title=Smoke Test Failure::$1"
+    fi
 }
 
 log_warn() {
     WARN=$((WARN + 1))
     REPORT="${REPORT}WARN: $1\n"
     echo "[WARN] $1"
+    if [ "$CI_MODE" = "true" ]; then
+        echo "::warning title=Smoke Test Warning::$1"
+    fi
 }
 
 log_info() {
@@ -358,6 +379,46 @@ fi
 
 echo "--- ALL RESULTS ---"
 echo -e "$REPORT"
+
+# Write GitHub Actions step summary
+if [ "$CI_MODE" = "true" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+        echo "## Smoke Test Results"
+        echo ""
+        echo "| Metric | Count |"
+        echo "|--------|-------|"
+        echo "| Passed | $PASS |"
+        echo "| Failed | $FAIL |"
+        echo "| Warnings | $WARN |"
+        echo ""
+        echo "**Image:** \`$IMAGE\`"
+        echo "**Date:** $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
+        echo ""
+        if [ "$FAIL" -gt 0 ]; then
+            echo "### Failures"
+            echo ""
+            echo '```'
+            echo -e "$REPORT" | grep "^FAIL:"
+            echo '```'
+            echo ""
+        fi
+        if [ "$WARN" -gt 0 ]; then
+            echo "### Warnings"
+            echo ""
+            echo '```'
+            echo -e "$REPORT" | grep "^WARN:"
+            echo '```'
+            echo ""
+        fi
+        echo "<details><summary>Full Results</summary>"
+        echo ""
+        echo '```'
+        echo -e "$REPORT"
+        echo '```'
+        echo ""
+        echo "</details>"
+    } >> "$GITHUB_STEP_SUMMARY"
+fi
 
 if [ "$FAIL" -gt 0 ]; then
     exit 1
