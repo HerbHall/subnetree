@@ -179,6 +179,9 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		}
 	}
 
+	// Port scan infrastructure devices for fingerprinting.
+	o.portScanInfraDevices(ctx, alive, arpTable)
+
 	// Infer topology links from ARP data.
 	o.inferTopologyLinks(ctx, subnet, alive)
 
@@ -313,6 +316,65 @@ func (o *ScanOrchestrator) detectAndPublishServiceMovements(ctx context.Context,
 			zap.String("to", movements[i].ToDevice),
 			zap.String("service", movements[i].ServiceName),
 		)
+	}
+}
+
+// portScanInfraDevices performs targeted port scanning on devices identified
+// as potential infrastructure by OUI classification.
+func (o *ScanOrchestrator) portScanInfraDevices(ctx context.Context, alive []HostResult, arpTable map[string]string) {
+	scanner := NewPortScanner(2*time.Second, 10, o.logger)
+
+	var scannedCount int
+	for _, host := range alive {
+		if ctx.Err() != nil {
+			return
+		}
+
+		// Only scan devices with infrastructure OUI classification.
+		mac := arpTable[host.IP]
+		if mac == "" {
+			continue
+		}
+		manufacturer := ""
+		if o.oui != nil {
+			manufacturer = o.oui.Lookup(mac)
+		}
+		ouiType := ClassifyByManufacturer(manufacturer)
+		if !IsInfrastructureOUI(ouiType) {
+			continue
+		}
+
+		result := scanner.ScanPorts(ctx, host.IP, InfrastructurePorts)
+		if len(result.OpenPorts) == 0 {
+			continue
+		}
+
+		portType := ClassifyByPorts(result.OpenPorts)
+		if portType == models.DeviceTypeUnknown {
+			continue
+		}
+
+		// Update device type if port fingerprinting gives a more specific result.
+		device, err := o.store.GetDeviceByIP(ctx, host.IP)
+		if err != nil || device == nil {
+			continue
+		}
+
+		// Only upgrade from unknown or generic OUI classification.
+		if device.DeviceType == models.DeviceTypeUnknown || device.DeviceType == ouiType {
+			if updateErr := o.store.UpdateDeviceType(ctx, device.ID, portType); updateErr != nil {
+				o.logger.Error("failed to update device type from port scan",
+					zap.String("device_id", device.ID),
+					zap.Error(updateErr))
+				continue
+			}
+			scannedCount++
+		}
+	}
+
+	if scannedCount > 0 {
+		o.logger.Info("port fingerprinting updated devices",
+			zap.Int("count", scannedCount))
 	}
 }
 

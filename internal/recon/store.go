@@ -629,6 +629,17 @@ func (s *ReconStore) UpdateDevice(ctx context.Context, id string, params UpdateD
 	return nil
 }
 
+// UpdateDeviceType updates just the device_type field for a device.
+func (s *ReconStore) UpdateDeviceType(ctx context.Context, deviceID string, deviceType models.DeviceType) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET device_type = ? WHERE id = ?`,
+		string(deviceType), deviceID)
+	if err != nil {
+		return fmt.Errorf("update device type: %w", err)
+	}
+	return nil
+}
+
 // DeleteDevice removes a device by ID. Returns an error if the device does not exist.
 func (s *ReconStore) DeleteDevice(ctx context.Context, id string) error {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM recon_devices WHERE id = ?`, id)
