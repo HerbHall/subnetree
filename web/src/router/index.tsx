@@ -30,6 +30,9 @@ const AgentsPage = lazy(() =>
 const AgentDetailPage = lazy(() =>
   import('@/pages/agents/[id]').then((m) => ({ default: m.AgentDetailPage }))
 )
+const AgentSetupPage = lazy(() =>
+  import('@/pages/agent-setup').then((m) => ({ default: m.AgentSetupPage }))
+)
 const MonitoringPage = lazy(() =>
   import('@/pages/monitoring').then((m) => ({ default: m.MonitoringPage }))
 )
@@ -88,6 +91,7 @@ export const router = createBrowserRouter([
           { path: '/topology', element: <SuspensePage><TopologyPage /></SuspensePage> },
           { path: '/agents', element: <SuspensePage><AgentsPage /></SuspensePage> },
           { path: '/agents/:id', element: <SuspensePage><AgentDetailPage /></SuspensePage> },
+          { path: '/agent-setup', element: <SuspensePage><AgentSetupPage /></SuspensePage> },
           { path: '/monitoring', element: <SuspensePage><MonitoringPage /></SuspensePage> },
           { path: '/services', element: <SuspensePage><ServiceMapPage /></SuspensePage> },
           { path: '/vault', element: <SuspensePage><VaultPage /></SuspensePage> },
