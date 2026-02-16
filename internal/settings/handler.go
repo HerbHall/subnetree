@@ -620,6 +620,11 @@ func (h *Handler) handleSetActiveTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure built-in themes are seeded (setup wizard sets theme before listing).
+	if err := h.ensureBuiltInThemes(r.Context()); err != nil {
+		h.logger.Error("failed to ensure built-in themes", zap.Error(err))
+	}
+
 	// Verify the theme exists.
 	if _, err := h.settings.Get(r.Context(), themeKeyPrefix+req.ThemeID); err != nil {
 		if err == services.ErrNotFound {
