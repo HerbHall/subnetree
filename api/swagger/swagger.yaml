@@ -1091,6 +1091,95 @@ definitions:
       timestamp:
         type: string
     type: object
+  internal_recon.DiagDNSRequest:
+    properties:
+      target:
+        example: 192.168.1.1
+        type: string
+    type: object
+  internal_recon.DiagDNSResult:
+    properties:
+      duration_ms:
+        type: number
+      hostnames:
+        items:
+          type: string
+        type: array
+      ips:
+        items:
+          type: string
+        type: array
+      lookup_type:
+        type: string
+      target:
+        type: string
+    type: object
+  internal_recon.DiagPingRequest:
+    properties:
+      count:
+        example: 4
+        type: integer
+      target:
+        example: 192.168.1.1
+        type: string
+      timeout_ms:
+        example: 2000
+        type: integer
+    type: object
+  internal_recon.DiagPingResult:
+    properties:
+      avg_rtt_ms:
+        type: number
+      max_rtt_ms:
+        type: number
+      min_rtt_ms:
+        type: number
+      packet_loss:
+        type: number
+      received:
+        type: integer
+      sent:
+        type: integer
+      target:
+        type: string
+    type: object
+  internal_recon.DiagPortCheckRequest:
+    properties:
+      ports:
+        example:
+        - 22
+        - 80
+        - 443
+        items:
+          type: integer
+        type: array
+      target:
+        example: 192.168.1.1
+        type: string
+      timeout_ms:
+        example: 2000
+        type: integer
+    type: object
+  internal_recon.DiagPortCheckResult:
+    properties:
+      duration_ms:
+        type: number
+      ports:
+        items:
+          $ref: '#/definitions/internal_recon.DiagPortResult'
+        type: array
+      target:
+        type: string
+    type: object
+  internal_recon.DiagPortResult:
+    properties:
+      banner:
+        type: string
+      open:
+        type: boolean
+      port:
+        type: integer
+    type: object
   internal_recon.HealthScoreFactor:
     properties:
       detail:
@@ -3366,6 +3455,116 @@ paths:
       security:
       - BearerAuth: []
       summary: Import devices from CSV
+      tags:
+      - recon
+  /recon/diag/dns:
+    post:
+      consumes:
+      - application/json
+      description: Performs a reverse DNS lookup for IP addresses or forward lookup
+        for hostnames
+      parameters:
+      - description: DNS lookup parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.DiagDNSRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.DiagDNSResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "429":
+          description: Too many concurrent diagnostics
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: DNS lookup
+      tags:
+      - recon
+  /recon/diag/ping:
+    post:
+      consumes:
+      - application/json
+      description: Sends ICMP echo requests to the target and returns RTT statistics
+      parameters:
+      - description: Ping parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.DiagPingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.DiagPingResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "429":
+          description: Too many concurrent diagnostics
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Ping a target host
+      tags:
+      - recon
+  /recon/diag/port-check:
+    post:
+      consumes:
+      - application/json
+      description: Tests TCP connectivity to specified ports on the target host, with
+        optional banner grabbing
+      parameters:
+      - description: Port check parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.DiagPortCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.DiagPortCheckResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "429":
+          description: Too many concurrent diagnostics
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: TCP port check
       tags:
       - recon
   /recon/inventory/summary:

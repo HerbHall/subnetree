@@ -294,6 +294,9 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/snmp/system/{device_id}", Handler: m.handleSNMPSystemInfo},
 		{Method: "GET", Path: "/snmp/interfaces/{device_id}", Handler: m.handleSNMPInterfaces},
 		{Method: "POST", Path: "/traceroute", Handler: m.handleTraceroute},
+		{Method: "POST", Path: "/diag/ping", Handler: m.handleDiagPing},
+		{Method: "POST", Path: "/diag/dns", Handler: m.handleDiagDNS},
+		{Method: "POST", Path: "/diag/port-check", Handler: m.handleDiagPortCheck},
 	}
 }
 

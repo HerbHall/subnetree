@@ -2825,6 +2825,177 @@
                 }
             }
         },
+        "/recon/diag/dns": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Performs a reverse DNS lookup for IP addresses or forward lookup for hostnames",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "DNS lookup",
+                "parameters": [
+                    {
+                        "description": "DNS lookup parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagDNSRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagDNSResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many concurrent diagnostics",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/diag/ping": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sends ICMP echo requests to the target and returns RTT statistics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Ping a target host",
+                "parameters": [
+                    {
+                        "description": "Ping parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagPingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagPingResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many concurrent diagnostics",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/diag/port-check": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Tests TCP connectivity to specified ports on the target host, with optional banner grabbing",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "TCP port check",
+                "parameters": [
+                    {
+                        "description": "Port check parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagPortCheckRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DiagPortCheckResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many concurrent diagnostics",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/inventory/summary": {
             "get": {
                 "security": [
@@ -6047,6 +6218,139 @@
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_recon.DiagDNSRequest": {
+            "type": "object",
+            "properties": {
+                "target": {
+                    "type": "string",
+                    "example": "192.168.1.1"
+                }
+            }
+        },
+        "internal_recon.DiagDNSResult": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "number"
+                },
+                "hostnames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ips": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "lookup_type": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_recon.DiagPingRequest": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "target": {
+                    "type": "string",
+                    "example": "192.168.1.1"
+                },
+                "timeout_ms": {
+                    "type": "integer",
+                    "example": 2000
+                }
+            }
+        },
+        "internal_recon.DiagPingResult": {
+            "type": "object",
+            "properties": {
+                "avg_rtt_ms": {
+                    "type": "number"
+                },
+                "max_rtt_ms": {
+                    "type": "number"
+                },
+                "min_rtt_ms": {
+                    "type": "number"
+                },
+                "packet_loss": {
+                    "type": "number"
+                },
+                "received": {
+                    "type": "integer"
+                },
+                "sent": {
+                    "type": "integer"
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_recon.DiagPortCheckRequest": {
+            "type": "object",
+            "properties": {
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    },
+                    "example": [
+                        22,
+                        80,
+                        443
+                    ]
+                },
+                "target": {
+                    "type": "string",
+                    "example": "192.168.1.1"
+                },
+                "timeout_ms": {
+                    "type": "integer",
+                    "example": 2000
+                }
+            }
+        },
+        "internal_recon.DiagPortCheckResult": {
+            "type": "object",
+            "properties": {
+                "duration_ms": {
+                    "type": "number"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_recon.DiagPortResult"
+                    }
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_recon.DiagPortResult": {
+            "type": "object",
+            "properties": {
+                "banner": {
+                    "type": "string"
+                },
+                "open": {
+                    "type": "boolean"
+                },
+                "port": {
+                    "type": "integer"
                 }
             }
         },

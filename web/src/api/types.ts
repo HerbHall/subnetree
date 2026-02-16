@@ -516,6 +516,63 @@ export interface TracerouteRequest {
 }
 
 // ============================================================================
+// Diagnostic Types
+// ============================================================================
+
+/** Request body for the ping diagnostic endpoint. */
+export interface DiagPingRequest {
+  target: string
+  count?: number
+  timeout_ms?: number
+}
+
+/** Ping diagnostic result with RTT statistics. */
+export interface DiagPingResult {
+  target: string
+  sent: number
+  received: number
+  packet_loss: number
+  min_rtt_ms: number
+  avg_rtt_ms: number
+  max_rtt_ms: number
+}
+
+/** Request body for the DNS lookup diagnostic endpoint. */
+export interface DiagDNSRequest {
+  target: string
+}
+
+/** DNS lookup diagnostic result. */
+export interface DiagDNSResult {
+  target: string
+  hostnames?: string[]
+  ips?: string[]
+  lookup_type: string
+  duration_ms: number
+}
+
+/** Request body for the TCP port check diagnostic endpoint. */
+export interface DiagPortCheckRequest {
+  target: string
+  ports: number[]
+  timeout_ms?: number
+}
+
+/** Single port check result. */
+export interface DiagPortResult {
+  port: number
+  open: boolean
+  banner?: string
+}
+
+/** Complete port check diagnostic result. */
+export interface DiagPortCheckResult {
+  target: string
+  ports: DiagPortResult[]
+  duration_ms: number
+}
+
+// ============================================================================
 // Metrics History Types
 // ============================================================================
 

@@ -46,6 +46,8 @@ import {
   Fingerprint,
   Route,
   Loader2,
+  Plug,
+  Stethoscope,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -63,8 +65,9 @@ import {
 import { getDeviceServices, getDeviceUtilization, updateDesiredState } from '@/api/services'
 import { getDeviceMetrics } from '@/api/pulse'
 import { getSNMPSystemInfo, getSNMPInterfaces, runTraceroute } from '@/api/recon'
+import { runDiagPing, runDiagDNS, runDiagPortCheck } from '@/api/diagnostics'
 import { listDeviceCredentials } from '@/api/vault'
-import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange, TracerouteResult } from '@/api/types'
+import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange, TracerouteResult, DiagPingResult, DiagDNSResult, DiagPortCheckResult } from '@/api/types'
 import { TimeSeriesChart } from '@/components/time-series-chart'
 import { AnomalyIndicators } from '@/components/insight/anomaly-indicators'
 import { ForecastWarning } from '@/components/insight/forecast-warning'
@@ -716,6 +719,9 @@ export function DeviceDetailPage() {
 
       {/* Traceroute (available for any device with an IP) */}
       {primaryIp && <TracerouteSection targetIp={primaryIp} />}
+
+      {/* Diagnostics (available for any device with an IP) */}
+      {primaryIp && <DiagnosticsSection targetIp={primaryIp} />}
 
       {/* Inventory Details */}
       <Card>
@@ -2037,6 +2043,289 @@ function TracerouteSection({ targetIp }: { targetIp: string }) {
                           <span className="text-muted-foreground">*</span>
                         ) : (
                           <span className="text-xs">{hop.rtt_ms.toFixed(2)} ms</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function DiagnosticsSection({ targetIp }: { targetIp: string }) {
+  const [activeTool, setActiveTool] = useState<'ping' | 'dns' | 'port-check' | null>(null)
+  const [pingResult, setPingResult] = useState<DiagPingResult | null>(null)
+  const [dnsResult, setDnsResult] = useState<DiagDNSResult | null>(null)
+  const [portResult, setPortResult] = useState<DiagPortCheckResult | null>(null)
+  const [portsInput, setPortsInput] = useState('22,80,443,8080')
+
+  const pingMutation = useMutation({
+    mutationFn: () => runDiagPing({ target: targetIp, count: 4, timeout_ms: 2000 }),
+    onSuccess: (data) => {
+      setPingResult(data)
+      setActiveTool('ping')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Ping failed')
+    },
+  })
+
+  const dnsMutation = useMutation({
+    mutationFn: () => runDiagDNS({ target: targetIp }),
+    onSuccess: (data) => {
+      setDnsResult(data)
+      setActiveTool('dns')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'DNS lookup failed')
+    },
+  })
+
+  const portMutation = useMutation({
+    mutationFn: () => {
+      const ports = portsInput
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n) && n >= 1 && n <= 65535)
+      if (ports.length === 0) {
+        return Promise.reject(new Error('No valid ports specified'))
+      }
+      if (ports.length > 20) {
+        return Promise.reject(new Error('Maximum 20 ports per request'))
+      }
+      return runDiagPortCheck({ target: targetIp, ports, timeout_ms: 2000 })
+    },
+    onSuccess: (data) => {
+      setPortResult(data)
+      setActiveTool('port-check')
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Port check failed')
+    },
+  })
+
+  const isAnyPending = pingMutation.isPending || dnsMutation.isPending || portMutation.isPending
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-muted-foreground" />
+            Diagnostics
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => pingMutation.mutate()}
+              disabled={isAnyPending}
+            >
+              {pingMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Activity className="h-3.5 w-3.5" />
+              )}
+              Ping
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => dnsMutation.mutate()}
+              disabled={isAnyPending}
+            >
+              {dnsMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Globe className="h-3.5 w-3.5" />
+              )}
+              DNS
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => portMutation.mutate()}
+              disabled={isAnyPending}
+            >
+              {portMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plug className="h-3.5 w-3.5" />
+              )}
+              Port Check
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Port input for port check */}
+        <div className="mb-3">
+          <label className="text-xs text-muted-foreground mb-1 block">
+            Ports (comma-separated, max 20)
+          </label>
+          <Input
+            value={portsInput}
+            onChange={(e) => setPortsInput(e.target.value)}
+            placeholder="22,80,443,8080"
+            className="h-8 text-sm max-w-xs"
+            disabled={isAnyPending}
+          />
+        </div>
+
+        {/* Empty state */}
+        {activeTool == null && !isAnyPending && (
+          <div className="text-center py-6">
+            <Stethoscope className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Run diagnostic tools against {targetIp}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ping, DNS lookup, or TCP port check from the server to this device.
+            </p>
+          </div>
+        )}
+
+        {/* Loading state */}
+        {isAnyPending && (
+          <div className="text-center py-6">
+            <Loader2 className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
+            <p className="text-sm text-muted-foreground">
+              Running diagnostic on {targetIp}...
+            </p>
+          </div>
+        )}
+
+        {/* Ping Result */}
+        {activeTool === 'ping' && pingResult != null && !isAnyPending && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 flex-wrap text-sm">
+              <span className={cn(
+                'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium',
+                pingResult.received > 0
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400',
+              )}>
+                {pingResult.received > 0 ? 'Reachable' : 'Unreachable'}
+              </span>
+              <span className="text-muted-foreground">
+                {pingResult.received}/{pingResult.sent} packets received
+              </span>
+              <span className="text-muted-foreground">
+                {pingResult.packet_loss.toFixed(1)}% loss
+              </span>
+            </div>
+            {pingResult.received > 0 && (
+              <div className="grid grid-cols-3 gap-4 rounded-lg border p-3">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Min RTT</p>
+                  <p className="text-sm font-mono font-medium">{pingResult.min_rtt_ms.toFixed(2)} ms</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Avg RTT</p>
+                  <p className="text-sm font-mono font-medium">{pingResult.avg_rtt_ms.toFixed(2)} ms</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Max RTT</p>
+                  <p className="text-sm font-mono font-medium">{pingResult.max_rtt_ms.toFixed(2)} ms</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DNS Result */}
+        {activeTool === 'dns' && dnsResult != null && !isAnyPending && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 flex-wrap text-sm">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                {dnsResult.lookup_type === 'reverse' ? 'Reverse Lookup' : 'Forward Lookup'}
+              </span>
+              <span className="text-muted-foreground">
+                {dnsResult.duration_ms.toFixed(1)} ms
+              </span>
+            </div>
+            <div className="rounded-lg border p-3">
+              {dnsResult.lookup_type === 'reverse' && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Hostnames</p>
+                  {dnsResult.hostnames != null && dnsResult.hostnames.length > 0 ? (
+                    <div className="space-y-1">
+                      {dnsResult.hostnames.map((h) => (
+                        <code key={h} className="block text-sm font-mono bg-muted px-2 py-1 rounded">{h}</code>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No PTR records found</p>
+                  )}
+                </div>
+              )}
+              {dnsResult.lookup_type === 'forward' && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">IP Addresses</p>
+                  {dnsResult.ips != null && dnsResult.ips.length > 0 ? (
+                    <div className="space-y-1">
+                      {dnsResult.ips.map((ip) => (
+                        <code key={ip} className="block text-sm font-mono bg-muted px-2 py-1 rounded">{ip}</code>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No records found</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Port Check Result */}
+        {activeTool === 'port-check' && portResult != null && !isAnyPending && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4 flex-wrap text-sm">
+              <span className="text-muted-foreground">
+                {portResult.ports.filter((p) => p.open).length} of {portResult.ports.length} port{portResult.ports.length !== 1 ? 's' : ''} open
+              </span>
+              <span className="text-muted-foreground">
+                {portResult.duration_ms.toFixed(1)} ms total
+              </span>
+            </div>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium w-20">Port</th>
+                    <th className="px-4 py-2 text-left font-medium w-24">Status</th>
+                    <th className="px-4 py-2 text-left font-medium">Banner</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {portResult.ports.map((p) => (
+                    <tr key={p.port} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2">
+                        <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{p.port}</code>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className={cn(
+                          'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium',
+                          p.open
+                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                            : 'bg-red-500/10 text-red-600 dark:text-red-400',
+                        )}>
+                          {p.open ? 'Open' : 'Closed'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">
+                        {p.banner ? (
+                          <code className="text-xs font-mono">{p.banner}</code>
+                        ) : (
+                          '-'
                         )}
                       </td>
                     </tr>
