@@ -23,6 +23,8 @@ import {
   Tag,
   User,
   X,
+  Clock,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -41,6 +43,7 @@ import {
 import type { DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { useScanStore } from '@/stores/scan'
 
 type ViewMode = 'grid' | 'list' | 'table'
 type SortField = 'hostname' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
@@ -87,6 +90,7 @@ function isDeviceStale(lastSeen: string): boolean {
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
+  const activeScan = useScanStore((s) => s.activeScan)
 
   // State from URL params or defaults
   const statusFilter = (searchParams.get('status') as DeviceStatus | 'all' | 'stale') || 'all'
@@ -372,6 +376,25 @@ export function DevicesPage() {
     })
     return Array.from(owners).sort()
   }, [devices])
+
+  // Determine verification state of a device during an active scan.
+  // Returns 'checking' if the device was known before the scan and hasn't been
+  // confirmed yet, 'verified' if it was found during the scan, 'new' if it's a
+  // newly discovered device, or null if no scan is active.
+  const isScanActive =
+    activeScan?.status === 'scanning' || activeScan?.status === 'processing'
+
+  const getVerificationState = useCallback(
+    (deviceIps: string[]): 'checking' | 'verified' | 'new' | null => {
+      if (!isScanActive || !activeScan) return null
+      for (const ip of deviceIps) {
+        if (activeScan.verifiedIps.has(ip)) return 'verified'
+        if (activeScan.knownDeviceIps.has(ip)) return 'checking'
+      }
+      return null
+    },
+    [isScanActive, activeScan],
+  )
 
   // Handle sort click
   const handleSort = (field: SortField) => {
@@ -702,78 +725,91 @@ export function DevicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {sortedDevices.map((device) => (
-                  <tr
-                    key={device.id}
-                    className={cn(
-                      'hover:bg-muted/30 transition-colors cursor-pointer',
-                      selectedIds.has(device.id) && 'bg-primary/5'
-                    )}
-                  >
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(device.id)}
-                        onChange={() => toggleSelect(device.id)}
-                        className="rounded border-muted-foreground/50"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/devices/${device.id}`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {device.hostname || 'Unknown'}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {device.ip_addresses?.[0] || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {device.manufacturer || '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="capitalize">{device.device_type}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {device.category ? (
-                        <span className="capitalize text-sm">{device.category}</span>
-                      ) : (
-                        <span className="text-muted-foreground/50 text-sm">--</span>
+                {sortedDevices.map((device) => {
+                  const vState = getVerificationState(device.ip_addresses ?? [])
+                  return (
+                    <tr
+                      key={device.id}
+                      className={cn(
+                        'hover:bg-muted/30 transition-colors cursor-pointer',
+                        selectedIds.has(device.id) && 'bg-primary/5',
+                        vState === 'checking' && 'opacity-50',
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {device.owner ? (
-                        <span className="text-sm">{device.owner}</span>
-                      ) : (
-                        <span className="text-muted-foreground/50 text-sm">--</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <StatusBadge status={device.status} />
-                        {isDeviceStale(device.last_seen) && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                            <AlertTriangle className="h-3 w-3" />
-                            Stale
-                          </span>
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(device.id)}
+                          onChange={() => toggleSelect(device.id)}
+                          className="rounded border-muted-foreground/50"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          to={`/devices/${device.id}`}
+                          className="font-medium hover:text-primary"
+                        >
+                          {device.hostname || 'Unknown'}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {device.ip_addresses?.[0] || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {device.manufacturer || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="capitalize">{device.device_type}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {device.category ? (
+                          <span className="capitalize text-sm">{device.category}</span>
+                        ) : (
+                          <span className="text-muted-foreground/50 text-sm">--</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
-                        onClick={(e) => handleDeleteClick(e, device.id)}
-                        title="Delete device"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {device.owner ? (
+                          <span className="text-sm">{device.owner}</span>
+                        ) : (
+                          <span className="text-muted-foreground/50 text-sm">--</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {vState === 'checking' ? (
+                            <VerificationBadge state="checking" />
+                          ) : vState === 'verified' ? (
+                            <>
+                              <StatusBadge status={device.status} />
+                              <VerificationBadge state="verified" />
+                            </>
+                          ) : (
+                            <StatusBadge status={device.status} />
+                          )}
+                          {isDeviceStale(device.last_seen) && !vState && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              <AlertTriangle className="h-3 w-3" />
+                              Stale
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                          onClick={(e) => handleDeleteClick(e, device.id)}
+                          title="Delete device"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -1178,6 +1214,24 @@ function StatusPill({
       {label}
       <span className="opacity-60">({count})</span>
     </button>
+  )
+}
+
+// Verification state badge shown during active scans
+function VerificationBadge({ state }: { state: 'checking' | 'verified' }) {
+  if (state === 'checking') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-500/10 text-blue-500 animate-pulse">
+        <Clock className="h-3 w-3" />
+        Checking
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-green-500/10 text-green-500">
+      <Sparkles className="h-3 w-3" />
+    </span>
   )
 }
 

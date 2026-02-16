@@ -12,12 +12,17 @@ export interface ScanProgress {
   error?: string
   startedAt: Date
   completedAt?: Date
+  /** IPs of devices known before the scan started (still being verified). */
+  knownDeviceIps: Set<string>
+  /** IPs confirmed online during the current scan. */
+  verifiedIps: Set<string>
 }
 
 interface ScanStore {
   activeScan: ScanProgress | null
 
   startScan: (scanId: string, targetCidr: string) => void
+  loadKnownDevices: (deviceIps: string[]) => void
   setScanProgress: (scanId: string, hostsAlive: number, subnetSize: number) => void
   addDevice: (scanId: string, device: Device) => void
   completeScan: (scanId: string, total: number, online: number) => void
@@ -39,8 +44,21 @@ export const useScanStore = create<ScanStore>((set, get) => ({
         hostsAlive: 0,
         newDevices: [],
         startedAt: new Date(),
+        knownDeviceIps: new Set(),
+        verifiedIps: new Set(),
       },
     }),
+
+  loadKnownDevices: (deviceIps) => {
+    const { activeScan } = get()
+    if (!activeScan) return
+    set({
+      activeScan: {
+        ...activeScan,
+        knownDeviceIps: new Set(deviceIps),
+      },
+    })
+  },
 
   setScanProgress: (scanId, hostsAlive, subnetSize) => {
     const { activeScan } = get()
@@ -58,11 +76,23 @@ export const useScanStore = create<ScanStore>((set, get) => ({
   addDevice: (scanId, device) => {
     const { activeScan } = get()
     if (activeScan?.scanId !== scanId) return
+
+    const updatedKnown = new Set(activeScan.knownDeviceIps)
+    const updatedVerified = new Set(activeScan.verifiedIps)
+
+    // Mark each of the device's IPs as verified and remove from known
+    for (const ip of device.ip_addresses ?? []) {
+      updatedKnown.delete(ip)
+      updatedVerified.add(ip)
+    }
+
     set({
       activeScan: {
         ...activeScan,
         devicesFound: activeScan.devicesFound + 1,
         newDevices: [...activeScan.newDevices, device],
+        knownDeviceIps: updatedKnown,
+        verifiedIps: updatedVerified,
       },
     })
   },

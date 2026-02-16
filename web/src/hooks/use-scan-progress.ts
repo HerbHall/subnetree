@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useWebSocket } from './use-websocket'
 import { useScanStore } from '@/stores/scan'
+import type { DeviceListResponse } from '@/api/devices'
 import type {
   ScanWSMessage,
   ScanStartedData,
@@ -17,7 +18,7 @@ const DEVICE_INVALIDATE_DEBOUNCE_MS = 800
 
 export function useScanProgress() {
   const queryClient = useQueryClient()
-  const { activeScan, startScan, setScanProgress, addDevice, completeScan, setError, clearScan } =
+  const { activeScan, startScan, loadKnownDevices, setScanProgress, addDevice, completeScan, setError, clearScan } =
     useScanStore()
 
   // Debounce timer for device query invalidation during scan streaming.
@@ -52,6 +53,26 @@ export function useScanProgress() {
         case 'scan.started': {
           const data = message.data as ScanStartedData
           startScan(message.scan_id, data.target_cidr)
+
+          // Load known device IPs from the React Query cache so we can show
+          // them immediately with a "checking" state while the scan runs.
+          const cachedQueries = queryClient.getQueriesData<DeviceListResponse>({
+            queryKey: ['devices'],
+          })
+          const knownIps: string[] = []
+          for (const [, cached] of cachedQueries) {
+            if (cached?.devices) {
+              for (const device of cached.devices) {
+                for (const ip of device.ip_addresses ?? []) {
+                  knownIps.push(ip)
+                }
+              }
+            }
+          }
+          if (knownIps.length > 0) {
+            loadKnownDevices(knownIps)
+          }
+
           toast.info(`Scanning ${data.target_cidr}...`)
           break
         }
@@ -109,7 +130,7 @@ export function useScanProgress() {
         }
       }
     },
-    [startScan, setScanProgress, addDevice, completeScan, setError, clearScan, queryClient, debouncedInvalidateDevices],
+    [startScan, loadKnownDevices, setScanProgress, addDevice, completeScan, setError, clearScan, queryClient, debouncedInvalidateDevices],
   )
 
   const { isConnected, reconnectCount } = useWebSocket({
