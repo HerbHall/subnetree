@@ -314,11 +314,11 @@ jobs:
       - name: Build server
         env:
           CGO_ENABLED: '0'
-        run: go build -o subnetree ./cmd/subnetree/
+        run: go build -o subnetree-server ./cmd/subnetree/
 
       - name: Start server with seed data
         run: |
-          NV_SEED_DATA=true ./subnetree &
+          NV_SEED_DATA=true ./subnetree-server &
           SERVER_READY=false
           for i in $(seq 1 60); do
             if curl -sf http://localhost:8080/healthz > /dev/null 2>&1; then
