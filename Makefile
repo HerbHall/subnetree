@@ -1,4 +1,4 @@
-.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check ai-review ai-test ai-doc docker-build docker-test docker-clean docker-scout docker-scout-full
+.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check ai-review ai-test ai-doc docker-build docker-test docker-clean docker-scout docker-scout-full docker-qc docker-qc-down docker-qc-smoke
 
 # Binary names
 SERVER_BIN=subnetree
@@ -127,6 +127,36 @@ docker-scout: docker-build
 docker-scout-full: docker-build
 	docker scout cves $(DOCKER_IMAGE)
 	docker scout recommendations $(DOCKER_IMAGE)
+
+# Pre-release QC testing (local build + seed data)
+QC_COMPOSE=docker compose -f docker-compose.qc.yml
+
+docker-qc: ## Build from source and run with seed data for manual QC
+	$(QC_COMPOSE) down -v 2>/dev/null || true
+	$(QC_COMPOSE) up --build
+
+docker-qc-down: ## Stop and clean QC environment
+	$(QC_COMPOSE) down -v
+
+docker-qc-smoke: ## Build, start detached, wait for healthy, run smoke tests
+	$(QC_COMPOSE) down -v 2>/dev/null || true
+	$(QC_COMPOSE) up --build -d
+	@echo "Waiting for container to be healthy..."
+	@for i in $$(seq 1 60); do \
+		if docker inspect --format='{{.State.Health.Status}}' subnetree-qc 2>/dev/null | grep -q healthy; then \
+			echo "Container healthy after $${i}s"; \
+			break; \
+		fi; \
+		if [ $$i -eq 60 ]; then \
+			echo "ERROR: Container not healthy after 60s"; \
+			$(QC_COMPOSE) logs; \
+			$(QC_COMPOSE) down -v; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done
+	@bash tools/docker-smoke-test.sh subnetree-qc:latest 8080 subnetree-qc-smoke || true
+	$(QC_COMPOSE) down -v
 
 clean:
 	rm -rf bin/ $(WEB_DIR)/dist $(WEB_DIR)/node_modules/.cache internal/dashboard/dist

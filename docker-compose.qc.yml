@@ -1,0 +1,50 @@
+# SubNetree - Pre-Release QC Compose
+#
+# Builds from local source AND loads seed data for manual QC testing.
+# Use this before creating PRs to catch issues that unit tests miss.
+#
+# Usage:
+#   make docker-qc           # Build, start, and open browser
+#   make docker-qc-down      # Tear down and clean volumes
+#   make docker-qc-smoke     # Build, start, and run smoke tests
+#
+# Or directly:
+#   docker compose -f docker-compose.qc.yml up --build
+#
+# Then open http://localhost:8080 and walk through the setup wizard.
+# Default credentials after setup: admin / TestPass123!
+
+services:
+  subnetree:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev-qc}
+        COMMIT: ${COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    container_name: subnetree-qc
+    restart: "no"
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - qc-data:/data
+    environment:
+      - NV_DATABASE_DSN=/data/subnetree.db
+      - NV_LOG_LEVEL=debug
+      - NV_DEV_MODE=true
+      - NV_SEED_DATA=true
+      - SUBNETREE_VAULT_PASSPHRASE=QCVaultPass123!
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+volumes:
+  qc-data:
