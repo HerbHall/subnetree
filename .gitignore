@@ -48,6 +48,10 @@ desktop.ini
 whats-next.md
 .planning/
 
+# Local-only coordination and research (never pushed to GitHub)
+.coordination/
+research/
+
 # Node.js (web frontend)
 web/node_modules/
 web/dist/
