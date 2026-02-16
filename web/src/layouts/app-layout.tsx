@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, Lock, Clock, FileText, Settings, Info, LogOut } from 'lucide-react'
+import { LayoutDashboard, Monitor, Network, Bot, Activity, Layers, Lock, Clock, FileText, Settings, Info, LogOut, Download } from 'lucide-react'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import { getHealth } from '@/api/system'
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/devices', label: 'Devices', icon: Monitor },
   { to: '/topology', label: 'Topology', icon: Network },
   { to: '/agents', label: 'Agents', icon: Bot },
+  { to: '/agent-setup', label: 'Agent Setup', icon: Download },
   { to: '/monitoring', label: 'Monitoring', icon: Activity },
   { to: '/services', label: 'Services', icon: Layers },
   { to: '/vault', label: 'Vault', icon: Lock },
