@@ -10,7 +10,7 @@ test.describe('Authentication', () => {
 
     // Verify form fields exist
     await expect(page.getByLabel('Username')).toBeVisible()
-    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.locator('#password')).toBeVisible()
 
     // Verify submit button
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
@@ -34,7 +34,7 @@ test.describe('Authentication', () => {
     // Both fields have the "required" attribute, so the browser prevents
     // submission before our JS handler runs. Verify the fields are required.
     const usernameInput = page.getByLabel('Username')
-    const passwordInput = page.getByLabel('Password')
+    const passwordInput = page.locator('#password')
 
     await expect(usernameInput).toHaveAttribute('required', '')
     await expect(passwordInput).toHaveAttribute('required', '')
@@ -44,7 +44,7 @@ test.describe('Authentication', () => {
     await page.goto('/login')
 
     await page.getByLabel('Username').fill('nonexistent_user')
-    await page.getByLabel('Password').fill('wrong_password')
+    await page.locator('#password').fill('wrong_password')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     // The login API call should fail and display an error alert
@@ -55,7 +55,7 @@ test.describe('Authentication', () => {
   test('password visibility toggle works', async ({ page }) => {
     await page.goto('/login')
 
-    const passwordInput = page.getByLabel('Password')
+    const passwordInput = page.locator('#password')
     await passwordInput.fill('secret123')
 
     // Initially the password is hidden
