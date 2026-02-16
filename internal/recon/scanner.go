@@ -182,6 +182,9 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 	// Port scan infrastructure devices for fingerprinting.
 	o.portScanInfraDevices(ctx, alive, arpTable)
 
+	// Classify devices using composite scoring.
+	o.classifyDevices(ctx, alive, arpTable)
+
 	// Infer topology links from ARP data.
 	o.inferTopologyLinks(ctx, subnet, alive)
 
@@ -375,6 +378,68 @@ func (o *ScanOrchestrator) portScanInfraDevices(ctx context.Context, alive []Hos
 	if scannedCount > 0 {
 		o.logger.Info("port fingerprinting updated devices",
 			zap.Int("count", scannedCount))
+	}
+}
+
+// classifyDevices runs the composite classifier on all discovered devices,
+// combining OUI, SNMP, port fingerprint, and TTL signals.
+func (o *ScanOrchestrator) classifyDevices(ctx context.Context, alive []HostResult, arpTable map[string]string) {
+	var classifiedCount int
+	for _, host := range alive {
+		if ctx.Err() != nil {
+			return
+		}
+
+		device, err := o.store.GetDeviceByIP(ctx, host.IP)
+		if err != nil || device == nil {
+			continue
+		}
+
+		signals := &DeviceSignals{
+			TTL: host.TTL,
+		}
+
+		// Populate OUI signal.
+		mac := arpTable[host.IP]
+		if mac != "" && o.oui != nil {
+			signals.Manufacturer = o.oui.Lookup(mac)
+			signals.OUIDeviceType = ClassifyByManufacturer(signals.Manufacturer)
+		}
+
+		// TTL OS hint.
+		if host.TTL > 0 {
+			signals.OSHint = InferOSFromTTL(host.TTL)
+		}
+
+		result := Classify(signals)
+
+		// Only update if classifier found something and it's better than current.
+		if result.DeviceType == models.DeviceTypeUnknown {
+			continue
+		}
+		if result.Confidence < 25 {
+			continue
+		}
+
+		// Don't downgrade from a more specific manual or SNMP classification.
+		if device.DeviceType != models.DeviceTypeUnknown && device.DeviceType != result.DeviceType {
+			continue
+		}
+
+		if device.DeviceType == models.DeviceTypeUnknown {
+			if updateErr := o.store.UpdateDeviceType(ctx, device.ID, result.DeviceType); updateErr != nil {
+				o.logger.Error("failed to update device type from classifier",
+					zap.String("device_id", device.ID),
+					zap.Error(updateErr))
+				continue
+			}
+			classifiedCount++
+		}
+	}
+
+	if classifiedCount > 0 {
+		o.logger.Info("composite classifier updated devices",
+			zap.Int("count", classifiedCount))
 	}
 }
 
