@@ -144,12 +144,17 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 
 		hostname := o.resolveHostname(host.IP)
 
+		deviceType := models.DeviceTypeUnknown
+		if manufacturer != "" {
+			deviceType = ClassifyByManufacturer(manufacturer)
+		}
+
 		device := &models.Device{
 			Hostname:        hostname,
 			IPAddresses:     []string{host.IP},
 			MACAddress:      mac,
 			Manufacturer:    manufacturer,
-			DeviceType:      models.DeviceTypeUnknown,
+			DeviceType:      deviceType,
 			Status:          models.DeviceStatusOnline,
 			DiscoveryMethod: discoveryMethod,
 		}
