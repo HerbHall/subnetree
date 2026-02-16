@@ -32,6 +32,20 @@ type ScanResult struct {
 	Online    int      `json:"online" example:"8"`
 }
 
+// ScanMetrics holds detailed timing and performance data for a scan.
+type ScanMetrics struct {
+	ScanID        string `json:"scan_id" db:"scan_id"`
+	DurationMs    int64  `json:"duration_ms" db:"duration_ms"`
+	PingPhaseMs   int64  `json:"ping_phase_ms" db:"ping_phase_ms"`
+	EnrichPhaseMs int64  `json:"enrich_phase_ms" db:"enrich_phase_ms"`
+	PostProcessMs int64  `json:"post_process_ms" db:"post_process_ms"`
+	HostsScanned  int    `json:"hosts_scanned" db:"hosts_scanned"`
+	HostsAlive    int    `json:"hosts_alive" db:"hosts_alive"`
+	DevicesCreated int   `json:"devices_created" db:"devices_created"`
+	DevicesUpdated int   `json:"devices_updated" db:"devices_updated"`
+	CreatedAt     string `json:"created_at" db:"created_at"`
+}
+
 // AgentInfo represents the state of a connected Scout agent.
 type AgentInfo struct {
 	ID          string `json:"id" example:"agent-550e8400"`

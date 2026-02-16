@@ -1020,6 +1020,44 @@ func (s *ReconStore) UpdateTopologyLayout(ctx context.Context, layout *TopologyL
 	return nil
 }
 
+// SaveScanMetrics inserts timing and count metrics for a completed scan.
+func (s *ReconStore) SaveScanMetrics(ctx context.Context, m *models.ScanMetrics) error {
+	if m.CreatedAt == "" {
+		m.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO recon_scan_metrics (
+			scan_id, duration_ms, ping_phase_ms, enrich_phase_ms, post_process_ms,
+			hosts_scanned, hosts_alive, devices_created, devices_updated, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		m.ScanID, m.DurationMs, m.PingPhaseMs, m.EnrichPhaseMs, m.PostProcessMs,
+		m.HostsScanned, m.HostsAlive, m.DevicesCreated, m.DevicesUpdated, m.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert scan metrics: %w", err)
+	}
+	return nil
+}
+
+// GetScanMetrics returns the metrics for a given scan ID.
+// Returns nil without error if no metrics exist for the scan.
+func (s *ReconStore) GetScanMetrics(ctx context.Context, scanID string) (*models.ScanMetrics, error) {
+	var m models.ScanMetrics
+	err := s.db.QueryRowContext(ctx, `
+		SELECT scan_id, duration_ms, ping_phase_ms, enrich_phase_ms, post_process_ms,
+			hosts_scanned, hosts_alive, devices_created, devices_updated, created_at
+		FROM recon_scan_metrics WHERE scan_id = ?`, scanID,
+	).Scan(&m.ScanID, &m.DurationMs, &m.PingPhaseMs, &m.EnrichPhaseMs, &m.PostProcessMs,
+		&m.HostsScanned, &m.HostsAlive, &m.DevicesCreated, &m.DevicesUpdated, &m.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get scan metrics: %w", err)
+	}
+	return &m, nil
+}
+
 // DeleteTopologyLayout removes a topology layout by ID.
 func (s *ReconStore) DeleteTopologyLayout(ctx context.Context, id string) error {
 	result, err := s.db.ExecContext(ctx, `

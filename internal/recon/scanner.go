@@ -79,6 +79,8 @@ func (o *ScanOrchestrator) runStages(ctx context.Context, stages []scanStage) {
 
 // RunScan executes a full network scan for the given subnet.
 func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
+	scanStart := time.Now()
+
 	_, ipNet, err := net.ParseCIDR(subnet)
 	if err != nil {
 		o.logger.Error("invalid subnet", zap.String("subnet", subnet), zap.Error(err))
@@ -118,6 +120,8 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 	alive := make([]HostResult, 0, subnetSize)
 	var onlineCount int
 	var totalCount int
+	var devicesCreated int
+	var devicesUpdated int
 	for r := range results {
 		if !r.Alive {
 			continue
@@ -162,6 +166,12 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 			continue
 		}
 
+		if created {
+			devicesCreated++
+		} else {
+			devicesUpdated++
+		}
+
 		// Link device to scan.
 		if linkErr := o.store.LinkScanDevice(ctx, scanID, device.ID); linkErr != nil {
 			o.logger.Error("failed to link scan device", zap.Error(linkErr))
@@ -182,6 +192,9 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 			SubnetSize: subnetSize,
 		})
 	}
+
+	// Ping + enrichment happen together in the streaming loop above.
+	enrichDone := time.Now()
 
 	// Check for scan error. Use background context for DB cleanup since
 	// the scan context may already be cancelled.
@@ -206,6 +219,8 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		{"service-movements", func(ctx context.Context) { o.detectAndPublishServiceMovements(ctx, alive) }},
 	})
 
+	postDone := time.Now()
+
 	// Update scan record.
 	scan := &models.ScanResult{
 		ID:      scanID,
@@ -219,11 +234,29 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		o.logger.Error("failed to update scan", zap.Error(err))
 	}
 
+	// Save scan metrics. Ping and enrichment are combined in the streaming
+	// model, so pingPhaseMs equals the full streaming loop duration.
+	metrics := &models.ScanMetrics{
+		ScanID:         scanID,
+		DurationMs:     time.Since(scanStart).Milliseconds(),
+		PingPhaseMs:    enrichDone.Sub(scanStart).Milliseconds(),
+		EnrichPhaseMs:  0,
+		PostProcessMs:  postDone.Sub(enrichDone).Milliseconds(),
+		HostsScanned:   subnetSize,
+		HostsAlive:     len(alive),
+		DevicesCreated: devicesCreated,
+		DevicesUpdated: devicesUpdated,
+	}
+	if saveErr := o.store.SaveScanMetrics(ctx, metrics); saveErr != nil {
+		o.logger.Error("failed to save scan metrics", zap.Error(saveErr))
+	}
+
 	o.publishEvent(ctx, TopicScanCompleted, scan)
 	o.logger.Info("scan completed",
 		zap.String("scan_id", scanID),
 		zap.Int("total", totalCount),
 		zap.Int("online", onlineCount),
+		zap.Int64("duration_ms", metrics.DurationMs),
 	)
 }
 

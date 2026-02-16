@@ -152,5 +152,24 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     6,
+			Description: "create scan_metrics table for per-scan timing and count data",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS recon_scan_metrics (
+					scan_id TEXT PRIMARY KEY REFERENCES recon_scans(id) ON DELETE CASCADE,
+					duration_ms INTEGER NOT NULL,
+					ping_phase_ms INTEGER NOT NULL,
+					enrich_phase_ms INTEGER NOT NULL,
+					post_process_ms INTEGER NOT NULL,
+					hosts_scanned INTEGER NOT NULL,
+					hosts_alive INTEGER NOT NULL,
+					devices_created INTEGER NOT NULL,
+					devices_updated INTEGER NOT NULL,
+					created_at TEXT NOT NULL DEFAULT (datetime('now'))
+				)`)
+				return err
+			},
+		},
 	}
 }

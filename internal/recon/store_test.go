@@ -1097,3 +1097,84 @@ func TestBulkUpdateDevices_NoFields(t *testing.T) {
 		t.Errorf("updated = %d, want 0 (no fields to update)", updated)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Scan metrics store tests
+// ---------------------------------------------------------------------------
+
+func TestSaveScanMetrics(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	// Create a parent scan record first (FK constraint).
+	scan := &models.ScanResult{Subnet: "192.168.1.0/24", Status: "completed"}
+	if err := s.CreateScan(ctx, scan); err != nil {
+		t.Fatalf("CreateScan: %v", err)
+	}
+
+	metrics := &models.ScanMetrics{
+		ScanID:         scan.ID,
+		DurationMs:     1500,
+		PingPhaseMs:    1000,
+		EnrichPhaseMs:  0,
+		PostProcessMs:  500,
+		HostsScanned:   254,
+		HostsAlive:     12,
+		DevicesCreated: 3,
+		DevicesUpdated: 9,
+		CreatedAt:      time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if err := s.SaveScanMetrics(ctx, metrics); err != nil {
+		t.Fatalf("SaveScanMetrics: %v", err)
+	}
+
+	// Retrieve and verify.
+	got, err := s.GetScanMetrics(ctx, scan.ID)
+	if err != nil {
+		t.Fatalf("GetScanMetrics: %v", err)
+	}
+	if got == nil {
+		t.Fatal("GetScanMetrics returned nil, expected metrics")
+	}
+	if got.ScanID != scan.ID {
+		t.Errorf("ScanID = %q, want %q", got.ScanID, scan.ID)
+	}
+	if got.DurationMs != 1500 {
+		t.Errorf("DurationMs = %d, want 1500", got.DurationMs)
+	}
+	if got.PingPhaseMs != 1000 {
+		t.Errorf("PingPhaseMs = %d, want 1000", got.PingPhaseMs)
+	}
+	if got.EnrichPhaseMs != 0 {
+		t.Errorf("EnrichPhaseMs = %d, want 0", got.EnrichPhaseMs)
+	}
+	if got.PostProcessMs != 500 {
+		t.Errorf("PostProcessMs = %d, want 500", got.PostProcessMs)
+	}
+	if got.HostsScanned != 254 {
+		t.Errorf("HostsScanned = %d, want 254", got.HostsScanned)
+	}
+	if got.HostsAlive != 12 {
+		t.Errorf("HostsAlive = %d, want 12", got.HostsAlive)
+	}
+	if got.DevicesCreated != 3 {
+		t.Errorf("DevicesCreated = %d, want 3", got.DevicesCreated)
+	}
+	if got.DevicesUpdated != 9 {
+		t.Errorf("DevicesUpdated = %d, want 9", got.DevicesUpdated)
+	}
+}
+
+func TestGetScanMetrics_NotFound(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	got, err := s.GetScanMetrics(ctx, "nonexistent-scan-id")
+	if err != nil {
+		t.Fatalf("GetScanMetrics: unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil for missing scan metrics, got %+v", got)
+	}
+}

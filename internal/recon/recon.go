@@ -230,6 +230,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "POST", Path: "/scan", Handler: m.handleScan},
 		{Method: "GET", Path: "/scans", Handler: m.handleListScans},
 		{Method: "GET", Path: "/scans/{id}", Handler: m.handleGetScan},
+		{Method: "GET", Path: "/scans/{id}/metrics", Handler: m.handleGetScanMetrics},
 		{Method: "GET", Path: "/topology", Handler: m.handleTopology},
 		{Method: "GET", Path: "/topology/layouts", Handler: m.handleListTopologyLayouts},
 		{Method: "POST", Path: "/topology/layouts", Handler: m.handleCreateTopologyLayout},

@@ -202,6 +202,28 @@ func (m *Module) handleGetScan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, scan)
 }
 
+// handleGetScanMetrics returns timing and count metrics for a single scan.
+func (m *Module) handleGetScanMetrics(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "scan ID is required")
+		return
+	}
+
+	metrics, err := m.store.GetScanMetrics(r.Context(), id)
+	if err != nil {
+		m.logger.Error("failed to get scan metrics", zap.String("scan_id", id), zap.Error(err))
+		writeError(w, http.StatusInternalServerError, "failed to get scan metrics")
+		return
+	}
+	if metrics == nil {
+		writeError(w, http.StatusNotFound, "scan metrics not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, metrics)
+}
+
 // handleTopology returns the network topology as a graph.
 //
 //	@Summary		Get topology
