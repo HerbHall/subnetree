@@ -30,7 +30,7 @@ type DeviceEvent struct {
 	Device *models.Device `json:"device"`
 }
 
-// ScanProgressEvent reports scan progress after the ping phase completes.
+// ScanProgressEvent reports incremental scan progress as each host responds.
 type ScanProgressEvent struct {
 	ScanID     string `json:"scan_id"`
 	HostsAlive int    `json:"hosts_alive"`

@@ -74,9 +74,8 @@ export function ScanProgressPanel({ activeScan, progress }: ScanProgressPanelPro
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>
                 {activeScan.devicesFound} device{activeScan.devicesFound !== 1 ? 's' : ''} found
-                {activeScan.status === 'scanning' && ' (ping sweep in progress)'}
-                {activeScan.status === 'processing' &&
-                  ` of ${activeScan.hostsAlive} alive hosts`}
+                {activeScan.status === 'scanning' && ' (waiting for responses...)'}
+                {activeScan.status === 'processing' && ' (discovering...)'}
               </span>
               {activeScan.status === 'processing' && <span>{progress}%</span>}
             </div>

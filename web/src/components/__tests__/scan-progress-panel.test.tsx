@@ -60,11 +60,11 @@ describe('ScanProgressPanel', () => {
     expect(screen.getByText('Scanning 192.168.1.0/24...')).toBeInTheDocument()
   })
 
-  it('shows "ping sweep in progress" during scanning phase', () => {
+  it('shows "waiting for responses" during scanning phase', () => {
     const scan = createBaseScan({ status: 'scanning', devicesFound: 3 })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
 
-    expect(screen.getByText('3 devices found (ping sweep in progress)')).toBeInTheDocument()
+    expect(screen.getByText('3 devices found (waiting for responses...)')).toBeInTheDocument()
   })
 
   it('shows progress percentage during processing phase', () => {
@@ -76,7 +76,7 @@ describe('ScanProgressPanel', () => {
     render(<ScanProgressPanel activeScan={scan} progress={50} />)
 
     expect(screen.getByText('50%')).toBeInTheDocument()
-    expect(screen.getByText('5 devices found of 10 alive hosts')).toBeInTheDocument()
+    expect(screen.getByText('5 devices found (discovering...)')).toBeInTheDocument()
   })
 
   it('shows device count during starting phase', () => {
@@ -90,14 +90,14 @@ describe('ScanProgressPanel', () => {
     const scan = createBaseScan({ status: 'scanning', devicesFound: 1 })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
 
-    expect(screen.getByText('1 device found (ping sweep in progress)')).toBeInTheDocument()
+    expect(screen.getByText('1 device found (waiting for responses...)')).toBeInTheDocument()
   })
 
   it('shows plural "devices" when count is not 1', () => {
     const scan = createBaseScan({ status: 'scanning', devicesFound: 2 })
     render(<ScanProgressPanel activeScan={scan} progress={0} />)
 
-    expect(screen.getByText('2 devices found (ping sweep in progress)')).toBeInTheDocument()
+    expect(screen.getByText('2 devices found (waiting for responses...)')).toBeInTheDocument()
   })
 
   it('shows completion summary with device count and target', () => {

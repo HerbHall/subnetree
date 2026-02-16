@@ -92,6 +92,19 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		StartedAt: time.Now().UTC().Format(time.RFC3339),
 	})
 
+	// Calculate subnet size for progress reporting.
+	ones, bits := ipNet.Mask.Size()
+	subnetSize := 1<<(bits-ones) - 2 // subtract network + broadcast
+	if subnetSize < 1 {
+		subnetSize = 1
+	}
+
+	// Read ARP table upfront so we can enrich devices as they arrive.
+	arpTable := map[string]string{}
+	if o.arp != nil {
+		arpTable = o.arp.ReadTable(ctx)
+	}
+
 	// Run ICMP scan.
 	results := make(chan HostResult, 256)
 	scanDone := make(chan error, 1)
@@ -100,25 +113,75 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		close(results)
 	}()
 
-	// Collect alive hosts.
-	var alive []HostResult
+	// Process each alive host as it arrives, streaming device events in
+	// real time rather than waiting for the full sweep to complete.
+	alive := make([]HostResult, 0, subnetSize)
+	var onlineCount int
+	var totalCount int
 	for r := range results {
-		if r.Alive {
-			alive = append(alive, r)
+		if !r.Alive {
+			continue
 		}
-	}
+		alive = append(alive, r)
 
-	// Emit scan progress event (ping phase complete).
-	ones, bits := ipNet.Mask.Size()
-	subnetSize := 1<<(bits-ones) - 2 // subtract network + broadcast
-	if subnetSize < 1 {
-		subnetSize = 1
+		if ctx.Err() != nil {
+			continue // drain channel but skip processing
+		}
+
+		totalCount++
+		onlineCount++
+
+		mac := arpTable[r.IP]
+		manufacturer := ""
+		discoveryMethod := models.DiscoveryICMP
+		if mac != "" {
+			manufacturer = o.oui.Lookup(mac)
+			discoveryMethod = models.DiscoveryARP
+		}
+
+		hostname := o.resolveHostname(r.IP)
+
+		deviceType := models.DeviceTypeUnknown
+		if manufacturer != "" {
+			deviceType = ClassifyByManufacturer(manufacturer)
+		}
+
+		device := &models.Device{
+			Hostname:        hostname,
+			IPAddresses:     []string{r.IP},
+			MACAddress:      mac,
+			Manufacturer:    manufacturer,
+			DeviceType:      deviceType,
+			Status:          models.DeviceStatusOnline,
+			DiscoveryMethod: discoveryMethod,
+		}
+
+		created, upsertErr := o.store.UpsertDevice(ctx, device)
+		if upsertErr != nil {
+			o.logger.Error("failed to upsert device", zap.String("ip", r.IP), zap.Error(upsertErr))
+			continue
+		}
+
+		// Link device to scan.
+		if linkErr := o.store.LinkScanDevice(ctx, scanID, device.ID); linkErr != nil {
+			o.logger.Error("failed to link scan device", zap.Error(linkErr))
+		}
+
+		// Emit device event with scan ID immediately.
+		devEvent := &DeviceEvent{ScanID: scanID, Device: device}
+		if created {
+			o.publishEvent(ctx, TopicDeviceDiscovered, devEvent)
+		} else {
+			o.publishEvent(ctx, TopicDeviceUpdated, devEvent)
+		}
+
+		// Emit incremental progress so the UI can show a running count.
+		o.publishEvent(ctx, TopicScanProgress, &ScanProgressEvent{
+			ScanID:     scanID,
+			HostsAlive: len(alive),
+			SubnetSize: subnetSize,
+		})
 	}
-	o.publishEvent(ctx, TopicScanProgress, &ScanProgressEvent{
-		ScanID:     scanID,
-		HostsAlive: len(alive),
-		SubnetSize: subnetSize,
-	})
 
 	// Check for scan error. Use background context for DB cleanup since
 	// the scan context may already be cancelled.
@@ -132,69 +195,6 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		o.logger.Error("ICMP scan error", zap.Error(scanErr))
 		_ = o.store.UpdateScanError(cleanupCtx, scanID, scanErr.Error())
 		return
-	}
-
-	// Read ARP table for MAC addresses.
-	arpTable := map[string]string{}
-	if o.arp != nil {
-		arpTable = o.arp.ReadTable(ctx)
-	}
-
-	// Process each alive host.
-	var onlineCount int
-	var totalCount int
-	for _, host := range alive {
-		if ctx.Err() != nil {
-			_ = o.store.UpdateScanError(cleanupCtx, scanID, "cancelled")
-			return
-		}
-
-		totalCount++
-		onlineCount++
-
-		mac := arpTable[host.IP]
-		manufacturer := ""
-		discoveryMethod := models.DiscoveryICMP
-		if mac != "" {
-			manufacturer = o.oui.Lookup(mac)
-			discoveryMethod = models.DiscoveryARP
-		}
-
-		hostname := o.resolveHostname(host.IP)
-
-		deviceType := models.DeviceTypeUnknown
-		if manufacturer != "" {
-			deviceType = ClassifyByManufacturer(manufacturer)
-		}
-
-		device := &models.Device{
-			Hostname:        hostname,
-			IPAddresses:     []string{host.IP},
-			MACAddress:      mac,
-			Manufacturer:    manufacturer,
-			DeviceType:      deviceType,
-			Status:          models.DeviceStatusOnline,
-			DiscoveryMethod: discoveryMethod,
-		}
-
-		created, err := o.store.UpsertDevice(ctx, device)
-		if err != nil {
-			o.logger.Error("failed to upsert device", zap.String("ip", host.IP), zap.Error(err))
-			continue
-		}
-
-		// Link device to scan.
-		if err := o.store.LinkScanDevice(ctx, scanID, device.ID); err != nil {
-			o.logger.Error("failed to link scan device", zap.Error(err))
-		}
-
-		// Emit device event with scan ID.
-		devEvent := &DeviceEvent{ScanID: scanID, Device: device}
-		if created {
-			o.publishEvent(ctx, TopicDeviceDiscovered, devEvent)
-		} else {
-			o.publishEvent(ctx, TopicDeviceUpdated, devEvent)
-		}
 	}
 
 	// Run post-scan processing stages.

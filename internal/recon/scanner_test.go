@@ -505,3 +505,140 @@ func TestRunStages_EmptyStages(t *testing.T) {
 	orch.runStages(context.Background(), nil)
 	orch.runStages(context.Background(), []scanStage{})
 }
+
+func TestScanOrchestrator_StreamingProgressEvents(t *testing.T) {
+	// Verify that progress events are published incrementally as each
+	// host responds, not once after all hosts are collected.
+	pinger := &mockPingScanner{
+		results: []HostResult{
+			{IP: "10.1.0.1", Alive: true, RTT: 1 * time.Millisecond, Method: "icmp"},
+			{IP: "10.1.0.2", Alive: true, RTT: 2 * time.Millisecond, Method: "icmp"},
+			{IP: "10.1.0.3", Alive: true, RTT: 3 * time.Millisecond, Method: "icmp"},
+		},
+	}
+	arp := &mockARPReader{table: map[string]string{}}
+	oui := &mockOUI{table: map[string]string{}}
+
+	orch, reconStore, collector := setupOrchestrator(t, pinger, arp, oui)
+	ctx := context.Background()
+
+	scan := &models.ScanResult{ID: "scan-stream", Subnet: "10.1.0.0/24", Status: "running"}
+	if err := reconStore.CreateScan(ctx, scan); err != nil {
+		t.Fatalf("CreateScan: %v", err)
+	}
+
+	orch.RunScan(ctx, "scan-stream", "10.1.0.0/24")
+
+	// There should be one progress event per alive host (3 total),
+	// with HostsAlive incrementing: 1, 2, 3.
+	progressEvents := collector.byTopic(TopicScanProgress)
+	if len(progressEvents) != 3 {
+		t.Fatalf("progress events = %d, want 3", len(progressEvents))
+	}
+
+	for i, evt := range progressEvents {
+		pe, ok := evt.Payload.(*ScanProgressEvent)
+		if !ok {
+			t.Fatalf("progress event %d: unexpected payload type %T", i, evt.Payload)
+		}
+		wantAlive := i + 1
+		if pe.HostsAlive != wantAlive {
+			t.Errorf("progress event %d: HostsAlive = %d, want %d", i, pe.HostsAlive, wantAlive)
+		}
+		if pe.SubnetSize != 254 { // /24 = 254 usable
+			t.Errorf("progress event %d: SubnetSize = %d, want 254", i, pe.SubnetSize)
+		}
+		if pe.ScanID != "scan-stream" {
+			t.Errorf("progress event %d: ScanID = %q, want scan-stream", i, pe.ScanID)
+		}
+	}
+
+	// Device discovered events should also be streamed (one per host).
+	discovered := collector.byTopic(TopicDeviceDiscovered)
+	if len(discovered) != 3 {
+		t.Errorf("discovered events = %d, want 3", len(discovered))
+	}
+
+	// Verify the events are interleaved: for each host, a device event
+	// should appear before (or at the same time as) its progress event.
+	// Since the test bus is synchronous, the ordering in collector.events
+	// is deterministic.
+	var lastDeviceIdx, lastProgressIdx int
+	for i, evt := range collector.events {
+		switch evt.Topic {
+		case TopicDeviceDiscovered:
+			lastDeviceIdx = i
+		case TopicScanProgress:
+			lastProgressIdx = i
+		}
+	}
+	if lastDeviceIdx > lastProgressIdx {
+		t.Errorf("last device event (idx=%d) should not appear after last progress event (idx=%d)",
+			lastDeviceIdx, lastProgressIdx)
+	}
+
+	// Scan should still complete normally.
+	got, err := reconStore.GetScan(ctx, "scan-stream")
+	if err != nil {
+		t.Fatalf("GetScan: %v", err)
+	}
+	if got.Status != "completed" {
+		t.Errorf("scan status = %q, want completed", got.Status)
+	}
+	if got.Total != 3 {
+		t.Errorf("scan total = %d, want 3", got.Total)
+	}
+}
+
+func TestScanOrchestrator_StreamingWithDeadHosts(t *testing.T) {
+	// Verify that dead hosts (Alive=false) don't generate progress or device events.
+	pinger := &mockPingScanner{
+		results: []HostResult{
+			{IP: "10.2.0.1", Alive: true, RTT: 1 * time.Millisecond, Method: "icmp"},
+			{IP: "10.2.0.2", Alive: false, RTT: 0, Method: "icmp"},
+			{IP: "10.2.0.3", Alive: true, RTT: 3 * time.Millisecond, Method: "icmp"},
+			{IP: "10.2.0.4", Alive: false, RTT: 0, Method: "icmp"},
+		},
+	}
+	arp := &mockARPReader{table: map[string]string{}}
+	oui := &mockOUI{table: map[string]string{}}
+
+	orch, reconStore, collector := setupOrchestrator(t, pinger, arp, oui)
+	ctx := context.Background()
+
+	scan := &models.ScanResult{ID: "scan-dead", Subnet: "10.2.0.0/24", Status: "running"}
+	if err := reconStore.CreateScan(ctx, scan); err != nil {
+		t.Fatalf("CreateScan: %v", err)
+	}
+
+	orch.RunScan(ctx, "scan-dead", "10.2.0.0/24")
+
+	// Only 2 alive hosts, so 2 progress events.
+	progressEvents := collector.byTopic(TopicScanProgress)
+	if len(progressEvents) != 2 {
+		t.Fatalf("progress events = %d, want 2", len(progressEvents))
+	}
+
+	// Progress should count 1 then 2.
+	for i, evt := range progressEvents {
+		pe := evt.Payload.(*ScanProgressEvent)
+		wantAlive := i + 1
+		if pe.HostsAlive != wantAlive {
+			t.Errorf("progress event %d: HostsAlive = %d, want %d", i, pe.HostsAlive, wantAlive)
+		}
+	}
+
+	// Only 2 discovered events.
+	discovered := collector.byTopic(TopicDeviceDiscovered)
+	if len(discovered) != 2 {
+		t.Errorf("discovered events = %d, want 2", len(discovered))
+	}
+
+	got, err := reconStore.GetScan(ctx, "scan-dead")
+	if err != nil {
+		t.Fatalf("GetScan: %v", err)
+	}
+	if got.Total != 2 {
+		t.Errorf("scan total = %d, want 2", got.Total)
+	}
+}
