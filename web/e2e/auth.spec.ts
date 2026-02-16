@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { TEST_USER } from './helpers'
 
 test.describe('Authentication', () => {
   test('login page renders the sign-in form', async ({ page }) => {
@@ -9,7 +10,7 @@ test.describe('Authentication', () => {
 
     // Verify form fields exist
     await expect(page.getByLabel('Username')).toBeVisible()
-    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.locator('#password')).toBeVisible()
 
     // Verify submit button
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
@@ -17,7 +18,7 @@ test.describe('Authentication', () => {
 
   test('login page shows the SubNetree logo', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByAlt('SubNetree')).toBeVisible()
+    await expect(page.getByAltText('SubNetree')).toBeVisible()
   })
 
   test('login page shows description text', async ({ page }) => {
@@ -33,7 +34,7 @@ test.describe('Authentication', () => {
     // Both fields have the "required" attribute, so the browser prevents
     // submission before our JS handler runs. Verify the fields are required.
     const usernameInput = page.getByLabel('Username')
-    const passwordInput = page.getByLabel('Password')
+    const passwordInput = page.locator('#password')
 
     await expect(usernameInput).toHaveAttribute('required', '')
     await expect(passwordInput).toHaveAttribute('required', '')
@@ -43,7 +44,7 @@ test.describe('Authentication', () => {
     await page.goto('/login')
 
     await page.getByLabel('Username').fill('nonexistent_user')
-    await page.getByLabel('Password').fill('wrong_password')
+    await page.locator('#password').fill('wrong_password')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     // The login API call should fail and display an error alert
@@ -54,7 +55,7 @@ test.describe('Authentication', () => {
   test('password visibility toggle works', async ({ page }) => {
     await page.goto('/login')
 
-    const passwordInput = page.getByLabel('Password')
+    const passwordInput = page.locator('#password')
     await passwordInput.fill('secret123')
 
     // Initially the password is hidden
@@ -67,5 +68,34 @@ test.describe('Authentication', () => {
     // Click again to hide
     await page.getByLabel('Hide password').click()
     await expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
+  test('successful login redirects to dashboard', async ({ page }) => {
+    await page.goto('/login')
+
+    // Wait for setup status check to complete
+    await expect(page.getByText('Sign in to SubNetree')).toBeVisible({ timeout: 15_000 })
+
+    await page.getByLabel('Username').fill(TEST_USER.username)
+    await page.locator('#password').fill(TEST_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    // Should redirect to dashboard after successful login
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  })
+
+  test('successful login shows username in sidebar', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByText('Sign in to SubNetree')).toBeVisible({ timeout: 15_000 })
+
+    await page.getByLabel('Username').fill(TEST_USER.username)
+    await page.locator('#password').fill(TEST_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 })
+
+    // The sidebar should show the logged-in username
+    await expect(page.getByText(TEST_USER.username)).toBeVisible()
   })
 })
