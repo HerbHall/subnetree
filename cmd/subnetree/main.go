@@ -35,6 +35,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/mqtt"
 	"github.com/HerbHall/subnetree/internal/pulse"
 	"github.com/HerbHall/subnetree/internal/recon"
+	"github.com/HerbHall/subnetree/internal/seed"
 	"github.com/HerbHall/subnetree/internal/registry"
 	"github.com/HerbHall/subnetree/internal/server"
 	"github.com/HerbHall/subnetree/internal/services"
@@ -69,6 +70,7 @@ func main() {
 
 	configPath := flag.String("config", "", "path to configuration file")
 	showVersion := flag.Bool("version", false, "print version information and exit")
+	seedData := flag.Bool("seed", false, "populate database with demo network data")
 	flag.Parse()
 
 	if *showVersion {
@@ -283,6 +285,19 @@ func main() {
 		reconMod.SetCredentialAccessor(recon.NewVaultCredentialAdapter(&vaultDecryptAdapter{vault: vaultMod}))
 		reconMod.SetCredentialProvider(vaultMod)
 		logger.Info("SNMP credential adapter wired", zap.String("component", "recon"))
+	}
+
+	// Seed demo data if requested via --seed flag or NV_SEED_DATA env var.
+	if *seedData || os.Getenv("NV_SEED_DATA") == "true" {
+		if reconMod != nil {
+			if seedErr := seed.SeedDemoNetwork(context.Background(), reconMod.Store()); seedErr != nil {
+				logger.Error("failed to seed demo data", zap.Error(seedErr))
+			} else {
+				logger.Info("demo network seeded successfully")
+			}
+		} else {
+			logger.Warn("cannot seed demo data: recon module not available")
+		}
 	}
 
 	// Create Gateway SSH WebSocket handler.
