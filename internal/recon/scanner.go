@@ -185,6 +185,9 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 	// Classify devices using composite scoring.
 	o.classifyDevices(ctx, alive, arpTable)
 
+	// Detect potential unmanaged switches via ARP/MAC heuristics.
+	o.detectUnmanagedSwitches(ctx, alive, arpTable)
+
 	// Infer topology links from ARP data.
 	o.inferTopologyLinks(ctx, subnet, alive)
 
@@ -440,6 +443,75 @@ func (o *ScanOrchestrator) classifyDevices(ctx context.Context, alive []HostResu
 	if classifiedCount > 0 {
 		o.logger.Info("composite classifier updated devices",
 			zap.Int("count", classifiedCount))
+	}
+}
+
+// detectUnmanagedSwitches infers potential unmanaged switches from ARP/MAC
+// patterns after classification. Devices with infrastructure vendor OUIs that
+// have no SNMP, no open ports, and remain unclassified are candidates.
+func (o *ScanOrchestrator) detectUnmanagedSwitches(ctx context.Context, alive []HostResult, arpTable map[string]string) {
+	var infos []UnmanagedDeviceInfo
+
+	for _, host := range alive {
+		if ctx.Err() != nil {
+			return
+		}
+
+		device, err := o.store.GetDeviceByIP(ctx, host.IP)
+		if err != nil || device == nil {
+			continue
+		}
+
+		mac := arpTable[host.IP]
+		manufacturer := ""
+		if mac != "" && o.oui != nil {
+			manufacturer = o.oui.Lookup(mac)
+		}
+
+		infos = append(infos, UnmanagedDeviceInfo{
+			DeviceID:     device.ID,
+			IP:           host.IP,
+			MAC:          mac,
+			Manufacturer: manufacturer,
+			DeviceType:   device.DeviceType,
+			HasSNMP:      device.DiscoveryMethod == models.DiscoverySNMP,
+			HasOpenPorts: false, // Port scan results stored on device are not yet exposed; rely on DeviceType.
+		})
+	}
+
+	candidates := DetectUnmanagedSwitches(infos)
+
+	var updatedCount int
+	for i := range candidates {
+		if candidates[i].Confidence < 15 {
+			continue
+		}
+
+		if updateErr := o.store.UpdateDeviceType(ctx, candidates[i].DeviceID, models.DeviceTypeSwitch); updateErr != nil {
+			o.logger.Error("failed to update device type for unmanaged switch candidate",
+				zap.String("device_id", candidates[i].DeviceID),
+				zap.Error(updateErr))
+			continue
+		}
+
+		// Re-fetch device for the event payload.
+		device, err := o.store.GetDeviceByIP(ctx, candidates[i].IP)
+		if err == nil && device != nil {
+			o.publishEvent(ctx, TopicDeviceUpdated, &DeviceEvent{Device: device})
+		}
+
+		o.logger.Debug("inferred unmanaged switch",
+			zap.String("device_id", candidates[i].DeviceID),
+			zap.String("ip", candidates[i].IP),
+			zap.String("reason", candidates[i].Reason),
+			zap.Int("confidence", candidates[i].Confidence),
+		)
+		updatedCount++
+	}
+
+	if updatedCount > 0 {
+		o.logger.Info("unmanaged switch detection updated devices",
+			zap.Int("count", updatedCount))
 	}
 }
 
