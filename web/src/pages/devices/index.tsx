@@ -351,15 +351,7 @@ export function DevicesPage() {
     setSearchParams(searchParams)
   }
 
-  // Count devices by status and type (from current page data for display)
-  const statusCounts = devices.reduce(
-    (acc, d) => {
-      acc[d.status] = (acc[d.status] || 0) + 1
-      return acc
-    },
-    {} as Record<string, number>
-  )
-
+  // Count devices by type (from current page data for type filter dropdown)
   const typeCounts = devices.reduce(
     (acc, d) => {
       acc[d.device_type] = (acc[d.device_type] || 0) + 1
@@ -503,14 +495,14 @@ export function DevicesPage() {
             />
             <StatusPill
               label="Online"
-              count={statusCounts.online || 0}
+              count={inventorySummary?.online_count ?? 0}
               status="online"
               active={statusFilter === 'online'}
               onClick={() => updateFilter('status', 'online')}
             />
             <StatusPill
               label="Offline"
-              count={statusCounts.offline || 0}
+              count={inventorySummary?.offline_count ?? 0}
               status="offline"
               active={statusFilter === 'offline'}
               onClick={() => updateFilter('status', 'offline')}
