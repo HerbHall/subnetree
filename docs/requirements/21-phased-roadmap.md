@@ -174,7 +174,7 @@
 - [x] Health endpoint tests: `/healthz`, `/readyz`, per-plugin health status
 - [ ] Fuzz tests: API input fuzzing, configuration fuzzing (Go `testing.F`)
 - [ ] Performance baselines: benchmark key operations, memory profile at 0/50 devices, startup time
-- [ ] E2E browser tests: first-run wizard, device list, scan trigger, login/logout (Playwright, headless)
+- [x] E2E browser tests: first-run wizard, device list, scan trigger, login/logout (Playwright, headless) (Sprint 3, PR #409)
 - [x] CI pipeline: GitHub Actions `ci.yml` with golangci-lint, `go test -race`, build, coverage report, license check
 - [ ] CI coverage enforcement: fail PR if any package drops below minimum coverage target
 - [x] `.golangci-lint.yml`: errcheck, gosec, gocritic, staticcheck, bodyclose, noctx, sqlclosecheck
@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test in release pipeline, classification confidence on Device model, ICMP traceroute. Sprint 2: SNMP FDB table walks, seed data, interactive diagnostic tools. Sprint 3: network hierarchy inference, Playwright E2E tests. Post-QC: one-click Scout deployment with install scripts. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -320,6 +320,17 @@
 - [x] SNMP v2c/v3 discovery (gosnmp, credential-based -- PRs #204, #205)
 - [x] mDNS/Bonjour discovery (PR #248, issue #234)
 - [x] UPnP/SSDP discovery (PR #292)
+- [x] OUI device classifier with weighted scoring (v0.6.0)
+- [x] Enhanced SNMP: BRIDGE-MIB and sysServices-based classification (v0.6.0)
+- [x] TTL capture from ICMP for device fingerprinting (v0.6.0)
+- [x] Port fingerprinting for device classification (v0.6.0)
+- [x] Composite weighted classifier with confidence scoring (v0.6.0)
+- [x] Unmanaged switch heuristic detection (v0.6.0)
+- [x] Scan pipeline refactor for modular phase execution (v0.6.0)
+- [x] SNMP FDB table walks for switch port mapping (Sprint 2, PR #403)
+- [x] Network hierarchy inference from scan data -- NetworkLayer field on Device (Sprint 3, PR #408)
+- [x] ICMP traceroute: `POST /api/v1/recon/traceroute` (Sprint 1, PR #402)
+- [x] Classification confidence persisted on Device model: ClassificationConfidence, ClassificationSource, ClassificationSignals fields (Sprint 1, PR #401)
 - [ ] Tailscale plugin: tailnet device discovery via Tailscale API
 - [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
 - [ ] Tailscale plugin: Tailscale IP enrichment on existing device records
@@ -339,6 +350,12 @@
 - [x] Alert notifications: webhook with HMAC-SHA256 signing (PR #203; email, Slack, PagerDuty TODO)
 - [x] Metrics history and time-series graphs (PR #243, issue #235)
 - [x] Maintenance windows (suppress alerts during scheduled work) (PR #294)
+- [x] Streaming scan pipeline with per-phase metrics (v0.6.1)
+- [x] Scan analytics page with health scoring (v0.6.1)
+- [x] Scan health dashboard widget (v0.6.1)
+- [x] Scheduled recurring scans (v0.6.1)
+- [x] Metrics consolidation (v0.6.1)
+- [x] Interactive diagnostic tools: ping, DNS lookup, port check (Sprint 2, PR #405)
 
 #### Integration Foundation (Gateway P0)
 
@@ -356,7 +373,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Embedded catalog: `catalog.yaml` compiled into binary via `//go:embed` with SubNetree modules + top 15 ecosystem tools (~50 KB) (PR #313, v0.5.0)
 - [x] Hardware capability assessment: compare Scout's hardware profile (CPU, RAM, disk) against catalog entry requirements (PR #313, v0.5.0)
 - [x] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage (PR #313, v0.5.0)
-- [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring")
+- [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring") *(API only via `GET /api/v1/recommendations` -- UI widget deferred to Phase 3)*
 
 #### Multi-Tenancy
 
@@ -386,7 +403,8 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 
 #### Device Inventory Management (#163)
 
-- [ ] Structured inventory fields on Device model: location, category, primary_role, justification, device_policy, owner
+- [x] Structured inventory fields on Device model: location, category, primary_role, justification, device_policy, owner (API/DB schema done)
+- [ ] Dashboard: inventory field editing UI for structured fields (location, category, primary_role, etc.)
 - [x] Stale device detection (configurable threshold, default 30 days inactive) (PR #295)
 - [ ] Dashboard: inventory view with category filter, sort by last seen
 - [x] Dashboard: inventory summary widget (counts by category, stale count) (PR #295)
@@ -413,10 +431,20 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [ ] Plugin developer SDK and documentation
 - [ ] Interface Catalog: document all plugin interface types (API, Event, Config, Data) with versioning policy
 - [x] Dashboard: monitoring views, alert management (PR #206; metric graphs TODO)
+- [x] Dashboard: agent download page with platform-specific instructions (v0.6.1)
+- [x] Dashboard: version display on setup page (v0.6.1)
+- [x] One-click Scout agent deployment with install scripts and download redirects (PR #432)
+- [x] GoReleaser bare binary archive for Scout (PR #432)
+- [x] Dashboard: light theme color overrides for topology and charts (QC, PR #420)
+- [x] Dashboard: compact device table rows, default sort by IP (QC, PR #422)
+- [x] Dashboard: increased default page size to 256 for full Class C (QC, PR #424)
+- [x] Dashboard: agent pages UX fixes -- setup link in empty state, shell labels (QC, PR #425)
 - [ ] MFA/TOTP authentication support
 - [x] SBOM generation (Syft) and SLSA provenance for releases (Syft in GoReleaser since v0.1.0-alpha; Cosign signing TODO)
 - [ ] Cosign signing for Docker images
 - [x] govulncheck in CI pipeline (Trivy TODO)
+- [x] CI smoke test in release pipeline (Sprint 1, PR #400)
+- [x] Seed data for staging/demo environments (Sprint 2, PR #404)
 - [ ] IPv6 scanning and agent communication support
 - [ ] Per-tenant rate limiting
 - [ ] Public demo instance: read-only demo on free-tier cloud (Oracle Cloud ARM64 or similar) with synthetic data, linked from README and website *(deferred: launch when product is stable and feature-rich)*
@@ -425,7 +453,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [ ] Telemetry endpoint: simple HTTPS collector for installation count, MAU, feature usage tracking *(deferred: needs community adoption first)*
 - [ ] Google Search Console: register project website for organic search traffic tracking *(deferred: needs website and community)*
 - [ ] Plausible Analytics (self-hosted or cloud): privacy-friendly website analytics for project site *(deferred: needs website and community)*
-- [ ] Architecture Decision Records (ADRs): establish `docs/adr/` directory with template, document key decisions retroactively
+- [x] Architecture Decision Records (ADRs): establish `docs/adr/` directory with template, document key decisions retroactively (done in Phase 0; ADR-0001 through ADR-0008)
 - [ ] SonarQube Community (optional): technical debt tracking if Go Report Card + golangci-lint prove insufficient
 - [ ] Modularity Metrics: establish baseline measures for plugin efficiency (shared components), flexibility (valid configurations), and agility (changes required for new features)
 
@@ -502,7 +530,7 @@ Builds on Phase 2 framework. Adds remote catalog, usage-pattern triggers, and ri
 
 #### Pre-Phase Tooling Research
 
-- [ ] Evaluate MQTT Go libraries: Eclipse Paho vs alternatives (mochi-co/server for embedded broker)
+- [x] Evaluate MQTT Go libraries: Eclipse Paho vs alternatives (Eclipse Paho adopted -- PR #316, v0.5.0)
 - [ ] Research ONNX Runtime Go bindings (onnxruntime_go): platform support, model loading, inference performance
 - [ ] Evaluate HashiCorp go-plugin for process-isolated third-party plugins (gRPC transport, versioning)
 - [ ] Research plugin marketplace hosting: static index vs registry service, discovery UX

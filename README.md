@@ -39,7 +39,7 @@
 
 HomeLabbers juggle dozens of tools: UnRAID for storage, Proxmox for VMs, Home Assistant for automation, plus routers, NAS boxes, and random IoT devices. SubNetree doesn't replace any of them -- it's your **dashboard and aggregator** that:
 
-- **Discovers everything** on your LAN automatically (ARP, ICMP, mDNS, SNMP -- with UPnP, LLDP/CDP planned)
+- **Discovers everything** on your LAN automatically (ARP, ICMP, mDNS, SNMP, LLDP/CDP -- with UPnP planned)
 - **Shows status at a glance** from multiple platforms in one place
 - **Launches anything** with one click -- web UIs, SSH -- credentials handled
 - **Extends via plugins** to monitor whatever you need
@@ -120,9 +120,12 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 
 ### Discovery and Mapping
 
-- Finds every device on your network automatically (ARP, ICMP, mDNS, SNMP, UPnP scanning with manufacturer identification)
-- Identifies device type, operating system, and brand from MAC addresses (OUI lookup + reverse DNS)
-- Interactive network topology map showing how devices connect
+- Finds every device on your network automatically (ARP, ICMP, mDNS, SNMP, LLDP/CDP scanning with manufacturer identification)
+- Classifies devices by type using weighted confidence scoring (MAC OUI, SNMP, LLDP, port fingerprinting, TTL analysis)
+- Detects unmanaged switches and infers network hierarchy from scan data
+- Interactive network topology map showing how devices connect across layers
+- SNMP FDB table walks reveal which devices are connected to which switch ports
+- ICMP traceroute and interactive diagnostics (ping, DNS lookup, port check)
 - Full device inventory with search, categorization, and bulk operations
 
 ### Monitoring and Alerts
@@ -130,6 +133,9 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 - Tracks device health in real time with automatic alerting (OK / Warning / Critical states)
 - Alerts you when device behavior changes (statistical anomaly detection with EWMA baselines, Z-score, and CUSUM)
 - Predicts trends before problems happen (linear regression forecasting)
+- Scan analytics dashboard with per-phase metrics and health scoring
+- Publishes events to MQTT brokers for integration with Home Assistant and other IoT platforms
+- Sends alerts to Alertmanager-compatible receivers (Grafana, PagerDuty, Slack)
 - Ask questions about your network in plain English via AI (Ollama, OpenAI, Anthropic -- bring your own key)
 - Plugin-extensible -- monitor anything
 
@@ -158,14 +164,17 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 - Secure login with automatic session management (JWT-based authentication)
 - First-run setup wizard -- no manual configuration needed
 - Backup and restore your data with a single CLI command
+- One-click Scout agent deployment with platform-specific installers and download page
+- CSV import/export for bulk device management
 - Ready-to-run Docker image with health checks
 
 ### Coming Next
 
-- Enhanced discovery: LLDP/CDP
 - Multi-tenant support for MSPs
-- Tailscale integration
-- MQTT integration for IoT devices
+- Tailscale integration for overlay network monitoring
+- AI-generated incident summaries and root cause analysis
+- Auto-update with binary signing
+- MFA/TOTP authentication
 
 See the [phased roadmap](docs/requirements/21-phased-roadmap.md) for the full plan.
 
@@ -203,7 +212,7 @@ subnetree restore --input my-backup.tar.gz --data-dir /data --force
 
 | | SubNetree | Zabbix | LibreNMS | Uptime Kuma | Domotz |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| **Auto-Discovery** | ARP + ICMP | SNMP/agent | SNMP | -- | Proprietary |
+| **Auto-Discovery** | ARP + ICMP + SNMP + LLDP | SNMP/agent | SNMP | -- | Proprietary |
 | **Dashboard** | Modern React | Dated PHP | Bootstrap | Clean | Cloud |
 | **Topology Map** | Interactive | Static | Auto | -- | Auto |
 | **Agent Optional** | Yes | Recommended | Recommended | -- | Required |
@@ -343,10 +352,11 @@ api/
 ### Roadmap
 
 - **v0.3.0** (shipped): Scout agents, mTLS, service mapping, monitoring dashboard
-- **v0.4.0** (shipped): mDNS discovery, metrics history, alert suppression, Linux Scout
-- **v0.4.1** (current): LLM BYOK providers, UPnP discovery, maintenance windows, analytics dashboard, vault UI
-- **v0.5.0** (next): MQTT publisher, Alertmanager webhooks, CSV import/export, recommendation engine
-- **v1.0.0**: PostgreSQL, MFA, OIDC, HomeLab integrations
+- **v0.4.x** (shipped): mDNS discovery, metrics history, alert suppression, vault UI, analytics dashboard
+- **v0.5.0** (shipped): MQTT publisher, Alertmanager webhooks, CSV import/export, recommendation engine
+- **v0.6.x** (shipped): Device classification engine, LLDP discovery, composite scoring, scan analytics, network hierarchy
+- **Current**: Traceroute, diagnostics, SNMP FDB walks, E2E tests, ongoing hardening
+- **v1.0.0**: PostgreSQL, MFA, OIDC, Tailscale, multi-tenant
 
 ## License
 
