@@ -375,6 +375,21 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage (PR #313, v0.5.0)
 - [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring") *(API only via `GET /api/v1/recommendations` -- UI widget deferred to Phase 3)*
 
+#### Hardware Asset Profiles (#437, #438)
+
+- [ ] Structured hardware asset schema: `device_hardware`, `device_storage`, `device_gpu`, `device_services` tables (#437)
+- [ ] Manual override support: auto-collected values never overwrite user-entered data (#437)
+- [ ] `collection_source` field on all hardware rows: `scout-wmi`, `scout-linux`, `proxmox-api`, `unraid-api`, `homeassistant-api`, `manual` (#437)
+- [ ] API: `GET/PUT /devices/{id}/hardware`, `GET /devices/hardware/summary`, `POST /devices/query` (#437)
+- [ ] Server-side `ReportProfile` gRPC handler: persist Scout-collected hardware profiles to new schema (#438)
+- [ ] Linux Scout collection: complete `hardware_other.go`, `services_other.go`, `software_other.go` stubs (#438)
+- [ ] Proxmox API integration: node hardware, VM/LXC inventory, agentless via Vault credentials (#438)
+- [ ] UnRAID API integration: disk array, Docker containers, agentless (#438)
+- [ ] Home Assistant API integration: entity-to-device mapping (#438)
+- [ ] On-demand refresh: `POST /api/v1/recon/devices/{id}/hardware/refresh` (#438)
+- [ ] Docs: requirements, ADRs (ADR-0009, ADR-0010), and guides for hardware inventory (#440)
+
+
 #### Multi-Tenancy
 
 - [ ] TenantID on all core entities (Device, Agent, Credential)
@@ -523,6 +538,18 @@ Builds on Phase 2 framework. Adds remote catalog, usage-pattern triggers, and ri
 - [x] Dashboard: recommendations panel with severity and suggested actions (PR #274)
 - [ ] Tier 2 statistical recommendations (growth forecast, seasonal patterns, anomaly attribution)
 - [ ] Tier 3 AI-assisted: migration planning, hardware advisor, what-if simulator (requires LLM)
+
+#### AI-Queryable Inventory via MCP (#439)
+
+- [ ] MCP server plugin implementing `plugin.Plugin` interface (#439)
+- [ ] Tools: `get_device`, `list_devices`, `get_hardware_profile`, `query_devices`, `get_fleet_summary`, `get_service_inventory`, `get_stale_devices` (#439)
+- [ ] stdio transport for Claude Desktop integration (#439)
+- [ ] HTTP SSE transport, localhost-only by default, API key auth (#439)
+- [ ] Vault credentials never exposed through MCP tools (#439)
+- [ ] Audit log table for all tool calls (#439)
+- [ ] `subnetree mcp` CLI subcommand (#439)
+- [ ] Docs: user guide for adding Subnetree to Claude Desktop `claude_desktop_config.json` (#440)
+
 
 ### Phase 4: Extended Platform
 
