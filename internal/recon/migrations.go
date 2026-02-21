@@ -236,5 +236,87 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     10,
+			Description: "create hardware asset profile tables (hardware, storage, gpu, services)",
+			Up: func(tx *sql.Tx) error {
+				stmts := []string{
+					`CREATE TABLE recon_device_hardware (
+						device_id           TEXT PRIMARY KEY REFERENCES recon_devices(id) ON DELETE CASCADE,
+						hostname            TEXT NOT NULL DEFAULT '',
+						fqdn                TEXT NOT NULL DEFAULT '',
+						os_name             TEXT NOT NULL DEFAULT '',
+						os_version          TEXT NOT NULL DEFAULT '',
+						os_arch             TEXT NOT NULL DEFAULT '',
+						kernel              TEXT NOT NULL DEFAULT '',
+						cpu_model           TEXT NOT NULL DEFAULT '',
+						cpu_cores           INTEGER NOT NULL DEFAULT 0,
+						cpu_threads         INTEGER NOT NULL DEFAULT 0,
+						cpu_arch            TEXT NOT NULL DEFAULT '',
+						ram_total_mb        INTEGER NOT NULL DEFAULT 0,
+						ram_type            TEXT NOT NULL DEFAULT '',
+						ram_slots_used      INTEGER NOT NULL DEFAULT 0,
+						ram_slots_total     INTEGER NOT NULL DEFAULT 0,
+						platform_type       TEXT NOT NULL DEFAULT '',
+						hypervisor          TEXT NOT NULL DEFAULT '',
+						vm_host_id          TEXT NOT NULL DEFAULT '',
+						system_manufacturer TEXT NOT NULL DEFAULT '',
+						system_model        TEXT NOT NULL DEFAULT '',
+						serial_number       TEXT NOT NULL DEFAULT '',
+						bios_version        TEXT NOT NULL DEFAULT '',
+						collection_source   TEXT NOT NULL DEFAULT '',
+						collected_at        DATETIME,
+						updated_at          DATETIME
+					)`,
+					`CREATE INDEX idx_recon_device_hardware_cpu ON recon_device_hardware(cpu_model)`,
+					`CREATE INDEX idx_recon_device_hardware_os ON recon_device_hardware(os_name)`,
+					`CREATE INDEX idx_recon_device_hardware_platform ON recon_device_hardware(platform_type)`,
+					`CREATE TABLE recon_device_storage (
+						id                TEXT PRIMARY KEY,
+						device_id         TEXT NOT NULL REFERENCES recon_devices(id) ON DELETE CASCADE,
+						name              TEXT NOT NULL DEFAULT '',
+						disk_type         TEXT NOT NULL DEFAULT '',
+						interface         TEXT NOT NULL DEFAULT '',
+						capacity_gb       INTEGER NOT NULL DEFAULT 0,
+						model             TEXT NOT NULL DEFAULT '',
+						role              TEXT NOT NULL DEFAULT '',
+						collection_source TEXT NOT NULL DEFAULT '',
+						collected_at      DATETIME
+					)`,
+					`CREATE INDEX idx_recon_device_storage_device ON recon_device_storage(device_id)`,
+					`CREATE TABLE recon_device_gpu (
+						id                TEXT PRIMARY KEY,
+						device_id         TEXT NOT NULL REFERENCES recon_devices(id) ON DELETE CASCADE,
+						model             TEXT NOT NULL DEFAULT '',
+						vendor            TEXT NOT NULL DEFAULT '',
+						vram_mb           INTEGER NOT NULL DEFAULT 0,
+						driver_version    TEXT NOT NULL DEFAULT '',
+						collection_source TEXT NOT NULL DEFAULT '',
+						collected_at      DATETIME
+					)`,
+					`CREATE INDEX idx_recon_device_gpu_device ON recon_device_gpu(device_id)`,
+					`CREATE TABLE recon_device_services (
+						id                TEXT PRIMARY KEY,
+						device_id         TEXT NOT NULL REFERENCES recon_devices(id) ON DELETE CASCADE,
+						name              TEXT NOT NULL DEFAULT '',
+						service_type      TEXT NOT NULL DEFAULT '',
+						port              INTEGER NOT NULL DEFAULT 0,
+						url               TEXT NOT NULL DEFAULT '',
+						version           TEXT NOT NULL DEFAULT '',
+						status            TEXT NOT NULL DEFAULT '',
+						collection_source TEXT NOT NULL DEFAULT '',
+						collected_at      DATETIME
+					)`,
+					`CREATE INDEX idx_recon_device_services_device ON recon_device_services(device_id)`,
+					`CREATE INDEX idx_recon_device_services_name ON recon_device_services(name)`,
+				}
+				for _, stmt := range stmts {
+					if _, err := tx.Exec(stmt); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }

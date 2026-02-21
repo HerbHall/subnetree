@@ -57,3 +57,57 @@ func WithLastSeen(t time.Time) func(*models.Device) {
 func WithDeviceType(dt models.DeviceType) func(*models.Device) {
 	return func(d *models.Device) { d.DeviceType = dt }
 }
+
+// NewDeviceHardware returns a DeviceHardware with sensible defaults.
+func NewDeviceHardware(deviceID string, opts ...func(*models.DeviceHardware)) models.DeviceHardware {
+	hw := models.DeviceHardware{
+		DeviceID:           deviceID,
+		Hostname:           "test-device",
+		OSName:             "Ubuntu 24.04",
+		OSVersion:          "24.04",
+		OSArch:             "amd64",
+		CPUModel:           "Intel Core i7-12700K",
+		CPUCores:           12,
+		CPUThreads:         20,
+		RAMTotalMB:         32768,
+		PlatformType:       "baremetal",
+		SystemManufacturer: "Dell Inc.",
+		CollectionSource:   "scout-linux",
+	}
+	for _, opt := range opts {
+		opt(&hw)
+	}
+	return hw
+}
+
+// WithCPU sets the CPU model, cores, and threads on a DeviceHardware.
+func WithCPU(model string, cores, threads int) func(*models.DeviceHardware) {
+	return func(hw *models.DeviceHardware) {
+		hw.CPUModel = model
+		hw.CPUCores = cores
+		hw.CPUThreads = threads
+	}
+}
+
+// WithRAM sets the total RAM in MB on a DeviceHardware.
+func WithRAM(totalMB int) func(*models.DeviceHardware) {
+	return func(hw *models.DeviceHardware) { hw.RAMTotalMB = totalMB }
+}
+
+// WithOSInfo sets the OS name and version on a DeviceHardware.
+func WithOSInfo(name, version string) func(*models.DeviceHardware) {
+	return func(hw *models.DeviceHardware) {
+		hw.OSName = name
+		hw.OSVersion = version
+	}
+}
+
+// WithPlatformType sets the platform type on a DeviceHardware.
+func WithPlatformType(pt string) func(*models.DeviceHardware) {
+	return func(hw *models.DeviceHardware) { hw.PlatformType = pt }
+}
+
+// WithCollectionSource sets the collection source on a DeviceHardware.
+func WithCollectionSource(src string) func(*models.DeviceHardware) {
+	return func(hw *models.DeviceHardware) { hw.CollectionSource = src }
+}
