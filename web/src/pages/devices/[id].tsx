@@ -66,6 +66,7 @@ import { getDeviceServices, getDeviceUtilization, updateDesiredState } from '@/a
 import { getDeviceMetrics } from '@/api/pulse'
 import { getSNMPSystemInfo, getSNMPInterfaces, runTraceroute } from '@/api/recon'
 import { runDiagPing, runDiagDNS, runDiagPortCheck } from '@/api/diagnostics'
+import { getDeviceHardware } from '@/api/hardware'
 import { listDeviceCredentials } from '@/api/vault'
 import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange, TracerouteResult, DiagPingResult, DiagDNSResult, DiagPortCheckResult } from '@/api/types'
 import { TimeSeriesChart } from '@/components/time-series-chart'
@@ -708,6 +709,9 @@ export function DeviceDetailPage() {
           isPending={desiredStateMutation.isPending}
         />
       )}
+
+      {/* Hardware Profile */}
+      {id && <HardwareProfileSection deviceId={id} />}
 
       {/* SNMP Information (only for SNMP-discovered devices) */}
       {device.discovery_method === 'snmp' && id && (
@@ -1536,6 +1540,306 @@ const ifStatusConfig: Record<number, { bg: string; text: string; label: string }
   1: { bg: 'bg-green-500', text: 'text-green-600 dark:text-green-400', label: 'Up' },
   2: { bg: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: 'Down' },
   3: { bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', label: 'Testing' },
+}
+
+// ============================================================================
+// Hardware Profile Component
+// ============================================================================
+
+function formatRAM(mb: number): string {
+  if (mb >= 1024) {
+    const gb = mb / 1024
+    return `${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`
+  }
+  return `${mb} MB`
+}
+
+function CollectionSourceBadge({ source }: { source?: string }) {
+  if (!source) return null
+  return (
+    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+      {source}
+    </span>
+  )
+}
+
+function HardwareProfileSection({ deviceId }: { deviceId: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['device-hardware', deviceId],
+    queryFn: () => getDeviceHardware(deviceId),
+    enabled: !!deviceId,
+    retry: false,
+  })
+
+  if (isError) return null
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-muted-foreground" />
+            Hardware Profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 animate-pulse">
+            <div className="h-4 w-3/4 bg-muted rounded" />
+            <div className="h-4 w-1/2 bg-muted rounded" />
+            <div className="h-4 w-2/3 bg-muted rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!data?.hardware) return null
+
+  const hw = data.hardware
+  const storage = data.storage || []
+  const gpus = data.gpus || []
+  const services = data.services || []
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-muted-foreground" />
+          Hardware Profile
+          <CollectionSourceBadge source={hw.collection_source} />
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* System Info */}
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Settings2 className="h-3 w-3" />
+            System
+          </h4>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {hw.os_name && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">OS</p>
+                <p className="text-sm font-medium">
+                  {hw.os_name}{hw.os_version ? ` ${hw.os_version}` : ''}{hw.os_arch ? ` (${hw.os_arch})` : ''}
+                </p>
+              </div>
+            )}
+            {hw.kernel && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Kernel</p>
+                <p className="text-sm font-mono">{hw.kernel}</p>
+              </div>
+            )}
+            {hw.platform_type && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Platform</p>
+                <p className="text-sm font-medium capitalize">{hw.platform_type}</p>
+              </div>
+            )}
+            {hw.system_manufacturer && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Manufacturer</p>
+                <p className="text-sm">{hw.system_manufacturer}</p>
+              </div>
+            )}
+            {hw.system_model && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Model</p>
+                <p className="text-sm">{hw.system_model}</p>
+              </div>
+            )}
+            {hw.serial_number && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Serial Number</p>
+                <p className="text-sm font-mono">{hw.serial_number}</p>
+              </div>
+            )}
+            {hw.bios_version && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">BIOS Version</p>
+                <p className="text-sm">{hw.bios_version}</p>
+              </div>
+            )}
+            {hw.hypervisor && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Hypervisor</p>
+                <p className="text-sm capitalize">{hw.hypervisor}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CPU */}
+        {hw.cpu_model && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Cpu className="h-3 w-3" />
+              CPU
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Model</p>
+                <p className="text-sm font-medium">{hw.cpu_model}</p>
+              </div>
+              {(hw.cpu_cores != null && hw.cpu_cores > 0) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Cores / Threads</p>
+                  <p className="text-sm">
+                    {hw.cpu_cores}C / {hw.cpu_threads || hw.cpu_cores}T
+                  </p>
+                </div>
+              )}
+              {hw.cpu_arch && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Architecture</p>
+                  <p className="text-sm">{hw.cpu_arch}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Memory */}
+        {(hw.ram_total_mb != null && hw.ram_total_mb > 0) && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Layers className="h-3 w-3" />
+              Memory
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Total RAM</p>
+                <p className="text-sm font-medium">{formatRAM(hw.ram_total_mb)}</p>
+              </div>
+              {hw.ram_type && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Type</p>
+                  <p className="text-sm">{hw.ram_type}</p>
+                </div>
+              )}
+              {(hw.ram_slots_total != null && hw.ram_slots_total > 0) && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Slots</p>
+                  <p className="text-sm">{hw.ram_slots_used || 0} / {hw.ram_slots_total} used</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Storage table */}
+        {storage.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <HardDrive className="h-3 w-3" />
+              Storage
+            </h4>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-left font-medium">Type</th>
+                    <th className="px-4 py-2 text-right font-medium">Capacity</th>
+                    <th className="px-4 py-2 text-left font-medium">Interface</th>
+                    <th className="px-4 py-2 text-left font-medium">Role</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {storage.map((disk) => (
+                    <tr key={disk.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2 font-medium">{disk.name || disk.model || '-'}</td>
+                      <td className="px-4 py-2 uppercase text-xs">{disk.disk_type || '-'}</td>
+                      <td className="px-4 py-2 text-right">{disk.capacity_gb ? `${disk.capacity_gb} GB` : '-'}</td>
+                      <td className="px-4 py-2 text-xs">{disk.interface || '-'}</td>
+                      <td className="px-4 py-2 capitalize text-xs">{disk.role || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* GPU table */}
+        {gpus.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Monitor className="h-3 w-3" />
+              GPU
+            </h4>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Model</th>
+                    <th className="px-4 py-2 text-left font-medium">Vendor</th>
+                    <th className="px-4 py-2 text-right font-medium">VRAM</th>
+                    <th className="px-4 py-2 text-left font-medium">Driver</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {gpus.map((gpu) => (
+                    <tr key={gpu.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2 font-medium">{gpu.model || '-'}</td>
+                      <td className="px-4 py-2 capitalize">{gpu.vendor || '-'}</td>
+                      <td className="px-4 py-2 text-right">{gpu.vram_mb ? `${gpu.vram_mb} MB` : '-'}</td>
+                      <td className="px-4 py-2 text-xs font-mono">{gpu.driver_version || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Hardware Services table */}
+        {services.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Plug className="h-3 w-3" />
+              Detected Services
+            </h4>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-left font-medium">Type</th>
+                    <th className="px-4 py-2 text-right font-medium">Port</th>
+                    <th className="px-4 py-2 text-left font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {services.map((svc) => (
+                    <tr key={svc.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2 font-medium">{svc.name || '-'}</td>
+                      <td className="px-4 py-2 text-xs">{svc.service_type || '-'}</td>
+                      <td className="px-4 py-2 text-right font-mono">{svc.port || '-'}</td>
+                      <td className="px-4 py-2">
+                        {svc.status && (
+                          <span className={cn(
+                            'inline-flex items-center gap-1 text-xs',
+                            svc.status === 'running' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground',
+                          )}>
+                            <span className={cn(
+                              'h-1.5 w-1.5 rounded-full',
+                              svc.status === 'running' ? 'bg-green-500' : 'bg-muted-foreground',
+                            )} />
+                            {svc.status}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 // ============================================================================
