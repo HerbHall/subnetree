@@ -38,6 +38,10 @@ func SeedDemoNetwork(ctx context.Context, reconStore *recon.ReconStore) error {
 		return fmt.Errorf("seed scans: %w", err)
 	}
 
+	if err := seedHardwareProfiles(ctx, reconStore, deviceIDs, now); err != nil {
+		return fmt.Errorf("seed hardware: %w", err)
+	}
+
 	return nil
 }
 
@@ -473,6 +477,214 @@ func seedScanHistory(ctx context.Context, store *recon.ReconStore, deviceCount i
 		}
 		if err := store.SaveScanMetrics(ctx, metrics); err != nil {
 			return fmt.Errorf("save scan metrics: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// seedHardwareProfiles adds hardware data for devices that would
+// realistically have agent-collected hardware profiles.
+func seedHardwareProfiles(ctx context.Context, store *recon.ReconStore, ids map[string]string, now time.Time) error {
+	collected := now.Add(-1 * 24 * time.Hour)
+
+	// --- proxmox-host: Dell PowerEdge T340 ---
+	if id, ok := ids["proxmox-host"]; ok {
+		hw := &models.DeviceHardware{
+			DeviceID:           id,
+			Hostname:           "proxmox-host",
+			FQDN:               "proxmox-host.local",
+			OSName:             "Proxmox VE",
+			OSVersion:          "8.1",
+			OSArch:             "amd64",
+			Kernel:             "6.5.13-3-pve",
+			CPUModel:           "Intel Xeon E-2288G",
+			CPUCores:           8,
+			CPUThreads:         16,
+			CPUArch:            "x86_64",
+			RAMTotalMB:         65536,
+			RAMType:            "DDR4 ECC",
+			RAMSlotsUsed:       2,
+			RAMSlotsTotal:      4,
+			PlatformType:       "baremetal",
+			Hypervisor:         "proxmox",
+			SystemManufacturer: "Dell Inc.",
+			SystemModel:        "PowerEdge T340",
+			SerialNumber:       "DELLT340-001",
+			BIOSVersion:        "2.17.0",
+			CollectionSource:   "scout-linux",
+			CollectedAt:        &collected,
+		}
+		if err := store.UpsertDeviceHardware(ctx, hw); err != nil {
+			return fmt.Errorf("hw proxmox-host: %w", err)
+		}
+		if err := store.UpsertDeviceStorage(ctx, id, []models.DeviceStorage{
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 970 EVO Plus 1TB", DiskType: "nvme", Interface: "pcie3", CapacityGB: 1000, Model: "Samsung SSD 970 EVO Plus", Role: "os", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 970 EVO Plus 1TB", DiskType: "nvme", Interface: "pcie3", CapacityGB: 1000, Model: "Samsung SSD 970 EVO Plus", Role: "vm-storage", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "WD Red Plus 4TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 4000, Model: "WDC WD40EFPX", Role: "backup", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "WD Red Plus 4TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 4000, Model: "WDC WD40EFPX", Role: "backup", CollectionSource: "scout-linux", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("storage proxmox-host: %w", err)
+		}
+	}
+
+	// --- docker-host: Dell OptiPlex 7000 ---
+	if id, ok := ids["docker-host"]; ok {
+		hw := &models.DeviceHardware{
+			DeviceID:           id,
+			Hostname:           "docker-host",
+			FQDN:               "docker-host.local",
+			OSName:             "Ubuntu",
+			OSVersion:          "24.04",
+			OSArch:             "amd64",
+			Kernel:             "6.8.0-45-generic",
+			CPUModel:           "Intel Core i7-12700",
+			CPUCores:           12,
+			CPUThreads:         20,
+			CPUArch:            "x86_64",
+			RAMTotalMB:         32768,
+			RAMType:            "DDR4",
+			RAMSlotsUsed:       2,
+			RAMSlotsTotal:      4,
+			PlatformType:       "baremetal",
+			SystemManufacturer: "Dell Inc.",
+			SystemModel:        "OptiPlex 7000",
+			SerialNumber:       "DELL7K-002",
+			BIOSVersion:        "1.12.0",
+			CollectionSource:   "scout-linux",
+			CollectedAt:        &collected,
+		}
+		if err := store.UpsertDeviceHardware(ctx, hw); err != nil {
+			return fmt.Errorf("hw docker-host: %w", err)
+		}
+		if err := store.UpsertDeviceStorage(ctx, id, []models.DeviceStorage{
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 990 Pro 2TB", DiskType: "nvme", Interface: "pcie4", CapacityGB: 2000, Model: "Samsung SSD 990 PRO", Role: "os+data", CollectionSource: "scout-linux", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("storage docker-host: %w", err)
+		}
+		if err := store.UpsertDeviceServices(ctx, id, []models.DeviceService{
+			{ID: uuid.New().String(), DeviceID: id, Name: "docker", ServiceType: "runtime", Port: 2375, Version: "27.3.1", Status: "running", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "portainer", ServiceType: "docker", Port: 9443, URL: "https://192.168.1.11:9443", Version: "2.21.0", Status: "running", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "plex", ServiceType: "docker", Port: 32400, URL: "http://192.168.1.11:32400", Version: "1.41.0", Status: "running", CollectionSource: "scout-linux", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("services docker-host: %w", err)
+		}
+	}
+
+	// --- gaming-pc: ASUS ROG Strix ---
+	if id, ok := ids["gaming-pc"]; ok {
+		hw := &models.DeviceHardware{
+			DeviceID:           id,
+			Hostname:           "gaming-pc",
+			FQDN:               "gaming-pc.local",
+			OSName:             "Windows",
+			OSVersion:          "11 Pro",
+			OSArch:             "amd64",
+			Kernel:             "10.0.26100",
+			CPUModel:           "AMD Ryzen 9 7950X",
+			CPUCores:           16,
+			CPUThreads:         32,
+			CPUArch:            "x86_64",
+			RAMTotalMB:         65536,
+			RAMType:            "DDR5",
+			RAMSlotsUsed:       2,
+			RAMSlotsTotal:      4,
+			PlatformType:       "baremetal",
+			SystemManufacturer: "ASUSTek Computer Inc.",
+			SystemModel:        "ROG STRIX X670E-E GAMING WIFI",
+			SerialNumber:       "ASUS-ROG-003",
+			BIOSVersion:        "1802",
+			CollectionSource:   "scout-wmi",
+			CollectedAt:        &collected,
+		}
+		if err := store.UpsertDeviceHardware(ctx, hw); err != nil {
+			return fmt.Errorf("hw gaming-pc: %w", err)
+		}
+		if err := store.UpsertDeviceStorage(ctx, id, []models.DeviceStorage{
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 990 Pro 2TB", DiskType: "nvme", Interface: "pcie4", CapacityGB: 2000, Model: "Samsung SSD 990 PRO", Role: "os", CollectionSource: "scout-wmi", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 870 EVO 4TB", DiskType: "ssd", Interface: "sata3", CapacityGB: 4000, Model: "Samsung SSD 870 EVO", Role: "games", CollectionSource: "scout-wmi", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("storage gaming-pc: %w", err)
+		}
+		if err := store.UpsertDeviceGPU(ctx, id, []models.DeviceGPU{
+			{ID: uuid.New().String(), DeviceID: id, Model: "NVIDIA GeForce RTX 4090", Vendor: "nvidia", VRAMMB: 24576, DriverVersion: "560.94", CollectionSource: "scout-wmi", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("gpu gaming-pc: %w", err)
+		}
+	}
+
+	// --- synology-nas: Synology DS920+ ---
+	if id, ok := ids["synology-nas"]; ok {
+		hw := &models.DeviceHardware{
+			DeviceID:           id,
+			Hostname:           "synology-nas",
+			FQDN:               "synology-nas.local",
+			OSName:             "DSM",
+			OSVersion:          "7.2",
+			OSArch:             "amd64",
+			Kernel:             "4.4.302+",
+			CPUModel:           "Intel Celeron J4125",
+			CPUCores:           4,
+			CPUThreads:         4,
+			CPUArch:            "x86_64",
+			RAMTotalMB:         8192,
+			RAMType:            "DDR4",
+			RAMSlotsUsed:       1,
+			RAMSlotsTotal:      2,
+			PlatformType:       "appliance",
+			SystemManufacturer: "Synology",
+			SystemModel:        "DS920+",
+			SerialNumber:       "SYNO-DS920-004",
+			CollectionSource:   "scout-linux",
+			CollectedAt:        &collected,
+		}
+		if err := store.UpsertDeviceHardware(ctx, hw); err != nil {
+			return fmt.Errorf("hw synology-nas: %w", err)
+		}
+		if err := store.UpsertDeviceStorage(ctx, id, []models.DeviceStorage{
+			{ID: uuid.New().String(), DeviceID: id, Name: "Seagate IronWolf 8TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 8000, Model: "ST8000VN004", Role: "data", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Seagate IronWolf 8TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 8000, Model: "ST8000VN004", Role: "data", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Seagate IronWolf 8TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 8000, Model: "ST8000VN004", Role: "data", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Seagate IronWolf 8TB", DiskType: "hdd", Interface: "sata3", CapacityGB: 8000, Model: "ST8000VN004", Role: "data", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 970 EVO Plus 500GB", DiskType: "nvme", Interface: "m.2", CapacityGB: 500, Model: "Samsung SSD 970 EVO Plus", Role: "cache", CollectionSource: "scout-linux", CollectedAt: &collected},
+			{ID: uuid.New().String(), DeviceID: id, Name: "Samsung 970 EVO Plus 500GB", DiskType: "nvme", Interface: "m.2", CapacityGB: 500, Model: "Samsung SSD 970 EVO Plus", Role: "cache", CollectionSource: "scout-linux", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("storage synology-nas: %w", err)
+		}
+	}
+
+	// --- macbook-pro: Apple MacBook Pro 16" ---
+	if id, ok := ids["macbook-pro"]; ok {
+		hw := &models.DeviceHardware{
+			DeviceID:           id,
+			Hostname:           "macbook-pro",
+			FQDN:               "macbook-pro.local",
+			OSName:             "macOS",
+			OSVersion:          "15.2",
+			OSArch:             "arm64",
+			Kernel:             "Darwin 24.2.0",
+			CPUModel:           "Apple M3 Pro",
+			CPUCores:           12,
+			CPUThreads:         12,
+			CPUArch:            "arm64",
+			RAMTotalMB:         36864,
+			RAMType:            "Unified",
+			RAMSlotsUsed:       0,
+			RAMSlotsTotal:      0,
+			PlatformType:       "baremetal",
+			SystemManufacturer: "Apple Inc.",
+			SystemModel:        "MacBook Pro 16-inch (2024)",
+			SerialNumber:       "APPLE-MBP-005",
+			CollectionSource:   "scout-macos",
+			CollectedAt:        &collected,
+		}
+		if err := store.UpsertDeviceHardware(ctx, hw); err != nil {
+			return fmt.Errorf("hw macbook-pro: %w", err)
+		}
+		if err := store.UpsertDeviceStorage(ctx, id, []models.DeviceStorage{
+			{ID: uuid.New().String(), DeviceID: id, Name: "Apple SSD AP1024Z", DiskType: "nvme", Interface: "apple-fabric", CapacityGB: 1000, Model: "APPLE SSD AP1024Z", Role: "os+data", CollectionSource: "scout-macos", CollectedAt: &collected},
+		}); err != nil {
+			return fmt.Errorf("storage macbook-pro: %w", err)
 		}
 	}
 
