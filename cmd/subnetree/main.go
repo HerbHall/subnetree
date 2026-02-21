@@ -23,6 +23,7 @@ import (
 	_ "github.com/HerbHall/subnetree/api/swagger"
 	"github.com/HerbHall/subnetree/internal/auth"
 	"github.com/HerbHall/subnetree/internal/autodoc"
+	mcpmod "github.com/HerbHall/subnetree/internal/mcp"
 	"github.com/HerbHall/subnetree/internal/catalog"
 	"github.com/HerbHall/subnetree/internal/config"
 	"github.com/HerbHall/subnetree/internal/dashboard"
@@ -48,6 +49,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/webhook"
 	"github.com/HerbHall/subnetree/internal/ws"
 	pkgcatalog "github.com/HerbHall/subnetree/pkg/catalog"
+	"github.com/HerbHall/subnetree/pkg/models"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"go.uber.org/zap"
 )
@@ -64,6 +66,9 @@ func main() {
 			return
 		case "version":
 			fmt.Println(version.Info())
+			return
+		case "mcp":
+			runMCPStdio()
 			return
 		}
 	}
@@ -161,6 +166,7 @@ func main() {
 		docs.New(),
 		mqtt.New(),
 		autodoc.New(),
+		mcpmod.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
@@ -292,6 +298,17 @@ func main() {
 		profileAdapter := &profileSourceAdapter{store: dispatchProfileStore}
 		reconMod.SetProfileSource(profileAdapter)
 		logger.Info("hardware profile bridge wired", zap.String("component", "recon"))
+	}
+
+	// Wire MCP device querier: mcp -> recon store.
+	if reconMod != nil {
+		for _, m := range modules {
+			if mcpMod, ok := m.(*mcpmod.Module); ok {
+				mcpMod.SetQuerier(&mcpDeviceAdapter{store: reconMod.Store()})
+				logger.Info("MCP device querier wired", zap.String("component", "mcp"))
+				break
+			}
+		}
 	}
 
 	// Seed demo data if requested via --seed flag or NV_SEED_DATA env var.
@@ -561,4 +578,33 @@ func (a *profileSourceAdapter) GetServices(ctx context.Context, agentID string) 
 		}
 	}
 	return result, nil
+}
+
+// mcpDeviceAdapter adapts recon.ReconStore to mcp.DeviceQuerier.
+// Lives in the composition root to avoid coupling mcp -> recon.
+type mcpDeviceAdapter struct {
+	store *recon.ReconStore
+}
+
+func (a *mcpDeviceAdapter) GetDevice(ctx context.Context, id string) (*models.Device, error) {
+	return a.store.GetDevice(ctx, id)
+}
+
+func (a *mcpDeviceAdapter) ListDevices(ctx context.Context, limit, offset int) ([]models.Device, int, error) {
+	return a.store.ListDevices(ctx, recon.ListDevicesOptions{
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
+func (a *mcpDeviceAdapter) GetDeviceHardware(ctx context.Context, deviceID string) (*models.DeviceHardware, error) {
+	return a.store.GetDeviceHardware(ctx, deviceID)
+}
+
+func (a *mcpDeviceAdapter) GetHardwareSummary(ctx context.Context) (*models.HardwareSummary, error) {
+	return a.store.GetHardwareSummary(ctx)
+}
+
+func (a *mcpDeviceAdapter) QueryDevicesByHardware(ctx context.Context, query models.HardwareQuery) ([]models.Device, int, error) {
+	return a.store.QueryDevicesByHardware(ctx, query)
 }
