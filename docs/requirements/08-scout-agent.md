@@ -78,6 +78,94 @@ Agent auto-update is a security-critical feature. The SolarWinds supply chain at
 - **Rollback:** Agent retains previous binary. Automatic rollback if health check fails within 5 minutes of update
 - **Air-gapped support:** Manual update package (signed binary + manifest) for offline environments
 
+### Installation Methods
+
+Scout can be installed on target devices using one of three methods, depending on platform and preference.
+
+#### One-Click Install Scripts (Recommended)
+
+The SubNetree server generates platform-specific install scripts from the Agents page in the dashboard. Each script includes the server address, enrollment token, and download URL pre-configured.
+
+**Linux (bash):**
+
+The generated script downloads the Scout binary, creates a `scout` system user, installs a systemd service unit at `/etc/systemd/system/scout.service`, enrolls with the server, and starts the service. Requires root.
+
+```bash
+curl -fsSL http://<server>:8080/api/v1/dispatch/agents/install/linux/amd64 | sudo bash
+```
+
+Post-install commands:
+
+- `sudo systemctl status scout` -- check service status
+- `sudo journalctl -u scout -f` -- follow logs
+- `sudo systemctl restart scout` -- restart agent
+
+**Windows (PowerShell):**
+
+The generated script downloads the Scout binary to `%ProgramFiles%\SubNetree\`, enrolls with the server, and installs a Windows service named `SubNetreeScout`. Requires Administrator.
+
+```powershell
+irm http://<server>:8080/api/v1/dispatch/agents/install/windows/amd64 | iex
+```
+
+Post-install commands:
+
+- `Get-Service SubNetreeScout` -- check service status
+- `Restart-Service SubNetreeScout` -- restart agent
+
+#### Windows Installer (Inno Setup)
+
+A graphical Windows installer is available as a `.exe` download from GitHub Releases. Built with Inno Setup 6 and the CI workflow at `.github/workflows/build-installer.yml`.
+
+The installer:
+
+- Installs Scout to `%ProgramFiles%\SubNetree\Scout`
+- Optionally adds the install directory to the system PATH
+- Creates Start Menu shortcuts for Scout and the uninstaller
+- Requires Windows 10+ (x64)
+- Requires Administrator privileges
+
+After installation, enroll manually:
+
+```powershell
+scout.exe --server <grpc-addr>:9090 --enroll-token <token>
+```
+
+#### Manual Binary Installation
+
+Download the Scout binary from GitHub Releases and place it in a directory on your PATH. Then enroll and configure the service manually using the platform-appropriate method (systemd on Linux, Windows service on Windows, launchd on macOS).
+
+### Uninstall Procedures
+
+#### Linux (systemd)
+
+```bash
+sudo systemctl stop scout
+sudo systemctl disable scout
+sudo rm /etc/systemd/system/scout.service
+sudo systemctl daemon-reload
+sudo rm /usr/local/bin/scout
+sudo rm -rf /etc/scout
+sudo userdel scout
+```
+
+#### Windows (Inno Setup Installer)
+
+Use the standard Windows uninstaller:
+
+- **Settings > Apps > SubNetree Scout Agent > Uninstall**, or
+- **Start Menu > SubNetree > Uninstall SubNetree Scout**
+
+The uninstaller removes the binary, Start Menu shortcuts, and cleans up the PATH entry if it was added during installation.
+
+#### Windows (PowerShell Script Install)
+
+```powershell
+Stop-Service SubNetreeScout -Force
+sc.exe delete SubNetreeScout
+Remove-Item "$env:ProgramFiles\SubNetree" -Recurse -Force
+```
+
 ### Security
 
 - Agent authenticates to server via enrollment token + mTLS certificate

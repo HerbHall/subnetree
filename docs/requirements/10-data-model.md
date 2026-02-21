@@ -45,20 +45,86 @@
 | FirstSeen | timestamp | |
 | LastSeen | timestamp | |
 
-### Hardware Profile (Phase 2, #437)
+### DeviceHardware (Phase 2, #437)
+
+Core hardware profile for a device. Auto-collected values never overwrite user-entered (manual) data.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | DeviceID | UUID | Parent device |
-| CPUModel | string | Processor model |
-| CPUCores | int | Physical cores |
-| CPUThreads | int | Logical threads |
-| TotalRAM | int64 | Total RAM in bytes |
-| Disks | []object | Model, size, type (SSD/HDD) |
-| GPUs | []object | Model, VRAM (if present) |
-| NICs | []object | Name, speed, type |
-| BIOSVersion | string | Firmware version |
-| CollectedAt | timestamp | Last profile collection |
+| Hostname | string? | Hostname from hardware collection |
+| FQDN | string? | Fully qualified domain name |
+| OSName | string? | Operating system name (e.g., "Ubuntu 24.04") |
+| OSVersion | string? | OS version string |
+| OSArch | string? | OS architecture (e.g., "amd64") |
+| Kernel | string? | Kernel version |
+| CPUModel | string? | Processor model |
+| CPUCores | int? | Physical cores |
+| CPUThreads | int? | Logical threads |
+| CPUArch | string? | CPU architecture (e.g., "x86_64") |
+| RAMTotalMB | int? | Total RAM in megabytes |
+| RAMType | string? | Memory type (e.g., "DDR4") |
+| RAMSlotsUsed | int? | Used memory slots |
+| RAMSlotsTotal | int? | Total memory slots |
+| PlatformType | string? | Platform: baremetal, vm, lxc, docker |
+| Hypervisor | string? | Hypervisor name (e.g., "proxmox") |
+| VMHostID | string? | Parent VM host device ID |
+| SystemManufacturer | string? | Hardware manufacturer |
+| SystemModel | string? | Hardware model |
+| SerialNumber | string? | Serial number |
+| BIOSVersion | string? | Firmware version |
+| CollectionSource | string | Source: scout-wmi, scout-linux, proxmox-api, unraid-api, homeassistant-api, manual |
+| CollectedAt | timestamp? | Last collection timestamp |
+| UpdatedAt | timestamp? | Last update timestamp |
+
+### DeviceStorage (Phase 2, #437)
+
+Storage devices attached to a device. Multiple records per device.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| DeviceID | UUID | Parent device |
+| Name | string? | Display name (e.g., "Samsung 990 Pro 4TB") |
+| DiskType | string? | Type: nvme, ssd, hdd, emmc |
+| Interface | string? | Interface: pcie4, sata, usb |
+| CapacityGB | int? | Capacity in gigabytes |
+| Model | string? | Hardware model string |
+| Role | string? | Role: boot, data, cache, swap |
+| CollectionSource | string | Source identifier |
+| CollectedAt | timestamp? | Collection timestamp |
+
+### DeviceGPU (Phase 2, #437)
+
+GPU devices in a device. Multiple records per device.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| DeviceID | UUID | Parent device |
+| Model | string? | GPU model (e.g., "NVIDIA RTX 3090 Ti") |
+| Vendor | string? | Vendor: nvidia, amd, intel |
+| VRAMMB | int? | Video RAM in megabytes |
+| DriverVersion | string? | Driver version string |
+| CollectionSource | string | Source identifier |
+| CollectedAt | timestamp? | Collection timestamp |
+
+### DeviceService (Phase 2, #437)
+
+Running services on a device. Multiple records per device.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| DeviceID | UUID | Parent device |
+| Name | string? | Service name (e.g., "plex") |
+| ServiceType | string? | Type: docker, systemd, windows-service, application |
+| Port | int? | Listening port |
+| URL | string? | Service URL |
+| Version | string? | Service version |
+| Status | string? | Status: running, stopped, failed, unknown |
+| CollectionSource | string | Source identifier |
+| CollectedAt | timestamp? | Collection timestamp |
 
 ### Agent (Scout)
 

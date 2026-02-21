@@ -23,6 +23,7 @@ Each module fills one or more **roles** (abstract capabilities). Alternative imp
 | AI Provider | **LLM** | `llm` | LLM provider integration (Ollama, OpenAI, Anthropic); optional, product works without it |
 | Analytics | **Insight** | `analytics` | Statistical anomaly detection, trend forecasting, NL query interface |
 | Documentation | **Docs** | `documentation` | Infrastructure documentation, config snapshots, diffing |
+| AI Tool Integration | **MCP** | `mcp_server` | Model Context Protocol server for AI tool access to device data |
 | Overlay Network | **Tailscale** *(planned)* | `overlay_network` | Tailscale tailnet device discovery, overlay IP enrichment, subnet route awareness |
 
 ### Communication
@@ -30,6 +31,7 @@ Each module fills one or more **roles** (abstract capabilities). Alternative imp
 - **Server <-> Dashboard:** REST API + WebSocket (real-time updates)
 - **Server <-> Scout:** gRPC with mTLS (bidirectional streaming)
 - **Server <-> Network Devices:** ICMP, ARP, SNMP v2c/v3, mDNS, UPnP/SSDP, MQTT
+- **Server <-> AI Tools:** Model Context Protocol (HTTP at `/api/v1/mcp/`, stdio via `subnetree mcp`)
 - **Server <-> Tailscale API:** HTTPS REST (device enumeration, subnet routes, DNS) *(planned)*
 
 ### Module Dependency Graph
@@ -51,10 +53,11 @@ Webhook (no deps, provides webhook notifications)
 LLM (no deps, provides llm; Required: false)
 Insight (optional: llm for NL queries)
 Docs (no deps, provides documentation)
+MCP (optional: discovery for device queries; provides mcp_server)
 ```
 
-**Topological Startup Order:** Vault -> Dispatch -> Webhook -> LLM -> Insight -> Docs -> Recon -> Pulse -> Gateway
-**Shutdown Order (reverse):** Gateway -> Pulse -> Recon -> Docs -> Insight -> LLM -> Webhook -> Dispatch -> Vault
+**Topological Startup Order:** Vault -> Dispatch -> Webhook -> LLM -> Insight -> Docs -> Recon -> Pulse -> Gateway -> MCP
+**Shutdown Order (reverse):** MCP -> Gateway -> Pulse -> Recon -> Docs -> Insight -> LLM -> Webhook -> Dispatch -> Vault
 
 *Tailscale module is planned for Phase 2. When implemented, it will require `credential_store` for API key storage and provide `overlay_network` for Tailscale-discovered device enrichment.*
 

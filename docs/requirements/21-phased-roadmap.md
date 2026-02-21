@@ -221,7 +221,7 @@
 
 - [ ] Evaluate gRPC tooling: buf vs protoc, connect-go vs grpc-go
 - [ ] Research Windows cross-compilation CI (GitHub Actions Windows runners, MSYS2 in CI)
-- [ ] Evaluate agent packaging: MSI (WiX Toolset), NSIS, or Go-native installer
+- [x] Evaluate agent packaging: Inno Setup 6 for Windows Scout installer (PR #446, Sprint 4)
 - [x] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns -- internal/ca/ package, PRs #207-208)
 - [ ] Evaluate Windows service management (golang.org/x/sys/windows/svc)
 
@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test in release pipeline, classification confidence on Device model, ICMP traceroute. Sprint 2: SNMP FDB table walks, seed data, interactive diagnostic tools. Sprint 3: network hierarchy inference, Playwright E2E tests. Post-QC: one-click Scout deployment with install scripts. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test in release pipeline, classification confidence on Device model, ICMP traceroute. Sprint 2: SNMP FDB table walks, seed data, interactive diagnostic tools. Sprint 3: network hierarchy inference, Playwright E2E tests. Post-QC: one-click Scout deployment with install scripts. Sprint 4: Linux GPU detection, Proxmox VE collector, hardware refresh endpoint, Inno Setup Windows installer. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -377,17 +377,21 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 
 #### Hardware Asset Profiles (#437, #438)
 
-- [ ] Structured hardware asset schema: `device_hardware`, `device_storage`, `device_gpu`, `device_services` tables (#437)
-- [ ] Manual override support: auto-collected values never overwrite user-entered data (#437)
-- [ ] `collection_source` field on all hardware rows: `scout-wmi`, `scout-linux`, `proxmox-api`, `unraid-api`, `homeassistant-api`, `manual` (#437)
-- [ ] API: `GET/PUT /devices/{id}/hardware`, `GET /devices/hardware/summary`, `POST /devices/query` (#437)
-- [ ] Server-side `ReportProfile` gRPC handler: persist Scout-collected hardware profiles to new schema (#438)
-- [ ] Linux Scout collection: complete `hardware_other.go`, `services_other.go`, `software_other.go` stubs (#438)
-- [ ] Proxmox API integration: node hardware, VM/LXC inventory, agentless via Vault credentials (#438)
+- [x] Structured hardware asset schema: `device_hardware`, `device_storage`, `device_gpu`, `device_services` tables (PR #441, migration v10)
+- [x] Manual override support: auto-collected values never overwrite user-entered data (PR #441, CASE WHEN logic)
+- [x] `collection_source` field on all hardware rows: `scout-wmi`, `scout-linux`, `proxmox-api`, `unraid-api`, `homeassistant-api`, `manual` (PR #441)
+- [x] API: 7 endpoints -- `GET/PUT /devices/{id}/hardware`, storage, GPU, services, `GET /inventory/hardware-summary`, `GET /devices/query/hardware` (PR #442)
+- [x] Server-side `ReportProfile` event bridge: dispatch.device.profiled -> hardware store via ProfileSource interface (PR #442)
+- [x] Frontend hardware tab on device detail page with collection source badges (PR #443)
+- [x] Seed data: 5 demo devices with realistic hardware profiles (PR #443)
+- [x] Linux Scout collection: GPU detection via sysfs + lspci (Sprint 4, PR #445)
+- [ ] Linux Scout collection: complete `services_other.go`, `software_other.go` stubs (#438)
+- [x] Proxmox VE API collector: node hardware, VMs, LXC inventory (Sprint 4, PR #445)
 - [ ] UnRAID API integration: disk array, Docker containers, agentless (#438)
 - [ ] Home Assistant API integration: entity-to-device mapping (#438)
-- [ ] On-demand refresh: `POST /api/v1/recon/devices/{id}/hardware/refresh` (#438)
-- [ ] Docs: requirements, ADRs (ADR-0009, ADR-0010), and guides for hardware inventory (#440)
+- [x] On-demand refresh: `POST /api/v1/recon/devices/{id}/hardware/refresh` (Sprint 4, PR #445)
+- [x] Docs: ADR-0009 MCP server architecture (Sprint 4)
+- [ ] Docs: ADR-0010, requirements updates, and guides for hardware inventory (#440)
 
 
 #### Multi-Tenancy
@@ -450,6 +454,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Dashboard: version display on setup page (v0.6.1)
 - [x] One-click Scout agent deployment with install scripts and download redirects (PR #432)
 - [x] GoReleaser bare binary archive for Scout (PR #432)
+- [x] Inno Setup 6 Windows Scout installer with CI workflow (Sprint 4, PR #446)
 - [x] Dashboard: light theme color overrides for topology and charts (QC, PR #420)
 - [x] Dashboard: compact device table rows, default sort by IP (QC, PR #422)
 - [x] Dashboard: increased default page size to 256 for full Class C (QC, PR #424)
@@ -541,14 +546,15 @@ Builds on Phase 2 framework. Adds remote catalog, usage-pattern triggers, and ri
 
 #### AI-Queryable Inventory via MCP (#439)
 
-- [ ] MCP server plugin implementing `plugin.Plugin` interface (#439)
-- [ ] Tools: `get_device`, `list_devices`, `get_hardware_profile`, `query_devices`, `get_fleet_summary`, `get_service_inventory`, `get_stale_devices` (#439)
-- [ ] stdio transport for Claude Desktop integration (#439)
-- [ ] HTTP SSE transport, localhost-only by default, API key auth (#439)
-- [ ] Vault credentials never exposed through MCP tools (#439)
+- [x] MCP server plugin implementing `plugin.Plugin` interface (Sprint 4, PR #444)
+- [x] Tools: `get_device`, `list_devices`, `get_hardware_profile`, `query_devices`, `get_fleet_summary` (Sprint 4, PR #444)
+- [ ] Tools: `get_service_inventory`, `get_stale_devices` (#439)
+- [x] stdio transport for Claude Desktop integration (Sprint 4, PR #444)
+- [x] HTTP transport at `/api/v1/mcp/` (Sprint 4, PR #444)
+- [x] Vault credentials never exposed through MCP tools (Sprint 4, PR #444)
 - [ ] Audit log table for all tool calls (#439)
-- [ ] `subnetree mcp` CLI subcommand (#439)
-- [ ] Docs: user guide for adding Subnetree to Claude Desktop `claude_desktop_config.json` (#440)
+- [x] `subnetree mcp` CLI subcommand (Sprint 4, PR #444)
+- [ ] Docs: user guide for adding SubNetree to Claude Desktop `claude_desktop_config.json` (#440)
 
 
 ### Phase 4: Extended Platform

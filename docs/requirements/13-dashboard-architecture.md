@@ -70,6 +70,7 @@ Design for the non-technical user first, then layer in power-user capabilities. 
 | Dashboard | `/` | Overview: device counts by status, recent alerts, scan activity |
 | Devices | `/devices` | Device list with filtering, sorting, search |
 | Device Detail | `/devices/:id` | Device info, metrics, topology links, credentials, remote access |
+| Device Hardware | `/devices/:id` (tab) | Hardware profile: CPU, RAM, storage, GPUs, services with collection source badges |
 | Topology | `/topology` | Auto-generated network topology map |
 | Monitoring | `/monitoring` | Alert list, monitoring status, metric graphs |
 | Agents | `/agents` | Scout agent list, enrollment, status |
