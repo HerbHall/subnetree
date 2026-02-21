@@ -15,9 +15,10 @@ import (
 
 // Compile-time interface guards.
 var (
-	_ plugin.Plugin        = (*Module)(nil)
-	_ plugin.HTTPProvider  = (*Module)(nil)
-	_ plugin.HealthChecker = (*Module)(nil)
+	_ plugin.Plugin          = (*Module)(nil)
+	_ plugin.HTTPProvider    = (*Module)(nil)
+	_ plugin.HealthChecker   = (*Module)(nil)
+	_ plugin.EventSubscriber = (*Module)(nil)
 )
 
 // Module implements the Recon network discovery plugin.
@@ -35,6 +36,7 @@ type Module struct {
 	consolidator  *ScanConsolidator
 	credAccessor  CredentialAccessor
 	credProvider  roles.CredentialProvider
+	profileSource ProfileSource
 	activeScans   sync.Map // scanID -> context.CancelFunc
 	wg            sync.WaitGroup
 	scanCtx       context.Context
@@ -241,6 +243,12 @@ func (m *Module) SetCredentialAccessor(ca CredentialAccessor) {
 	}
 }
 
+// SetProfileSource sets the hardware profile source for bridging dispatch -> recon.
+// Called from the composition root after all plugins are initialized.
+func (m *Module) SetProfileSource(ps ProfileSource) {
+	m.profileSource = ps
+}
+
 // FindSNMPCredentialForDevice implements CredentialLookup by delegating to the
 // Module's credProvider (roles.CredentialProvider).
 func (m *Module) FindSNMPCredentialForDevice(ctx context.Context, deviceID string) (string, error) {
@@ -279,6 +287,13 @@ func (m *Module) Stop(_ context.Context) error {
 	return nil
 }
 
+// Subscriptions implements plugin.EventSubscriber.
+func (m *Module) Subscriptions() []plugin.Subscription {
+	return []plugin.Subscription{
+		{Topic: "dispatch.device.profiled", Handler: m.handleDeviceProfiled},
+	}
+}
+
 // Routes implements plugin.HTTPProvider.
 func (m *Module) Routes() []plugin.Route {
 	return []plugin.Route{
@@ -314,6 +329,13 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "POST", Path: "/diag/ping", Handler: m.handleDiagPing},
 		{Method: "POST", Path: "/diag/dns", Handler: m.handleDiagDNS},
 		{Method: "POST", Path: "/diag/port-check", Handler: m.handleDiagPortCheck},
+		{Method: "GET", Path: "/devices/{id}/hardware", Handler: m.handleGetDeviceHardware},
+		{Method: "PUT", Path: "/devices/{id}/hardware", Handler: m.handleUpdateDeviceHardware},
+		{Method: "GET", Path: "/devices/{id}/storage", Handler: m.handleGetDeviceStorage},
+		{Method: "GET", Path: "/devices/{id}/gpu", Handler: m.handleGetDeviceGPU},
+		{Method: "GET", Path: "/devices/{id}/services", Handler: m.handleGetDeviceServices},
+		{Method: "GET", Path: "/inventory/hardware-summary", Handler: m.handleHardwareSummary},
+		{Method: "GET", Path: "/devices/query/hardware", Handler: m.handleQueryDevicesByHardware},
 	}
 }
 

@@ -287,6 +287,13 @@ func main() {
 		logger.Info("SNMP credential adapter wired", zap.String("component", "recon"))
 	}
 
+	// Wire hardware profile bridge: dispatch -> recon.
+	if reconMod != nil {
+		profileAdapter := &profileSourceAdapter{store: dispatchProfileStore}
+		reconMod.SetProfileSource(profileAdapter)
+		logger.Info("hardware profile bridge wired", zap.String("component", "recon"))
+	}
+
 	// Seed demo data if requested via --seed flag or NV_SEED_DATA env var.
 	if *seedData || os.Getenv("NV_SEED_DATA") == "true" {
 		if reconMod != nil {
@@ -474,4 +481,84 @@ func (a *agentListerAdapter) ListAgentsWithDevice(ctx context.Context) ([]svcmap
 		}
 	}
 	return refs, nil
+}
+
+// profileSourceAdapter adapts dispatch.DispatchStore to recon.ProfileSource.
+type profileSourceAdapter struct {
+	store *dispatch.DispatchStore
+}
+
+func (a *profileSourceAdapter) GetAgent(ctx context.Context, agentID string) (*recon.AgentInfo, error) {
+	agent, err := a.store.GetAgent(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	if agent == nil {
+		return nil, nil
+	}
+	return &recon.AgentInfo{
+		ID:       agent.ID,
+		DeviceID: agent.DeviceID,
+		Platform: agent.Platform,
+		Hostname: agent.Hostname,
+	}, nil
+}
+
+func (a *profileSourceAdapter) GetHardwareProfile(ctx context.Context, agentID string) (*recon.HardwareProfileData, error) {
+	hw, err := a.store.GetHardwareProfile(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	if hw == nil {
+		return nil, nil
+	}
+	result := &recon.HardwareProfileData{
+		CPUModel:           hw.CpuModel,
+		CPUCores:           hw.CpuCores,
+		CPUThreads:         hw.CpuThreads,
+		RAMBytes:           hw.RamBytes,
+		BIOSVersion:        hw.BiosVersion,
+		SystemManufacturer: hw.SystemManufacturer,
+		SystemModel:        hw.SystemModel,
+		SerialNumber:       hw.SerialNumber,
+	}
+	for _, d := range hw.Disks {
+		result.Disks = append(result.Disks, recon.DiskData{
+			Name:      d.Name,
+			SizeBytes: d.SizeBytes,
+			DiskType:  d.DiskType,
+			Model:     d.Model,
+		})
+	}
+	for _, g := range hw.Gpus {
+		result.GPUs = append(result.GPUs, recon.GPUData{
+			Model:         g.Model,
+			VRAMBytes:     g.VramBytes,
+			DriverVersion: g.DriverVersion,
+		})
+	}
+	return result, nil
+}
+
+func (a *profileSourceAdapter) GetServices(ctx context.Context, agentID string) ([]*recon.ServiceData, error) {
+	protos, err := a.store.GetServices(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	if protos == nil {
+		return nil, nil
+	}
+	result := make([]*recon.ServiceData, len(protos))
+	for i, p := range protos {
+		result[i] = &recon.ServiceData{
+			Name:        p.Name,
+			DisplayName: p.DisplayName,
+			Status:      p.Status,
+			StartType:   p.StartType,
+			CPUPercent:  p.CpuPercent,
+			MemoryBytes: p.MemoryBytes,
+			Ports:       p.Ports,
+		}
+	}
+	return result, nil
 }

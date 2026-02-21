@@ -14,7 +14,8 @@ const (
 	TopicScanStarted      = "recon.scan.started"
 	TopicScanCompleted    = "recon.scan.completed"
 	TopicScanProgress     = "recon.scan.progress"
-	TopicServiceMoved     = "recon.service.moved"
+	TopicServiceMoved            = "recon.service.moved"
+	TopicDeviceHardwareUpdated   = "recon.device.hardware.updated"
 )
 
 // DeviceLostEvent is the payload for TopicDeviceLost events.
@@ -40,4 +41,10 @@ type ScanProgressEvent struct {
 // ServiceMovedEvent is the payload for TopicServiceMoved events.
 type ServiceMovedEvent struct {
 	Movement ServiceMovement `json:"movement"`
+}
+
+// DeviceHardwareUpdatedEvent is the payload for TopicDeviceHardwareUpdated events.
+type DeviceHardwareUpdatedEvent struct {
+	DeviceID         string `json:"device_id"`
+	CollectionSource string `json:"collection_source"`
 }

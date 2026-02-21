@@ -393,6 +393,135 @@ definitions:
           type: string
         type: array
     type: object
+  github_com_HerbHall_subnetree_pkg_models.DeviceGPU:
+    properties:
+      collected_at:
+        type: string
+      collection_source:
+        example: scout-linux
+        type: string
+      device_id:
+        type: string
+      driver_version:
+        example: 535.183.01
+        type: string
+      id:
+        type: string
+      model:
+        example: NVIDIA RTX 3090 Ti
+        type: string
+      vendor:
+        example: nvidia
+        type: string
+      vram_mb:
+        example: 24576
+        type: integer
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.DeviceHardware:
+    properties:
+      bios_version:
+        example: 2.17.0
+        type: string
+      collected_at:
+        type: string
+      collection_source:
+        example: scout-wmi
+        type: string
+      cpu_arch:
+        example: x86_64
+        type: string
+      cpu_cores:
+        example: 10
+        type: integer
+      cpu_model:
+        example: Intel Core i9-10900K
+        type: string
+      cpu_threads:
+        example: 20
+        type: integer
+      device_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      fqdn:
+        example: web-server-01.local
+        type: string
+      hostname:
+        example: web-server-01
+        type: string
+      hypervisor:
+        example: proxmox
+        type: string
+      kernel:
+        example: 6.5.0-44-generic
+        type: string
+      os_arch:
+        example: amd64
+        type: string
+      os_name:
+        example: Ubuntu 24.04
+        type: string
+      os_version:
+        example: "24.04"
+        type: string
+      platform_type:
+        example: baremetal
+        type: string
+      ram_slots_total:
+        example: 4
+        type: integer
+      ram_slots_used:
+        example: 2
+        type: integer
+      ram_total_mb:
+        example: 32768
+        type: integer
+      ram_type:
+        example: DDR4
+        type: string
+      serial_number:
+        example: ABC123
+        type: string
+      system_manufacturer:
+        example: Dell Inc.
+        type: string
+      system_model:
+        example: PowerEdge R730
+        type: string
+      updated_at:
+        type: string
+      vm_host_id:
+        type: string
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.DeviceService:
+    properties:
+      collected_at:
+        type: string
+      collection_source:
+        example: scout-linux
+        type: string
+      device_id:
+        type: string
+      id:
+        type: string
+      name:
+        example: plex
+        type: string
+      port:
+        example: 32400
+        type: integer
+      service_type:
+        example: docker
+        type: string
+      status:
+        example: running
+        type: string
+      url:
+        example: http://192.168.1.10:32400
+        type: string
+      version:
+        example: 1.40.0
+        type: string
+    type: object
   github_com_HerbHall_subnetree_pkg_models.DeviceStatus:
     enum:
     - online
@@ -405,6 +534,36 @@ definitions:
     - DeviceStatusOffline
     - DeviceStatusDegraded
     - DeviceStatusUnknown
+  github_com_HerbHall_subnetree_pkg_models.DeviceStorage:
+    properties:
+      capacity_gb:
+        example: 4000
+        type: integer
+      collected_at:
+        type: string
+      collection_source:
+        example: scout-linux
+        type: string
+      device_id:
+        type: string
+      disk_type:
+        example: nvme
+        type: string
+      id:
+        type: string
+      interface:
+        example: pcie4
+        type: string
+      model:
+        example: Samsung SSD 990 PRO
+        type: string
+      name:
+        example: Samsung 990 Pro 4TB
+        type: string
+      role:
+        example: data
+        type: string
+    type: object
   github_com_HerbHall_subnetree_pkg_models.DeviceType:
     enum:
     - server
@@ -485,6 +644,33 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  github_com_HerbHall_subnetree_pkg_models.HardwareSummary:
+    properties:
+      by_cpu_model:
+        additionalProperties:
+          type: integer
+        type: object
+      by_gpu_vendor:
+        additionalProperties:
+          type: integer
+        type: object
+      by_os:
+        additionalProperties:
+          type: integer
+        type: object
+      by_platform_type:
+        additionalProperties:
+          type: integer
+        type: object
+      total_gpus:
+        type: integer
+      total_ram_mb:
+        type: integer
+      total_storage_gb:
+        type: integer
+      total_with_hardware:
+        type: integer
     type: object
   github_com_HerbHall_subnetree_pkg_models.ScanMetrics:
     properties:
@@ -1059,6 +1245,23 @@ definitions:
           type: string
         type: array
     type: object
+  internal_recon.DeviceHardwareResponse:
+    properties:
+      gpus:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceGPU'
+        type: array
+      hardware:
+        $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware'
+      services:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceService'
+        type: array
+      storage:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStorage'
+        type: array
+    type: object
   internal_recon.DeviceListResponse:
     properties:
       devices:
@@ -1206,6 +1409,19 @@ definitions:
       open:
         type: boolean
       port:
+        type: integer
+    type: object
+  internal_recon.HardwareQueryResponse:
+    properties:
+      devices:
+        items:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.Device'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
         type: integer
     type: object
   internal_recon.HealthScoreFactor:
@@ -3394,6 +3610,104 @@ paths:
       summary: Update device
       tags:
       - recon
+  /recon/devices/{id}/gpu:
+    get:
+      description: Returns all GPUs installed in a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceGPU'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get device GPUs
+      tags:
+      - recon
+  /recon/devices/{id}/hardware:
+    get:
+      description: Returns the full hardware profile including storage, GPUs, and
+        services for a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.DeviceHardwareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get device hardware profile
+      tags:
+      - recon
+    put:
+      consumes:
+      - application/json
+      description: Manually creates or updates a device's hardware profile. Sets collection_source
+        to "manual".
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Hardware profile
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Update device hardware profile
+      tags:
+      - recon
   /recon/devices/{id}/history:
     get:
       description: Returns the status change timeline for a device.
@@ -3464,6 +3778,68 @@ paths:
       security:
       - BearerAuth: []
       summary: Device scan history
+      tags:
+      - recon
+  /recon/devices/{id}/services:
+    get:
+      description: Returns all running services on a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceService'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get device services
+      tags:
+      - recon
+  /recon/devices/{id}/storage:
+    get:
+      description: Returns all storage devices attached to a device.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStorage'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get device storage
       tags:
       - recon
   /recon/devices/bulk:
@@ -3547,6 +3923,65 @@ paths:
       security:
       - BearerAuth: []
       summary: Import devices from CSV
+      tags:
+      - recon
+  /recon/devices/query/hardware:
+    get:
+      description: Returns devices matching hardware filters like RAM, CPU model,
+        OS, platform type, and GPU.
+      parameters:
+      - description: Minimum RAM in MB
+        in: query
+        name: min_ram_mb
+        type: integer
+      - description: Maximum RAM in MB
+        in: query
+        name: max_ram_mb
+        type: integer
+      - description: CPU model substring match
+        in: query
+        name: cpu_model
+        type: string
+      - description: OS name substring match
+        in: query
+        name: os_name
+        type: string
+      - description: Platform type (baremetal, vm, container, lxc)
+        in: query
+        name: platform_type
+        type: string
+      - description: GPU vendor filter (nvidia, amd, intel)
+        in: query
+        name: gpu_vendor
+        type: string
+      - description: Filter devices with/without GPU
+        in: query
+        name: has_gpu
+        type: boolean
+      - default: 50
+        description: Max results
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.HardwareQueryResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Query devices by hardware
       tags:
       - recon
   /recon/diag/dns:
@@ -3679,6 +4114,26 @@ paths:
       security:
       - BearerAuth: []
       summary: Get network hierarchy
+      tags:
+      - recon
+  /recon/inventory/hardware-summary:
+    get:
+      description: Returns aggregate hardware statistics across all devices with hardware
+        profiles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.HardwareSummary'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Hardware inventory summary
       tags:
       - recon
   /recon/inventory/summary:

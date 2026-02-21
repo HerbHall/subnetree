@@ -2653,6 +2653,95 @@
                 }
             }
         },
+        "/recon/devices/query/hardware": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns devices matching hardware filters like RAM, CPU model, OS, platform type, and GPU.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Query devices by hardware",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Minimum RAM in MB",
+                        "name": "min_ram_mb",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum RAM in MB",
+                        "name": "max_ram_mb",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CPU model substring match",
+                        "name": "cpu_model",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "OS name substring match",
+                        "name": "os_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform type (baremetal, vm, container, lxc)",
+                        "name": "platform_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "GPU vendor filter (nvidia, amd, intel)",
+                        "name": "gpu_vendor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter devices with/without GPU",
+                        "name": "has_gpu",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.HardwareQueryResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/devices/{id}": {
             "get": {
                 "security": [
@@ -2805,6 +2894,157 @@
                 }
             }
         },
+        "/recon/devices/{id}/gpu": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all GPUs installed in a device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get device GPUs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceGPU"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/devices/{id}/hardware": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the full hardware profile including storage, GPUs, and services for a device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get device hardware profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.DeviceHardwareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Manually creates or updates a device's hardware profile. Sets collection_source to \"manual\".",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Update device hardware profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hardware profile",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/devices/{id}/history": {
             "get": {
                 "security": [
@@ -2899,6 +3139,104 @@
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/internal_recon.DeviceScanEvent"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/devices/{id}/services": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all running services on a device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get device services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceService"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/devices/{id}/storage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all storage devices attached to a device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get device storage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStorage"
                             }
                         }
                     },
@@ -3111,6 +3449,37 @@
                             "items": {
                                 "$ref": "#/definitions/internal_recon.DeviceTreeNode"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/inventory/hardware-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns aggregate hardware statistics across all devices with hardware profiles.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Hardware inventory summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.HardwareSummary"
                         }
                     },
                     "500": {
@@ -5331,6 +5700,184 @@
                 }
             }
         },
+        "github_com_HerbHall_subnetree_pkg_models.DeviceGPU": {
+            "type": "object",
+            "properties": {
+                "collected_at": {
+                    "type": "string"
+                },
+                "collection_source": {
+                    "type": "string",
+                    "example": "scout-linux"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "driver_version": {
+                    "type": "string",
+                    "example": "535.183.01"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string",
+                    "example": "NVIDIA RTX 3090 Ti"
+                },
+                "vendor": {
+                    "type": "string",
+                    "example": "nvidia"
+                },
+                "vram_mb": {
+                    "type": "integer",
+                    "example": 24576
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_models.DeviceHardware": {
+            "type": "object",
+            "properties": {
+                "bios_version": {
+                    "type": "string",
+                    "example": "2.17.0"
+                },
+                "collected_at": {
+                    "type": "string"
+                },
+                "collection_source": {
+                    "type": "string",
+                    "example": "scout-wmi"
+                },
+                "cpu_arch": {
+                    "type": "string",
+                    "example": "x86_64"
+                },
+                "cpu_cores": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "cpu_model": {
+                    "type": "string",
+                    "example": "Intel Core i9-10900K"
+                },
+                "cpu_threads": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "fqdn": {
+                    "type": "string",
+                    "example": "web-server-01.local"
+                },
+                "hostname": {
+                    "type": "string",
+                    "example": "web-server-01"
+                },
+                "hypervisor": {
+                    "type": "string",
+                    "example": "proxmox"
+                },
+                "kernel": {
+                    "type": "string",
+                    "example": "6.5.0-44-generic"
+                },
+                "os_arch": {
+                    "type": "string",
+                    "example": "amd64"
+                },
+                "os_name": {
+                    "type": "string",
+                    "example": "Ubuntu 24.04"
+                },
+                "os_version": {
+                    "type": "string",
+                    "example": "24.04"
+                },
+                "platform_type": {
+                    "type": "string",
+                    "example": "baremetal"
+                },
+                "ram_slots_total": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "ram_slots_used": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "ram_total_mb": {
+                    "type": "integer",
+                    "example": 32768
+                },
+                "ram_type": {
+                    "type": "string",
+                    "example": "DDR4"
+                },
+                "serial_number": {
+                    "type": "string",
+                    "example": "ABC123"
+                },
+                "system_manufacturer": {
+                    "type": "string",
+                    "example": "Dell Inc."
+                },
+                "system_model": {
+                    "type": "string",
+                    "example": "PowerEdge R730"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "vm_host_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_models.DeviceService": {
+            "type": "object",
+            "properties": {
+                "collected_at": {
+                    "type": "string"
+                },
+                "collection_source": {
+                    "type": "string",
+                    "example": "scout-linux"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "plex"
+                },
+                "port": {
+                    "type": "integer",
+                    "example": 32400
+                },
+                "service_type": {
+                    "type": "string",
+                    "example": "docker"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "running"
+                },
+                "url": {
+                    "type": "string",
+                    "example": "http://192.168.1.10:32400"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1.40.0"
+                }
+            }
+        },
         "github_com_HerbHall_subnetree_pkg_models.DeviceStatus": {
             "type": "string",
             "enum": [
@@ -5345,6 +5892,48 @@
                 "DeviceStatusDegraded",
                 "DeviceStatusUnknown"
             ]
+        },
+        "github_com_HerbHall_subnetree_pkg_models.DeviceStorage": {
+            "type": "object",
+            "properties": {
+                "capacity_gb": {
+                    "type": "integer",
+                    "example": 4000
+                },
+                "collected_at": {
+                    "type": "string"
+                },
+                "collection_source": {
+                    "type": "string",
+                    "example": "scout-linux"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "disk_type": {
+                    "type": "string",
+                    "example": "nvme"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interface": {
+                    "type": "string",
+                    "example": "pcie4"
+                },
+                "model": {
+                    "type": "string",
+                    "example": "Samsung SSD 990 PRO"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Samsung 990 Pro 4TB"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "data"
+                }
+            }
         },
         "github_com_HerbHall_subnetree_pkg_models.DeviceType": {
             "type": "string",
@@ -5442,6 +6031,47 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "github_com_HerbHall_subnetree_pkg_models.HardwareSummary": {
+            "type": "object",
+            "properties": {
+                "by_cpu_model": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "by_gpu_vendor": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "by_os": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "by_platform_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_gpus": {
+                    "type": "integer"
+                },
+                "total_ram_mb": {
+                    "type": "integer"
+                },
+                "total_storage_gb": {
+                    "type": "integer"
+                },
+                "total_with_hardware": {
+                    "type": "integer"
                 }
             }
         },
@@ -6296,6 +6926,32 @@
                 }
             }
         },
+        "internal_recon.DeviceHardwareResponse": {
+            "type": "object",
+            "properties": {
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceGPU"
+                    }
+                },
+                "hardware": {
+                    "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceHardware"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceService"
+                    }
+                },
+                "storage": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DeviceStorage"
+                    }
+                }
+            }
+        },
         "internal_recon.DeviceListResponse": {
             "type": "object",
             "properties": {
@@ -6517,6 +7173,26 @@
                     "type": "boolean"
                 },
                 "port": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_recon.HardwareQueryResponse": {
+            "type": "object",
+            "properties": {
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.Device"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
                     "type": "integer"
                 }
             }
