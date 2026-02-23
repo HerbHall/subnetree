@@ -5650,6 +5650,23 @@
                 "vpn",
                 "automation",
                 "container-management"
+            ],
+            "x-enum-varnames": [
+                "CategoryMonitoring",
+                "CategoryInfrastructure",
+                "CategoryDNS",
+                "CategoryHomeAutomation",
+                "CategoryNotifications",
+                "CategoryDashboard",
+                "CategoryCMDB",
+                "CategoryDocumentation",
+                "CategoryNetwork",
+                "CategoryBackup",
+                "CategorySecurity",
+                "CategoryMedia",
+                "CategoryVPN",
+                "CategoryAutomation",
+                "CategoryContainerManagement"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_catalog.HardwareTier": {
@@ -5668,12 +5685,12 @@
                 "TierSBC": "Pi, SBC (1 GB)",
                 "TierSMB": "Small business server"
             },
-            "x-enum-descriptions": [
-                "Pi, SBC (1 GB)",
-                "Intel N100 (8-32 GB)",
-                "Synology/QNAP (Scout only)",
-                "Proxmox cluster",
-                "Small business server"
+            "x-enum-varnames": [
+                "TierSBC",
+                "TierMiniPC",
+                "TierNAS",
+                "TierCluster",
+                "TierSMB"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_catalog.IntegrationStatus": {
@@ -5688,10 +5705,10 @@
                 "IntegrationPossible": "Feasible, not scheduled",
                 "IntegrationShipped": "Already works"
             },
-            "x-enum-descriptions": [
-                "Already works",
-                "On roadmap",
-                "Feasible, not scheduled"
+            "x-enum-varnames": [
+                "IntegrationShipped",
+                "IntegrationPlanned",
+                "IntegrationPossible"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.APIProblem": {
@@ -5758,6 +5775,11 @@
                 "should-run",
                 "should-stop",
                 "monitoring-only"
+            ],
+            "x-enum-varnames": [
+                "DesiredStateShouldRun",
+                "DesiredStateShouldStop",
+                "DesiredStateMonitoringOnly"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.Device": {
@@ -6071,6 +6093,12 @@
                 "offline",
                 "degraded",
                 "unknown"
+            ],
+            "x-enum-varnames": [
+                "DeviceStatusOnline",
+                "DeviceStatusOffline",
+                "DeviceStatusDegraded",
+                "DeviceStatusUnknown"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.DeviceStorage": {
@@ -6135,6 +6163,25 @@
                 "virtual_machine",
                 "container",
                 "unknown"
+            ],
+            "x-enum-varnames": [
+                "DeviceTypeServer",
+                "DeviceTypeDesktop",
+                "DeviceTypeLaptop",
+                "DeviceTypeMobile",
+                "DeviceTypeRouter",
+                "DeviceTypeSwitch",
+                "DeviceTypePrinter",
+                "DeviceTypeIoT",
+                "DeviceTypeAccessPoint",
+                "DeviceTypeFirewall",
+                "DeviceTypeNAS",
+                "DeviceTypePhone",
+                "DeviceTypeTablet",
+                "DeviceTypeCamera",
+                "DeviceTypeVM",
+                "DeviceTypeContainer",
+                "DeviceTypeUnknown"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.DiscoveryMethod": {
@@ -6150,6 +6197,18 @@
                 "manual",
                 "wifi",
                 "proxmox"
+            ],
+            "x-enum-varnames": [
+                "DiscoveryAgent",
+                "DiscoveryICMP",
+                "DiscoveryARP",
+                "DiscoverySNMP",
+                "DiscoverymDNS",
+                "DiscoveryUPnP",
+                "DiscoveryMQTT",
+                "DiscoveryManual",
+                "DiscoveryWiFi",
+                "DiscoveryProxmox"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {
@@ -6384,6 +6443,12 @@
                 "stopped",
                 "failed",
                 "unknown"
+            ],
+            "x-enum-varnames": [
+                "ServiceStatusRunning",
+                "ServiceStatusStopped",
+                "ServiceStatusFailed",
+                "ServiceStatusUnknown"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.ServiceType": {
@@ -6393,6 +6458,12 @@
                 "systemd-service",
                 "windows-service",
                 "application"
+            ],
+            "x-enum-varnames": [
+                "ServiceTypeDockerContainer",
+                "ServiceTypeSystemdService",
+                "ServiceTypeWindowsService",
+                "ServiceTypeApplication"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.UtilizationSummary": {
@@ -6486,6 +6557,11 @@
                 "admin",
                 "operator",
                 "viewer"
+            ],
+            "x-enum-varnames": [
+                "RoleAdmin",
+                "RoleOperator",
+                "RoleViewer"
             ]
         },
         "internal_auth.SetupRequest": {
@@ -8025,6 +8101,12 @@
                 "typography",
                 "shape",
                 "effects"
+            ],
+            "x-enum-varnames": [
+                "LayerColors",
+                "LayerTypography",
+                "LayerShape",
+                "LayerEffects"
             ]
         },
         "internal_settings.ThemeTokens": {

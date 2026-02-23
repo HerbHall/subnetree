@@ -5692,13 +5692,6 @@ const docTemplate = `{
                 "TierSBC": "Pi, SBC (1 GB)",
                 "TierSMB": "Small business server"
             },
-            "x-enum-descriptions": [
-                "Pi, SBC (1 GB)",
-                "Intel N100 (8-32 GB)",
-                "Synology/QNAP (Scout only)",
-                "Proxmox cluster",
-                "Small business server"
-            ],
             "x-enum-varnames": [
                 "TierSBC",
                 "TierMiniPC",
@@ -5719,11 +5712,6 @@ const docTemplate = `{
                 "IntegrationPossible": "Feasible, not scheduled",
                 "IntegrationShipped": "Already works"
             },
-            "x-enum-descriptions": [
-                "Already works",
-                "On roadmap",
-                "Feasible, not scheduled"
-            ],
             "x-enum-varnames": [
                 "IntegrationShipped",
                 "IntegrationPlanned",
