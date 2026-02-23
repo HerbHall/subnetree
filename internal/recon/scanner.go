@@ -44,16 +44,17 @@ type CredentialLookup interface {
 // ScanOrchestrator coordinates ICMP scanning, ARP enrichment, OUI lookup,
 // device persistence, and event publishing.
 type ScanOrchestrator struct {
-	store       *ReconStore
-	bus         plugin.EventBus
-	oui         OUIResolver
-	pinger      PingScanner
-	arp         ARPTableReader
-	snmpWalker  SNMPWalker
-	wifiScanner WifiScanner
-	credLookup  CredentialLookup
-	credAccess  CredentialAccessor
-	logger      *zap.Logger
+	store        *ReconStore
+	bus          plugin.EventBus
+	oui          OUIResolver
+	pinger       PingScanner
+	arp          ARPTableReader
+	snmpWalker   SNMPWalker
+	wifiScanner  WifiScanner
+	apEnumerator APClientEnumerator
+	credLookup   CredentialLookup
+	credAccess   CredentialAccessor
+	logger       *zap.Logger
 }
 
 // NewScanOrchestrator creates a new orchestrator.
@@ -83,6 +84,12 @@ func (o *ScanOrchestrator) SetSNMPWalker(w SNMPWalker) {
 // SetWifiScanner configures the WiFi scanner used to discover nearby access points.
 func (o *ScanOrchestrator) SetWifiScanner(ws WifiScanner) {
 	o.wifiScanner = ws
+}
+
+// SetAPClientEnumerator configures the AP client enumerator used to discover
+// clients connected to the server's WiFi hotspot.
+func (o *ScanOrchestrator) SetAPClientEnumerator(e APClientEnumerator) {
+	o.apEnumerator = e
 }
 
 // SetCredentialLookup configures the credential lookup used for FDB walks.
@@ -253,6 +260,7 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		{"classify", func(ctx context.Context) { o.classifyDevices(ctx, alive, arpTable) }},
 		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
 		{"fdb-walk", func(ctx context.Context) { o.walkSwitchFDBTables(ctx) }},
+		{"wifi-ap-clients", func(ctx context.Context) { o.enumerateAPClients(ctx) }},
 		{"wifi-heuristic", func(ctx context.Context) { o.analyzeWiFiConnections(ctx) }},
 		{"topology-links", func(ctx context.Context) { o.inferTopologyLinks(ctx, subnet, alive) }},
 		{"hierarchy", func(ctx context.Context) { o.inferHierarchy(ctx) }},
@@ -727,6 +735,26 @@ func (o *ScanOrchestrator) publishEvent(ctx context.Context, topic string, paylo
 		Timestamp: time.Now(),
 		Payload:   payload,
 	})
+}
+
+// enumerateAPClients discovers clients connected to the server's own WiFi AP
+// and syncs them as child devices with definitive WiFi identification.
+func (o *ScanOrchestrator) enumerateAPClients(ctx context.Context) {
+	if o.apEnumerator == nil || !o.apEnumerator.Available() {
+		return
+	}
+	syncer := NewWiFiAPSyncer(o.store, o.oui, o.logger.Named("wifi-ap"))
+	result, err := syncer.Sync(ctx, o.apEnumerator)
+	if err != nil {
+		o.logger.Warn("wifi AP client enumeration failed", zap.Error(err))
+		return
+	}
+	if result.ClientsFound > 0 {
+		o.logger.Info("wifi AP client sync complete",
+			zap.Int("clients_found", result.ClientsFound),
+			zap.Int("created", result.Created),
+			zap.Int("updated", result.Updated))
+	}
 }
 
 // analyzeWiFiConnections runs WiFi heuristic analysis on all devices after

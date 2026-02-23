@@ -38,7 +38,8 @@ type Module struct {
 	credAccessor   CredentialAccessor
 	credProvider   roles.CredentialProvider
 	profileSource  ProfileSource
-	proxmoxSyncer  *ProxmoxSyncer
+	wifiAPEnumerator APClientEnumerator
+	proxmoxSyncer    *ProxmoxSyncer
 	activeScans    sync.Map // scanID -> context.CancelFunc
 	wg            sync.WaitGroup
 	scanCtx       context.Context
@@ -148,6 +149,10 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 	// Initialize WiFi scanner (auto-detects hardware availability).
 	m.wifiScanner = NewWifiScanner(m.logger.Named("wifi"))
 	m.orchestrator.SetWifiScanner(m.wifiScanner)
+
+	// Initialize WiFi AP client enumerator (auto-detects hotspot availability).
+	m.wifiAPEnumerator = NewAPClientEnumerator(m.logger.Named("wifi-ap"))
+	m.orchestrator.SetAPClientEnumerator(m.wifiAPEnumerator)
 
 	// Initialize mDNS listener if enabled.
 	if m.cfg.MDNSEnabled {
@@ -345,6 +350,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices/{id}/services", Handler: m.handleGetDeviceServices},
 		{Method: "GET", Path: "/inventory/hardware-summary", Handler: m.handleHardwareSummary},
 		{Method: "GET", Path: "/devices/query/hardware", Handler: m.handleQueryDevicesByHardware},
+		{Method: "GET", Path: "/wifi/clients", Handler: m.handleListWiFiClients},
 		{Method: "POST", Path: "/proxmox/sync", Handler: m.handleProxmoxSync},
 		{Method: "GET", Path: "/proxmox/vms", Handler: m.handleListProxmoxVMs},
 		{Method: "GET", Path: "/proxmox/vms/{id}/resources", Handler: m.handleGetProxmoxVMResources},

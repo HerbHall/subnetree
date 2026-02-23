@@ -42,6 +42,10 @@ func SeedDemoNetwork(ctx context.Context, reconStore *recon.ReconStore) error {
 		return fmt.Errorf("seed hardware: %w", err)
 	}
 
+	if err := seedWiFiClients(ctx, reconStore, deviceIDs, now); err != nil {
+		return fmt.Errorf("seed wifi clients: %w", err)
+	}
+
 	return nil
 }
 
@@ -653,7 +657,7 @@ func seedHardwareProfiles(ctx context.Context, store *recon.ReconStore, ids map[
 		}
 	}
 
-	// --- macbook-pro: Apple MacBook Pro 16" ---
+	// --- macbook-pro: Apple MacBook Pro 16-inch ---
 	if id, ok := ids["macbook-pro"]; ok {
 		hw := &models.DeviceHardware{
 			DeviceID:           id,
@@ -685,6 +689,75 @@ func seedHardwareProfiles(ctx context.Context, store *recon.ReconStore, ids map[
 			{ID: uuid.New().String(), DeviceID: id, Name: "Apple SSD AP1024Z", DiskType: "nvme", Interface: "apple-fabric", CapacityGB: 1000, Model: "APPLE SSD AP1024Z", Role: "os+data", CollectionSource: "scout-macos", CollectedAt: &collected},
 		}); err != nil {
 			return fmt.Errorf("storage macbook-pro: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// seedWiFiClients creates WiFi client snapshots for devices that would
+// logically be connected via the AP (phones, laptops). Also updates their
+// connection type and classification to reflect definitive WiFi identification.
+func seedWiFiClients(ctx context.Context, store *recon.ReconStore, ids map[string]string, now time.Time) error {
+	apID, ok := ids["unifi-ap-lr"]
+	if !ok {
+		return nil // AP not seeded, skip
+	}
+
+	// The AP's MAC address (from demoDevices) serves as the BSSID.
+	apBSSID := "24:5A:4C:05:00:01"
+	apSSID := "HomeNetwork"
+
+	// WiFi clients: phones and laptops that connect via the AP.
+	type wifiClient struct {
+		hostname     string
+		signalDBm    int
+		signalAvgDBm int
+		connectedSec int64
+		rxBitrate    int // bits/sec
+		txBitrate    int // bits/sec
+		rxBytes      int
+		txBytes      int
+	}
+
+	clients := []wifiClient{
+		{"iphone-15-pro", -55, -57, 28800, 300_000_000, 200_000_000, 524_288_000, 104_857_600},
+		{"macbook-pro", -62, -64, 14400, 280_000_000, 260_000_000, 1_073_741_824, 536_870_912},
+		{"thinkpad-t14", -71, -73, 3600, 144_000_000, 130_000_000, 268_435_456, 67_108_864},
+	}
+
+	for _, c := range clients {
+		deviceID, ok := ids[c.hostname]
+		if !ok {
+			continue
+		}
+
+		snap := &recon.WiFiClientSnapshot{
+			DeviceID:     deviceID,
+			SignalDBm:    c.signalDBm,
+			SignalAvgDBm: c.signalAvgDBm,
+			ConnectedSec: c.connectedSec,
+			InactiveSec:  5,
+			RxBitrate:    c.rxBitrate,
+			TxBitrate:    c.txBitrate,
+			RxBytes:      c.rxBytes,
+			TxBytes:      c.txBytes,
+			APBSSID:      apBSSID,
+			APSSID:       apSSID,
+			CollectedAt:  now,
+		}
+		if err := store.UpsertWiFiClient(ctx, snap); err != nil {
+			return fmt.Errorf("wifi client %s: %w", c.hostname, err)
+		}
+
+		// Update device to reflect definitive WiFi identification.
+		if err := store.UpdateDeviceConnectionType(ctx, deviceID, "wifi"); err != nil {
+			return fmt.Errorf("wifi conn type %s: %w", c.hostname, err)
+		}
+
+		// Set parent to the AP device.
+		if err := store.UpdateDeviceHierarchy(ctx, deviceID, apID, models.NetworkLayerEndpoint); err != nil {
+			return fmt.Errorf("wifi hierarchy %s: %w", c.hostname, err)
 		}
 	}
 
