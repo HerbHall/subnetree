@@ -40,7 +40,7 @@ import {
   getInventorySummary,
   bulkUpdateDevices,
 } from '@/api/devices'
-import type { DeviceStatus, DeviceType } from '@/api/types'
+import type { Device, DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useScanStore } from '@/stores/scan'
@@ -87,6 +87,26 @@ function isDeviceStale(lastSeen: string): boolean {
   return new Date().getTime() - new Date(lastSeen).getTime() > STALE_THRESHOLD_MS
 }
 
+/**
+ * Extracts /24 subnet from device IP addresses.
+ * Returns "Unknown Subnet" for devices without IPs.
+ */
+function getSubnet(ipAddresses: string[]): string {
+  if (!ipAddresses || ipAddresses.length === 0) return 'Unknown Subnet'
+  const ip = ipAddresses[0]
+  const parts = ip.split('.')
+  if (parts.length !== 4) return 'Unknown Subnet'
+  return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`
+}
+
+interface SubnetGroup {
+  subnet: string
+  devices: Device[]
+  onlineCount: number
+  offlineCount: number
+  staleCount: number
+}
+
 export function DevicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
@@ -114,6 +134,28 @@ export function DevicesPage() {
   const [showBulkCategory, setShowBulkCategory] = useState(false)
   const [showBulkOwner, setShowBulkOwner] = useState(false)
   const [showBulkLocation, setShowBulkLocation] = useState(false)
+
+  // Subnet grouping state -- all start collapsed
+  const [expandedSubnets, setExpandedSubnets] = useState<Set<string>>(new Set())
+
+  const toggleSubnet = useCallback((subnet: string) => {
+    setExpandedSubnets(prev => {
+      const next = new Set(prev)
+      if (next.has(subnet)) {
+        next.delete(subnet)
+      } else {
+        next.add(subnet)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleAllSubnets = useCallback((subnets: string[]) => {
+    setExpandedSubnets(prev => {
+      if (prev.size === subnets.length) return new Set()
+      return new Set(subnets)
+    })
+  }, [])
 
   // Fetch inventory summary
   const { data: inventorySummary } = useQuery({
@@ -327,6 +369,30 @@ export function DevicesPage() {
 
     return result
   }, [filteredDevices, sortField, sortDirection])
+
+  // Group devices by /24 subnet
+  const subnetGroups = useMemo((): SubnetGroup[] => {
+    const groups = new Map<string, typeof sortedDevices>()
+
+    for (const device of sortedDevices) {
+      const subnet = getSubnet(device.ip_addresses)
+      const existing = groups.get(subnet) || []
+      existing.push(device)
+      groups.set(subnet, existing)
+    }
+
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([subnet, devices]) => ({
+        subnet,
+        devices,
+        onlineCount: devices.filter(d => d.status === 'online').length,
+        offlineCount: devices.filter(d => d.status === 'offline').length,
+        staleCount: devices.filter(d => isDeviceStale(d.last_seen)).length,
+      }))
+  }, [sortedDevices])
+
+  const hasMultipleSubnets = subnetGroups.length > 1
 
   function toggleSelectAll() {
     if (selectedIds.size === sortedDevices.length) {
@@ -591,6 +657,19 @@ export function DevicesPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Expand/Collapse all subnets */}
+          {hasMultipleSubnets && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleAllSubnets(subnetGroups.map(g => g.subnet))}
+              className="text-xs"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
+              {expandedSubnets.size === subnetGroups.length ? 'Collapse All' : 'Expand All'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -717,91 +796,31 @@ export function DevicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {sortedDevices.map((device) => {
-                  const vState = getVerificationState(device.ip_addresses ?? [])
-                  return (
-                    <tr
+                {hasMultipleSubnets ? (
+                  subnetGroups.map(group => (
+                    <SubnetTableGroup
+                      key={group.subnet}
+                      group={group}
+                      expanded={expandedSubnets.has(group.subnet)}
+                      onToggle={() => toggleSubnet(group.subnet)}
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      getVerificationState={getVerificationState}
+                      onDeleteClick={handleDeleteClick}
+                    />
+                  ))
+                ) : (
+                  sortedDevices.map((device) => (
+                    <DeviceTableRow
                       key={device.id}
-                      className={cn(
-                        'hover:bg-muted/30 transition-colors cursor-pointer',
-                        selectedIds.has(device.id) && 'bg-primary/5',
-                        vState === 'checking' && 'opacity-50',
-                      )}
-                    >
-                      <td className="px-4 py-1.5">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(device.id)}
-                          onChange={() => toggleSelect(device.id)}
-                          className="rounded border-muted-foreground/50"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-                      <td className="px-4 py-1.5">
-                        <Link
-                          to={`/devices/${device.id}`}
-                          className="font-medium hover:text-primary"
-                        >
-                          {device.hostname || 'Unknown'}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-1.5 font-mono text-xs">
-                        {device.ip_addresses?.[0] || '-'}
-                      </td>
-                      <td className="px-4 py-1.5 text-muted-foreground">
-                        {device.manufacturer || '-'}
-                      </td>
-                      <td className="px-4 py-1.5">
-                        <span className="capitalize">{device.device_type}</span>
-                      </td>
-                      <td className="px-4 py-1.5">
-                        {device.category ? (
-                          <span className="capitalize text-sm">{device.category}</span>
-                        ) : (
-                          <span className="text-muted-foreground/50 text-sm">--</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-1.5">
-                        {device.owner ? (
-                          <span className="text-sm">{device.owner}</span>
-                        ) : (
-                          <span className="text-muted-foreground/50 text-sm">--</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-1.5">
-                        <div className="flex items-center gap-1.5">
-                          {vState === 'checking' ? (
-                            <VerificationBadge state="checking" />
-                          ) : vState === 'verified' ? (
-                            <>
-                              <StatusBadge status={device.status} />
-                              <VerificationBadge state="verified" />
-                            </>
-                          ) : (
-                            <StatusBadge status={device.status} />
-                          )}
-                          {isDeviceStale(device.last_seen) && !vState && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                              <AlertTriangle className="h-3 w-3" />
-                              Stale
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-1.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-red-500"
-                          onClick={(e) => handleDeleteClick(e, device.id)}
-                          title="Delete device"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
+                      device={device}
+                      selected={selectedIds.has(device.id)}
+                      onToggleSelect={() => toggleSelect(device.id)}
+                      verificationState={getVerificationState(device.ip_addresses ?? [])}
+                      onDeleteClick={handleDeleteClick}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -811,18 +830,40 @@ export function DevicesPage() {
       {/* Grid View */}
       {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'grid' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sortedDevices.map((device) => (
-            <DeviceCard key={device.id} device={device} />
-          ))}
+          {hasMultipleSubnets ? (
+            subnetGroups.map(group => (
+              <SubnetGridGroup
+                key={group.subnet}
+                group={group}
+                expanded={expandedSubnets.has(group.subnet)}
+                onToggle={() => toggleSubnet(group.subnet)}
+              />
+            ))
+          ) : (
+            sortedDevices.map((device) => (
+              <DeviceCard key={device.id} device={device} />
+            ))
+          )}
         </div>
       )}
 
       {/* List View */}
       {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'list' && (
         <div className="space-y-2">
-          {sortedDevices.map((device) => (
-            <DeviceCardCompact key={device.id} device={device} />
-          ))}
+          {hasMultipleSubnets ? (
+            subnetGroups.map(group => (
+              <SubnetListGroup
+                key={group.subnet}
+                group={group}
+                expanded={expandedSubnets.has(group.subnet)}
+                onToggle={() => toggleSubnet(group.subnet)}
+              />
+            ))
+          ) : (
+            sortedDevices.map((device) => (
+              <DeviceCardCompact key={device.id} device={device} />
+            ))
+          )}
         </div>
       )}
 
@@ -1242,5 +1283,246 @@ function DeviceCardSkeleton() {
         <Skeleton className="h-3 w-20" />
       </div>
     </div>
+  )
+}
+
+// Subnet status summary badges used in group headers
+function SubnetStatusBadges({ group }: { group: SubnetGroup }) {
+  return (
+    <div className="flex items-center gap-2 ml-auto">
+      {group.onlineCount > 0 && (
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-500">
+          {group.onlineCount} online
+        </span>
+      )}
+      {group.offlineCount > 0 && (
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-500">
+          {group.offlineCount} offline
+        </span>
+      )}
+      {group.staleCount > 0 && (
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500">
+          {group.staleCount} stale
+        </span>
+      )}
+    </div>
+  )
+}
+
+// Single device table row (extracted for reuse in grouped/ungrouped table views)
+function DeviceTableRow({
+  device,
+  selected,
+  onToggleSelect,
+  verificationState,
+  onDeleteClick,
+}: {
+  device: Device
+  selected: boolean
+  onToggleSelect: () => void
+  verificationState: 'checking' | 'verified' | 'new' | null
+  onDeleteClick: (e: React.MouseEvent, deviceId: string) => void
+}) {
+  return (
+    <tr
+      className={cn(
+        'hover:bg-muted/30 transition-colors cursor-pointer',
+        selected && 'bg-primary/5',
+        verificationState === 'checking' && 'opacity-50',
+      )}
+    >
+      <td className="px-4 py-1.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className="rounded border-muted-foreground/50"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </td>
+      <td className="px-4 py-1.5">
+        <Link
+          to={`/devices/${device.id}`}
+          className="font-medium hover:text-primary"
+        >
+          {device.hostname || 'Unknown'}
+        </Link>
+      </td>
+      <td className="px-4 py-1.5 font-mono text-xs">
+        {device.ip_addresses?.[0] || '-'}
+      </td>
+      <td className="px-4 py-1.5 text-muted-foreground">
+        {device.manufacturer || '-'}
+      </td>
+      <td className="px-4 py-1.5">
+        <span className="capitalize">{device.device_type}</span>
+      </td>
+      <td className="px-4 py-1.5">
+        {device.category ? (
+          <span className="capitalize text-sm">{device.category}</span>
+        ) : (
+          <span className="text-muted-foreground/50 text-sm">--</span>
+        )}
+      </td>
+      <td className="px-4 py-1.5">
+        {device.owner ? (
+          <span className="text-sm">{device.owner}</span>
+        ) : (
+          <span className="text-muted-foreground/50 text-sm">--</span>
+        )}
+      </td>
+      <td className="px-4 py-1.5">
+        <div className="flex items-center gap-1.5">
+          {verificationState === 'checking' ? (
+            <VerificationBadge state="checking" />
+          ) : verificationState === 'verified' ? (
+            <>
+              <StatusBadge status={device.status} />
+              <VerificationBadge state="verified" />
+            </>
+          ) : (
+            <StatusBadge status={device.status} />
+          )}
+          {isDeviceStale(device.last_seen) && !verificationState && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3" />
+              Stale
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-1.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-red-500"
+          onClick={(e) => onDeleteClick(e, device.id)}
+          title="Delete device"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </td>
+    </tr>
+  )
+}
+
+// Subnet group for table view: collapsible header row + device rows
+function SubnetTableGroup({
+  group,
+  expanded,
+  onToggle,
+  selectedIds,
+  onToggleSelect,
+  getVerificationState,
+  onDeleteClick,
+}: {
+  group: SubnetGroup
+  expanded: boolean
+  onToggle: () => void
+  selectedIds: Set<string>
+  onToggleSelect: (deviceId: string) => void
+  getVerificationState: (ips: string[]) => 'checking' | 'verified' | 'new' | null
+  onDeleteClick: (e: React.MouseEvent, deviceId: string) => void
+}) {
+  return (
+    <>
+      <tr
+        className="bg-muted/30 hover:bg-muted/50 cursor-pointer border-l-2 border-primary/50"
+        onClick={onToggle}
+      >
+        <td colSpan={9} className="px-4 py-2">
+          <div className="flex items-center gap-3">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="font-medium text-sm">{group.subnet}</span>
+            <span className="text-xs text-muted-foreground">
+              {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
+            </span>
+            <SubnetStatusBadges group={group} />
+          </div>
+        </td>
+      </tr>
+      {expanded && group.devices.map(device => (
+        <DeviceTableRow
+          key={device.id}
+          device={device}
+          selected={selectedIds.has(device.id)}
+          onToggleSelect={() => onToggleSelect(device.id)}
+          verificationState={getVerificationState(device.ip_addresses ?? [])}
+          onDeleteClick={onDeleteClick}
+        />
+      ))}
+    </>
+  )
+}
+
+// Subnet group for grid view: collapsible header + device cards
+function SubnetGridGroup({
+  group,
+  expanded,
+  onToggle,
+}: {
+  group: SubnetGroup
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <>
+      <div
+        className="col-span-full flex items-center gap-2 cursor-pointer py-2 px-3 rounded-md bg-muted/30 hover:bg-muted/50 border-l-2 border-primary/50"
+        onClick={onToggle}
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="font-medium text-sm">{group.subnet}</span>
+        <span className="text-xs text-muted-foreground">
+          {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
+        </span>
+        <SubnetStatusBadges group={group} />
+      </div>
+      {expanded && group.devices.map(device => (
+        <DeviceCard key={device.id} device={device} />
+      ))}
+    </>
+  )
+}
+
+// Subnet group for list view: collapsible header + compact device cards
+function SubnetListGroup({
+  group,
+  expanded,
+  onToggle,
+}: {
+  group: SubnetGroup
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <>
+      <div
+        className="flex items-center gap-2 cursor-pointer py-2 px-3 rounded-md bg-muted/30 hover:bg-muted/50 border-l-2 border-primary/50"
+        onClick={onToggle}
+      >
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className="font-medium text-sm">{group.subnet}</span>
+        <span className="text-xs text-muted-foreground">
+          {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
+        </span>
+        <SubnetStatusBadges group={group} />
+      </div>
+      {expanded && group.devices.map(device => (
+        <DeviceCardCompact key={device.id} device={device} />
+      ))}
+    </>
   )
 }
