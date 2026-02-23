@@ -15,7 +15,7 @@ func TestDemoAuthMiddleware_APIPathInjectsClaims(t *testing.T) {
 
 	handler := DemoAuthMiddleware()(backend)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/recon/devices", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recon/devices", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -42,7 +42,7 @@ func TestDemoAuthMiddleware_NonAPIPathPassesThrough(t *testing.T) {
 
 	handler := DemoAuthMiddleware()(backend)
 
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", http.NoBody)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
@@ -69,7 +69,7 @@ func TestDemoAuthMiddleware_ClaimsAccessibleViaUserFromContext(t *testing.T) {
 
 	for _, path := range paths {
 		extractedClaims = nil
-		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 

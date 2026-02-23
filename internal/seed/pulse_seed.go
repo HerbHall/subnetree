@@ -183,7 +183,7 @@ func seedPulseResults(ctx context.Context, store *pulse.PulseStore, checks map[s
 		t := dayAgo
 
 		for t.Before(now) {
-			latency := profile.baseLatency + rand.NormFloat64()*profile.jitter
+			latency := profile.baseLatency + rand.NormFloat64()*profile.jitter //nolint:gosec // G404: seed data uses weak RNG intentionally
 			if latency < 0.1 {
 				latency = 0.1
 			}
@@ -196,9 +196,9 @@ func seedPulseResults(ctx context.Context, store *pulse.PulseStore, checks map[s
 
 			packetLoss := 0.0
 			success := true
-			if rand.Float64() < profile.lossRate {
+			if rand.Float64() < profile.lossRate { //nolint:gosec // G404: seed data
 				packetLoss = 33.3 // one of three packets lost
-				if rand.Float64() < profile.lossRate*2 {
+				if rand.Float64() < profile.lossRate*2 { //nolint:gosec // G404: seed data
 					success = false
 					packetLoss = 100.0
 					latency = 0

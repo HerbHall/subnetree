@@ -97,9 +97,7 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 		middlewares = append(middlewares, auth.Middleware())
 	}
 	if demoMode {
-		middlewares = append(middlewares, func(next http.Handler) http.Handler {
-			return DemoMiddleware(next)
-		})
+		middlewares = append(middlewares, DemoMiddleware)
 		logger.Warn("DEMO MODE ACTIVE: all write operations are blocked")
 	}
 
