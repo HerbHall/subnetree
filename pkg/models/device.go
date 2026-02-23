@@ -45,6 +45,7 @@ const (
 	DiscoveryUPnP   DiscoveryMethod = "upnp"
 	DiscoveryMQTT   DiscoveryMethod = "mqtt"
 	DiscoveryManual DiscoveryMethod = "manual"
+	DiscoveryWiFi   DiscoveryMethod = "wifi"
 )
 
 // Device represents a network device tracked by SubNetree.
@@ -77,7 +78,15 @@ type Device struct {
 	// Network hierarchy metadata from hierarchy inference.
 	ParentDeviceID string `json:"parent_device_id,omitempty"`
 	NetworkLayer   int    `json:"network_layer,omitempty" example:"4"` // 0=unknown, 1=gateway, 2=distribution, 3=access, 4=endpoint
+	ConnectionType string `json:"connection_type,omitempty" example:"wifi"` // "wired", "wifi", "unknown"
 }
+
+// ConnectionType indicates how a device connects to the network.
+const (
+	ConnectionWired   = "wired"
+	ConnectionWiFi    = "wifi"
+	ConnectionUnknown = "unknown"
+)
 
 // Network layer constants for hierarchy inference.
 const (

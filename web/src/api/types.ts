@@ -75,7 +75,10 @@ export type DeviceType =
   | 'unknown'
 
 /** How the device was discovered. */
-export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp'
+export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp' | 'wifi'
+
+/** How the device connects to the network. */
+export type ConnectionType = 'wired' | 'wifi' | 'unknown'
 
 /** Device as returned by topology/device endpoints. */
 export interface Device {
@@ -101,6 +104,7 @@ export interface Device {
   classification_confidence?: number
   classification_source?: string
   classification_signals?: string
+  connection_type?: ConnectionType
 }
 
 /** Topology node (simplified device for graph display). */

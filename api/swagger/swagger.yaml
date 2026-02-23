@@ -328,6 +328,10 @@ definitions:
       classification_source:
         example: snmp_bridge_mib
         type: string
+      connection_type:
+        description: '"wired", "wifi", "unknown"'
+        example: wifi
+        type: string
       custom_fields:
         additionalProperties:
           type: string
@@ -608,6 +612,7 @@ definitions:
     - upnp
     - mqtt
     - manual
+    - wifi
     type: string
     x-enum-varnames:
     - DiscoveryAgent
@@ -618,6 +623,7 @@ definitions:
     - DiscoveryUPnP
     - DiscoveryMQTT
     - DiscoveryManual
+    - DiscoveryWiFi
   github_com_HerbHall_subnetree_pkg_models.FleetSummary:
     properties:
       avg_cpu:

@@ -5662,6 +5662,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "snmp_bridge_mib"
                 },
+                "connection_type": {
+                    "description": "\"wired\", \"wifi\", \"unknown\"",
+                    "type": "string",
+                    "example": "wifi"
+                },
                 "custom_fields": {
                     "type": "object",
                     "additionalProperties": {
@@ -6041,7 +6046,8 @@ const docTemplate = `{
                 "mdns",
                 "upnp",
                 "mqtt",
-                "manual"
+                "manual",
+                "wifi"
             ],
             "x-enum-varnames": [
                 "DiscoveryAgent",
@@ -6051,7 +6057,8 @@ const docTemplate = `{
                 "DiscoverymDNS",
                 "DiscoveryUPnP",
                 "DiscoveryMQTT",
-                "DiscoveryManual"
+                "DiscoveryManual",
+                "DiscoveryWiFi"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {
