@@ -68,6 +68,8 @@ const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   phone: 'Phone',
   tablet: 'Tablet',
   camera: 'Camera',
+  virtual_machine: 'Virtual Machine',
+  container: 'Container',
   unknown: 'Unknown',
 }
 

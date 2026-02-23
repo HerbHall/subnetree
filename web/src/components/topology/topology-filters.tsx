@@ -16,6 +16,7 @@ import {
   Phone,
   Tablet,
   Camera,
+  Container,
   CircleHelp,
   type LucideIcon,
 } from 'lucide-react'
@@ -55,6 +56,8 @@ const deviceTypeIcons: Record<DeviceType, LucideIcon> = {
   phone: Phone,
   tablet: Tablet,
   camera: Camera,
+  virtual_machine: Server,
+  container: Container,
   unknown: CircleHelp,
 }
 
@@ -73,6 +76,8 @@ const deviceTypeLabels: Record<DeviceType, string> = {
   phone: 'Phone',
   tablet: 'Tablet',
   camera: 'Camera',
+  virtual_machine: 'VM',
+  container: 'Container',
   unknown: 'Unknown',
 }
 
