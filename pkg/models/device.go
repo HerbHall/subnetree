@@ -20,6 +20,8 @@ const (
 	DeviceTypePhone       DeviceType = "phone"
 	DeviceTypeTablet      DeviceType = "tablet"
 	DeviceTypeCamera      DeviceType = "camera"
+	DeviceTypeVM          DeviceType = "virtual_machine"
+	DeviceTypeContainer   DeviceType = "container"
 	DeviceTypeUnknown     DeviceType = "unknown"
 )
 
@@ -44,8 +46,9 @@ const (
 	DiscoverymDNS   DiscoveryMethod = "mdns"
 	DiscoveryUPnP   DiscoveryMethod = "upnp"
 	DiscoveryMQTT   DiscoveryMethod = "mqtt"
-	DiscoveryManual DiscoveryMethod = "manual"
-	DiscoveryWiFi   DiscoveryMethod = "wifi"
+	DiscoveryManual  DiscoveryMethod = "manual"
+	DiscoveryWiFi    DiscoveryMethod = "wifi"
+	DiscoveryProxmox DiscoveryMethod = "proxmox"
 )
 
 // Device represents a network device tracked by SubNetree.

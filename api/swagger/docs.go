@@ -3763,6 +3763,157 @@ const docTemplate = `{
                 }
             }
         },
+        "/recon/proxmox/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Connects to a Proxmox VE host, enumerates VMs and containers, and syncs them as child devices with resource snapshots.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Trigger Proxmox sync",
+                "parameters": [
+                    {
+                        "description": "Proxmox connection details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.ProxmoxSyncRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.ProxmoxSyncResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/proxmox/vms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all Proxmox-managed VMs and containers with their latest resource snapshots.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "List Proxmox VMs and containers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by parent host device ID",
+                        "name": "parent_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (online/offline)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_recon.ProxmoxResource"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
+        "/recon/proxmox/vms/{id}/resources": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the latest resource snapshot for a specific Proxmox VM or container.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Get VM/container resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID of the VM/container",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_recon.ProxmoxResource"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/scan": {
             "post": {
                 "security": [
@@ -5541,6 +5692,13 @@ const docTemplate = `{
                 "TierSBC": "Pi, SBC (1 GB)",
                 "TierSMB": "Small business server"
             },
+            "x-enum-descriptions": [
+                "Pi, SBC (1 GB)",
+                "Intel N100 (8-32 GB)",
+                "Synology/QNAP (Scout only)",
+                "Proxmox cluster",
+                "Small business server"
+            ],
             "x-enum-varnames": [
                 "TierSBC",
                 "TierMiniPC",
@@ -5561,6 +5719,11 @@ const docTemplate = `{
                 "IntegrationPossible": "Feasible, not scheduled",
                 "IntegrationShipped": "Already works"
             },
+            "x-enum-descriptions": [
+                "Already works",
+                "On roadmap",
+                "Feasible, not scheduled"
+            ],
             "x-enum-varnames": [
                 "IntegrationShipped",
                 "IntegrationPlanned",
@@ -6016,6 +6179,8 @@ const docTemplate = `{
                 "phone",
                 "tablet",
                 "camera",
+                "virtual_machine",
+                "container",
                 "unknown"
             ],
             "x-enum-varnames": [
@@ -6033,6 +6198,8 @@ const docTemplate = `{
                 "DeviceTypePhone",
                 "DeviceTypeTablet",
                 "DeviceTypeCamera",
+                "DeviceTypeVM",
+                "DeviceTypeContainer",
                 "DeviceTypeUnknown"
             ]
         },
@@ -6047,7 +6214,8 @@ const docTemplate = `{
                 "upnp",
                 "mqtt",
                 "manual",
-                "wifi"
+                "wifi",
+                "proxmox"
             ],
             "x-enum-varnames": [
                 "DiscoveryAgent",
@@ -6058,7 +6226,8 @@ const docTemplate = `{
                 "DiscoveryUPnP",
                 "DiscoveryMQTT",
                 "DiscoveryManual",
-                "DiscoveryWiFi"
+                "DiscoveryWiFi",
+                "DiscoveryProxmox"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {
@@ -7342,6 +7511,91 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total_devices": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_recon.ProxmoxResource": {
+            "type": "object",
+            "properties": {
+                "collected_at": {
+                    "type": "string"
+                },
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "device_name": {
+                    "type": "string"
+                },
+                "device_type": {
+                    "type": "string"
+                },
+                "disk_total_gb": {
+                    "type": "integer"
+                },
+                "disk_used_gb": {
+                    "type": "integer"
+                },
+                "mem_total_mb": {
+                    "type": "integer"
+                },
+                "mem_used_mb": {
+                    "type": "integer"
+                },
+                "netin_bytes": {
+                    "type": "integer"
+                },
+                "netout_bytes": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "uptime_sec": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_recon.ProxmoxSyncRequest": {
+            "type": "object",
+            "properties": {
+                "base_url": {
+                    "type": "string",
+                    "example": "https://pve:8006"
+                },
+                "host_device_id": {
+                    "type": "string",
+                    "example": "device-uuid"
+                },
+                "token_id": {
+                    "type": "string",
+                    "example": "user@pam!token"
+                },
+                "token_secret": {
+                    "type": "string",
+                    "example": "uuid-secret-here"
+                }
+            }
+        },
+        "internal_recon.ProxmoxSyncResult": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "lxcs_found": {
+                    "type": "integer"
+                },
+                "nodes_scanned": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                },
+                "vms_found": {
                     "type": "integer"
                 }
             }

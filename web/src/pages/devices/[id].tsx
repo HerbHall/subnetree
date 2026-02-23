@@ -67,6 +67,7 @@ import { getDeviceMetrics } from '@/api/pulse'
 import { getSNMPSystemInfo, getSNMPInterfaces, runTraceroute } from '@/api/recon'
 import { runDiagPing, runDiagDNS, runDiagPortCheck } from '@/api/diagnostics'
 import { getDeviceHardware } from '@/api/hardware'
+import { ProxmoxResources } from '@/components/ProxmoxResources'
 import { listDeviceCredentials } from '@/api/vault'
 import type { DeviceType, DeviceStatus, Scan, Service, ServiceType, DesiredState, MetricName, MetricRange, TracerouteResult, DiagPingResult, DiagDNSResult, DiagPortCheckResult } from '@/api/types'
 import { TimeSeriesChart } from '@/components/time-series-chart'
@@ -91,6 +92,8 @@ const deviceTypeIcons: Record<DeviceType, LucideIcon> = {
   phone: Phone,
   tablet: Tablet,
   camera: Camera,
+  virtual_machine: Server,
+  container: Container,
   unknown: CircleHelp,
 }
 
@@ -109,6 +112,8 @@ const deviceTypeLabels: Record<DeviceType, string> = {
   phone: 'Phone',
   tablet: 'Tablet',
   camera: 'Camera',
+  virtual_machine: 'Virtual Machine',
+  container: 'Container',
   unknown: 'Unknown',
 }
 
@@ -712,6 +717,9 @@ export function DeviceDetailPage() {
 
       {/* Hardware Profile */}
       {id && <HardwareProfileSection deviceId={id} />}
+
+      {/* Virtualization (Proxmox VMs/containers) */}
+      {id && device.device_type === 'server' && <ProxmoxResources deviceId={id} />}
 
       {/* SNMP Information (only for SNMP-discovered devices) */}
       {device.discovery_method === 'snmp' && id && (

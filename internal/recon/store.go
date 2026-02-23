@@ -617,6 +617,31 @@ func (s *ReconStore) MarkDeviceOffline(ctx context.Context, deviceID string) err
 	return nil
 }
 
+// UpdateDeviceStatus updates a device's status and last_seen timestamp.
+func (s *ReconStore) UpdateDeviceStatus(ctx context.Context, deviceID string, status models.DeviceStatus, lastSeen time.Time) error {
+	var oldStatus string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT status FROM recon_devices WHERE id = ?`, deviceID,
+	).Scan(&oldStatus)
+	if err != nil {
+		return fmt.Errorf("read device status: %w", err)
+	}
+
+	newStatus := string(status)
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET status = ?, last_seen = ? WHERE id = ?`,
+		newStatus, lastSeen, deviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("update device status: %w", err)
+	}
+
+	if oldStatus != newStatus {
+		s.recordStatusChange(ctx, deviceID, oldStatus, newStatus)
+	}
+	return nil
+}
+
 // scanDevice scans a single row into a Device.
 func (s *ReconStore) scanDevice(row *sql.Row) (*models.Device, error) {
 	var d models.Device
