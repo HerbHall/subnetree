@@ -44,6 +44,7 @@ import type { Device, DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useScanStore } from '@/stores/scan'
+import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 
 type ViewMode = 'grid' | 'list' | 'table'
 type SortField = 'hostname' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
@@ -553,6 +554,11 @@ export function DevicesPage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Status filter */}
           <div className="flex items-center gap-1">
+            <HelpPopover title="Device Status">
+              <p className="text-xs text-muted-foreground"><strong>Online:</strong> Responded to the most recent scan.</p>
+              <p className="text-xs text-muted-foreground"><strong>Offline:</strong> Did not respond to the most recent scan.</p>
+              <p className="text-xs text-muted-foreground"><strong>Stale:</strong> Not seen for 7+ days. May be powered off, disconnected, or decommissioned.</p>
+            </HelpPopover>
             <StatusPill
               label="All"
               count={totalDevices}
@@ -783,12 +789,12 @@ export function DevicesPage() {
                     Manufacturer {getSortIcon('manufacturer')}
                   </SortableHeader>
                   <SortableHeader field="device_type" current={sortField} onClick={handleSort}>
-                    Type {getSortIcon('device_type')}
+                    Type <HelpIcon content="Device type is auto-detected from network signatures (OUI, SNMP, LLDP). You can override it on the device detail page." /> {getSortIcon('device_type')}
                   </SortableHeader>
                   <th className="px-4 py-1.5 text-left font-medium">Category</th>
                   <th className="px-4 py-1.5 text-left font-medium">Owner</th>
                   <SortableHeader field="status" current={sortField} onClick={handleSort}>
-                    Status {getSortIcon('status')}
+                    Status <HelpIcon content="Based on the most recent network scan. Stale devices haven't responded in 7+ days." /> {getSortIcon('status')}
                   </SortableHeader>
                   <th className="px-4 py-1.5 text-left font-medium w-12">
                     <span className="sr-only">Actions</span>
@@ -797,7 +803,7 @@ export function DevicesPage() {
               </thead>
               <tbody className="divide-y">
                 {hasMultipleSubnets ? (
-                  subnetGroups.map(group => (
+                  subnetGroups.map((group, idx) => (
                     <SubnetTableGroup
                       key={group.subnet}
                       group={group}
@@ -807,6 +813,7 @@ export function DevicesPage() {
                       onToggleSelect={toggleSelect}
                       getVerificationState={getVerificationState}
                       onDeleteClick={handleDeleteClick}
+                      showHelp={idx === 0}
                     />
                   ))
                 ) : (
@@ -831,12 +838,13 @@ export function DevicesPage() {
       {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'grid' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {hasMultipleSubnets ? (
-            subnetGroups.map(group => (
+            subnetGroups.map((group, idx) => (
               <SubnetGridGroup
                 key={group.subnet}
                 group={group}
                 expanded={expandedSubnets.has(group.subnet)}
                 onToggle={() => toggleSubnet(group.subnet)}
+                showHelp={idx === 0}
               />
             ))
           ) : (
@@ -851,12 +859,13 @@ export function DevicesPage() {
       {!isLoading && !error && sortedDevices.length > 0 && viewMode === 'list' && (
         <div className="space-y-2">
           {hasMultipleSubnets ? (
-            subnetGroups.map(group => (
+            subnetGroups.map((group, idx) => (
               <SubnetListGroup
                 key={group.subnet}
                 group={group}
                 expanded={expandedSubnets.has(group.subnet)}
                 onToggle={() => toggleSubnet(group.subnet)}
+                showHelp={idx === 0}
               />
             ))
           ) : (
@@ -951,6 +960,7 @@ export function DevicesPage() {
               {selectedIds.size}
             </span>
             <span className="text-sm text-muted-foreground">selected</span>
+            <HelpIcon content="Bulk actions apply to all selected devices. Use checkboxes in the table to select devices." />
 
             <div className="h-4 w-px bg-border" />
 
@@ -1286,6 +1296,13 @@ function DeviceCardSkeleton() {
   )
 }
 
+// Subnet help tooltip shown in the first group header
+function SubnetGroupHelp() {
+  return (
+    <HelpIcon content="Devices are grouped by /24 subnet based on their primary IP address. Click a group header to expand or collapse." />
+  )
+}
+
 // Subnet status summary badges used in group headers
 function SubnetStatusBadges({ group }: { group: SubnetGroup }) {
   return (
@@ -1415,6 +1432,7 @@ function SubnetTableGroup({
   onToggleSelect,
   getVerificationState,
   onDeleteClick,
+  showHelp,
 }: {
   group: SubnetGroup
   expanded: boolean
@@ -1423,6 +1441,7 @@ function SubnetTableGroup({
   onToggleSelect: (deviceId: string) => void
   getVerificationState: (ips: string[]) => 'checking' | 'verified' | 'new' | null
   onDeleteClick: (e: React.MouseEvent, deviceId: string) => void
+  showHelp?: boolean
 }) {
   return (
     <>
@@ -1441,6 +1460,7 @@ function SubnetTableGroup({
             <span className="text-xs text-muted-foreground">
               {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
             </span>
+            {showHelp && <SubnetGroupHelp />}
             <SubnetStatusBadges group={group} />
           </div>
         </td>
@@ -1464,10 +1484,12 @@ function SubnetGridGroup({
   group,
   expanded,
   onToggle,
+  showHelp,
 }: {
   group: SubnetGroup
   expanded: boolean
   onToggle: () => void
+  showHelp?: boolean
 }) {
   return (
     <>
@@ -1484,6 +1506,7 @@ function SubnetGridGroup({
         <span className="text-xs text-muted-foreground">
           {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
         </span>
+        {showHelp && <SubnetGroupHelp />}
         <SubnetStatusBadges group={group} />
       </div>
       {expanded && group.devices.map(device => (
@@ -1498,10 +1521,12 @@ function SubnetListGroup({
   group,
   expanded,
   onToggle,
+  showHelp,
 }: {
   group: SubnetGroup
   expanded: boolean
   onToggle: () => void
+  showHelp?: boolean
 }) {
   return (
     <>
@@ -1518,6 +1543,7 @@ function SubnetListGroup({
         <span className="text-xs text-muted-foreground">
           {group.devices.length} device{group.devices.length !== 1 ? 's' : ''}
         </span>
+        {showHelp && <SubnetGroupHelp />}
         <SubnetStatusBadges group={group} />
       </div>
       {expanded && group.devices.map(device => (
