@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test in release pipeline, classification confidence on Device model, ICMP traceroute. Sprint 2: SNMP FDB table walks, seed data, interactive diagnostic tools. Sprint 3: network hierarchy inference, Playwright E2E tests. Post-QC: one-click Scout deployment with install scripts. Sprint 4: Linux GPU detection, Proxmox VE collector, hardware refresh endpoint, Inno Setup Windows installer. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test, classification confidence, ICMP traceroute. Sprint 2: SNMP FDB walks, seed data, interactive diagnostics. Sprint 3: network hierarchy, E2E tests. Post-QC: one-click Scout deployment. Sprint 4: MCP server, Linux GPU + Proxmox VE collectors, Inno Setup installer. Sprint 5: Windows Scout service mode + installer, subnet grouping, contextual help. Sprint 6: WiFi scanning (Linux + Windows), demo mode with Pulse seed data. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning, MFA/TOTP.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -331,6 +331,9 @@
 - [x] Network hierarchy inference from scan data -- NetworkLayer field on Device (Sprint 3, PR #408)
 - [x] ICMP traceroute: `POST /api/v1/recon/traceroute` (Sprint 1, PR #402)
 - [x] Classification confidence persisted on Device model: ClassificationConfidence, ClassificationSource, ClassificationSignals fields (Sprint 1, PR #401)
+- [x] WiFi heuristic detection: connection_type field, OUI + TTL + DHCP scoring (PR #458)
+- [x] Active WiFi scanning: Linux (mdlayher/wifi nl80211), Windows (Wlanapi.dll), stub for others (Sprint 6, PR #461)
+- [ ] WiFi hotspot client enumeration for AP-mode servers (#460)
 - [ ] Tailscale plugin: tailnet device discovery via Tailscale API
 - [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
 - [ ] Tailscale plugin: Tailscale IP enrichment on existing device records
@@ -455,6 +458,10 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] One-click Scout agent deployment with install scripts and download redirects (PR #432)
 - [x] GoReleaser bare binary archive for Scout (PR #432)
 - [x] Inno Setup 6 Windows Scout installer with CI workflow (Sprint 4, PR #446)
+- [x] Windows Scout: run as Windows service via `golang.org/x/sys/windows/svc` (Sprint 5, PR #451)
+- [x] Windows Scout installer: service registration + Start Menu entry (Sprint 5, PR #453)
+- [x] Dashboard: subnet grouping with collapsible headers (Sprint 5, PR #452)
+- [x] Dashboard: contextual help and tooltips across all 9 pages (Sprint 5, PRs #454, #455)
 - [x] Dashboard: light theme color overrides for topology and charts (QC, PR #420)
 - [x] Dashboard: compact device table rows, default sort by IP (QC, PR #422)
 - [x] Dashboard: increased default page size to 256 for full Class C (QC, PR #424)
@@ -465,6 +472,8 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] govulncheck in CI pipeline (Trivy TODO)
 - [x] CI smoke test in release pipeline (Sprint 1, PR #400)
 - [x] Seed data for staging/demo environments (Sprint 2, PR #404)
+- [x] Demo mode: read-only middleware, auth bypass with synthetic viewer claims, Pulse seed data (Sprint 6, PR #462)
+- [x] MCP server: dual transport HTTP + stdio, DeviceQuerier interface, official Go SDK (Sprint 4, PR #445)
 - [ ] IPv6 scanning and agent communication support
 - [ ] Per-tenant rate limiting
 - [ ] Public demo instance: read-only demo on free-tier cloud (Oracle Cloud ARM64 or similar) with synthetic data, linked from README and website *(deferred: launch when product is stable and feature-rich)*

@@ -120,8 +120,9 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 
 ### Discovery and Mapping
 
-- Finds every device on your network automatically (ARP, ICMP, mDNS, SNMP, LLDP/CDP scanning with manufacturer identification)
+- Finds every device on your network automatically (ARP, ICMP, mDNS, SNMP, LLDP/CDP, WiFi scanning with manufacturer identification)
 - Classifies devices by type using weighted confidence scoring (MAC OUI, SNMP, LLDP, port fingerprinting, TTL analysis)
+- Scans nearby WiFi networks to discover access points (Linux nl80211, Windows Wlanapi)
 - Detects unmanaged switches and infers network hierarchy from scan data
 - Interactive network topology map showing how devices connect across layers
 - SNMP FDB table walks reveal which devices are connected to which switch ports
@@ -147,9 +148,9 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 
 ### Remote Access
 
-- Launch any device's web UI or SSH session with one click -- no re-typing passwords
+- Launch any device's web UI with one click -- no re-typing passwords
 - Browse remote services through a built-in reverse proxy (HTTP)
-- SSH-in-browser via WebSocket with full session audit trail
+- SSH gateway with WebSocket transport and session audit trail (browser terminal UI planned)
 
 ### Infrastructure Documentation
 
@@ -165,7 +166,9 @@ See [deploy/scout/](deploy/scout/) for the systemd service file and install scri
 - First-run setup wizard -- no manual configuration needed
 - Backup and restore your data with a single CLI command
 - One-click Scout agent deployment with platform-specific installers and download page
+- Subnet grouping with collapsible headers and contextual help across all pages
 - CSV import/export for bulk device management
+- Demo mode for showcasing without setup (`--demo` flag or `NV_DEMO_MODE=true`)
 - Ready-to-run Docker image with health checks
 
 ### Coming Next
@@ -355,8 +358,8 @@ api/
 - **v0.4.x** (shipped): mDNS discovery, metrics history, alert suppression, vault UI, analytics dashboard
 - **v0.5.0** (shipped): MQTT publisher, Alertmanager webhooks, CSV import/export, recommendation engine
 - **v0.6.x** (shipped): Device classification engine, LLDP discovery, composite scoring, scan analytics, network hierarchy
-- **Current**: Traceroute, diagnostics, SNMP FDB walks, E2E tests, ongoing hardening
-- **v1.0.0**: PostgreSQL, MFA, OIDC, Tailscale, multi-tenant
+- **Sprints 1-6** (shipped): Traceroute, diagnostics, SNMP FDB walks, E2E tests, hardware profiles, MCP server, WiFi scanning, demo mode, Windows Scout service + installer, contextual help
+- **Next**: Proxmox VE monitoring, MFA/TOTP, Tailscale, multi-tenant, PostgreSQL
 
 ## License
 
