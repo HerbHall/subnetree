@@ -17,7 +17,8 @@ test.describe('Devices', () => {
     await page.goto('/devices')
 
     // The subtitle shows device count like "20 devices" or "0 devices"
-    await expect(page.getByText(/\d+ devices?/)).toBeVisible({ timeout: 10_000 })
+    // Use .first() because subnet grouping shows per-group counts too
+    await expect(page.getByText(/\d+ devices?/).first()).toBeVisible({ timeout: 10_000 })
   })
 
   test('devices page has search input', async ({ page }) => {

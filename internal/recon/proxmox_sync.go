@@ -187,10 +187,10 @@ func (s *ProxmoxSyncer) markUnseen(ctx context.Context, hostDeviceID string, see
 	if err != nil {
 		return fmt.Errorf("find proxmox children: %w", err)
 	}
-	for _, d := range devices {
-		if !seen[d.ID] && d.Status == models.DeviceStatusOnline {
-			if markErr := s.store.MarkDeviceOffline(ctx, d.ID); markErr != nil {
-				s.logger.Warn("failed to mark unseen device offline", zap.String("device_id", d.ID), zap.Error(markErr))
+	for i := range devices {
+		if !seen[devices[i].ID] && devices[i].Status == models.DeviceStatusOnline {
+			if markErr := s.store.MarkDeviceOffline(ctx, devices[i].ID); markErr != nil {
+				s.logger.Warn("failed to mark unseen device offline", zap.String("device_id", devices[i].ID), zap.Error(markErr))
 			}
 		}
 	}
