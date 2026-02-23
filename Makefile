@@ -70,6 +70,9 @@ proto:
 swagger:
 	@which swag > /dev/null 2>&1 || (echo "swag not found. Install: go install github.com/swaggo/swag/cmd/swag@latest" && exit 1)
 	swag init -g cmd/subnetree/main.go -o api/swagger --parseDependency --parseInternal
+	@# Strip x-enum-descriptions blocks (Windows swag generates them, Linux CI doesn't)
+	@perl -i -0pe 's/\s*"x-enum-descriptions":\s*\[[^\]]*\],?//gs' api/swagger/docs.go api/swagger/swagger.json
+	@perl -i -0pe 's/^    x-enum-descriptions:\n(    - [^\n]*\n)*//gm' api/swagger/swagger.yaml
 
 # Allowed licenses for dependencies (BSL 1.1 compatible)
 ALLOWED_LICENSES=Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0
