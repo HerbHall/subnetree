@@ -246,6 +246,7 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 		{"classify", func(ctx context.Context) { o.classifyDevices(ctx, alive, arpTable) }},
 		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
 		{"fdb-walk", func(ctx context.Context) { o.walkSwitchFDBTables(ctx) }},
+		{"wifi-heuristic", func(ctx context.Context) { o.analyzeWiFiConnections(ctx) }},
 		{"topology-links", func(ctx context.Context) { o.inferTopologyLinks(ctx, subnet, alive) }},
 		{"hierarchy", func(ctx context.Context) { o.inferHierarchy(ctx) }},
 		{"service-movements", func(ctx context.Context) { o.detectAndPublishServiceMovements(ctx, alive) }},
@@ -719,4 +720,12 @@ func (o *ScanOrchestrator) publishEvent(ctx context.Context, topic string, paylo
 		Timestamp: time.Now(),
 		Payload:   payload,
 	})
+}
+
+// analyzeWiFiConnections runs WiFi heuristic analysis on all devices after
+// FDB data is available. Sets ConnectionType to "wired" for devices found in
+// switch FDB tables and infers "wifi" for devices matching wireless heuristics.
+func (o *ScanOrchestrator) analyzeWiFiConnections(ctx context.Context) {
+	analyzer := NewWiFiHeuristicAnalyzer(o.store, o.logger.Named("wifi-heuristic"))
+	analyzer.AnalyzeAll(ctx)
 }

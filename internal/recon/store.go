@@ -216,17 +216,25 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 			classSignals = existing.ClassificationSignals
 		}
 
+		// Merge connection type: prefer non-empty/non-unknown incoming value.
+		connType := existing.ConnectionType
+		if device.ConnectionType != "" && device.ConnectionType != models.ConnectionUnknown {
+			connType = device.ConnectionType
+		}
+
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE recon_devices SET
 				ip_addresses = ?, mac_address = ?, manufacturer = ?,
 				hostname = ?, os = ?, location = ?, category = ?, primary_role = ?, owner = ?, tags = ?,
 				status = ?, discovery_method = ?, device_type = ?, last_seen = ?,
-				classification_confidence = ?, classification_source = ?, classification_signals = ?
+				classification_confidence = ?, classification_source = ?, classification_signals = ?,
+				connection_type = ?
 			WHERE id = ?`,
 			string(ipsJSON), mac, manufacturer,
 			hostname, osField, location, category, primaryRole, owner, string(tagsJSON),
 			newStatus, string(method), deviceType, now,
 			classConfidence, classSource, classSignals,
+			connType,
 			existing.ID,
 		)
 		if err != nil {
@@ -257,6 +265,10 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 		cfJSON = []byte("{}")
 	}
 
+	connType := device.ConnectionType
+	if connType == "" {
+		connType = models.ConnectionUnknown
+	}
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO recon_devices (
 			id, hostname, ip_addresses, mac_address, manufacturer,
@@ -264,14 +276,14 @@ func (s *ReconStore) UpsertDevice(ctx context.Context, device *models.Device) (c
 			first_seen, last_seen, notes, tags, custom_fields,
 			location, category, primary_role, owner,
 			classification_confidence, classification_source, classification_signals,
-			parent_device_id, network_layer
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			parent_device_id, network_layer, connection_type
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
 		device.Location, device.Category, device.PrimaryRole, device.Owner,
 		device.ClassificationConfidence, device.ClassificationSource, device.ClassificationSignals,
-		device.ParentDeviceID, device.NetworkLayer,
+		device.ParentDeviceID, device.NetworkLayer, connType,
 	)
 	if err != nil {
 		return false, fmt.Errorf("insert device: %w", err)
@@ -289,7 +301,7 @@ func (s *ReconStore) GetDevice(ctx context.Context, id string) (*models.Device, 
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices WHERE id = ?`, id))
 }
 
@@ -301,7 +313,7 @@ func (s *ReconStore) GetDeviceByMAC(ctx context.Context, mac string) (*models.De
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices WHERE mac_address = ?`, mac))
 }
 
@@ -314,7 +326,7 @@ func (s *ReconStore) GetDeviceByIP(ctx context.Context, ip string) (*models.Devi
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices WHERE ip_addresses LIKE ?`, "%\""+ip+"\"%"))
 }
 
@@ -326,7 +338,7 @@ func (s *ReconStore) GetDeviceByHostname(ctx context.Context, hostname string) (
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices WHERE hostname = ?`, hostname))
 }
 
@@ -381,7 +393,7 @@ func (s *ReconStore) ListDevices(ctx context.Context, opts ListDevicesOptions) (
 		"first_seen, last_seen, notes, tags, custom_fields, "+
 		"location, category, primary_role, owner, "+
 		"classification_confidence, classification_source, classification_signals, "+
-		"parent_device_id, network_layer "+
+		"parent_device_id, network_layer, connection_type "+
 		"FROM recon_devices WHERE "+where+" ORDER BY last_seen DESC LIMIT ? OFFSET ?",
 		queryArgs...)
 	if err != nil {
@@ -559,7 +571,7 @@ func (s *ReconStore) FindStaleDevices(ctx context.Context, threshold time.Time) 
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices WHERE status = ? AND last_seen < ?`,
 		string(models.DeviceStatusOnline), threshold,
 	)
@@ -616,7 +628,7 @@ func (s *ReconStore) scanDevice(row *sql.Row) (*models.Device, error) {
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
 		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 		&d.ClassificationConfidence, &d.ClassificationSource, &d.ClassificationSignals,
-		&d.ParentDeviceID, &d.NetworkLayer,
+		&d.ParentDeviceID, &d.NetworkLayer, &d.ConnectionType,
 	)
 	if err != nil {
 		return nil, err
@@ -641,7 +653,7 @@ func (s *ReconStore) scanDeviceRow(rows *sql.Rows) (*models.Device, error) {
 		&d.FirstSeen, &d.LastSeen, &d.Notes, &tagsJSON, &cfJSON,
 		&d.Location, &d.Category, &d.PrimaryRole, &d.Owner,
 		&d.ClassificationConfidence, &d.ClassificationSource, &d.ClassificationSignals,
-		&d.ParentDeviceID, &d.NetworkLayer,
+		&d.ParentDeviceID, &d.NetworkLayer, &d.ConnectionType,
 	)
 	if err != nil {
 		return nil, err
@@ -792,6 +804,10 @@ func (s *ReconStore) InsertManualDevice(ctx context.Context, device *models.Devi
 		cfJSON = []byte("{}")
 	}
 
+	manualConnType := device.ConnectionType
+	if manualConnType == "" {
+		manualConnType = models.ConnectionUnknown
+	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO recon_devices (
 			id, hostname, ip_addresses, mac_address, manufacturer,
@@ -799,14 +815,14 @@ func (s *ReconStore) InsertManualDevice(ctx context.Context, device *models.Devi
 			first_seen, last_seen, notes, tags, custom_fields,
 			location, category, primary_role, owner,
 			classification_confidence, classification_source, classification_signals,
-			parent_device_id, network_layer
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			parent_device_id, network_layer, connection_type
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		device.ID, device.Hostname, string(ipsJSON), device.MACAddress, device.Manufacturer,
 		string(device.DeviceType), device.OS, string(device.Status), string(device.DiscoveryMethod), device.AgentID,
 		now, now, device.Notes, string(tagsJSON), string(cfJSON),
 		device.Location, device.Category, device.PrimaryRole, device.Owner,
 		device.ClassificationConfidence, device.ClassificationSource, device.ClassificationSignals,
-		device.ParentDeviceID, device.NetworkLayer,
+		device.ParentDeviceID, device.NetworkLayer, manualConnType,
 	)
 	if err != nil {
 		return fmt.Errorf("insert manual device: %w", err)
@@ -1464,7 +1480,7 @@ func (s *ReconStore) ListAllDevices(ctx context.Context) ([]models.Device, error
 		first_seen, last_seen, notes, tags, custom_fields,
 		location, category, primary_role, owner,
 		classification_confidence, classification_source, classification_signals,
-		parent_device_id, network_layer
+		parent_device_id, network_layer, connection_type
 		FROM recon_devices`)
 	if err != nil {
 		return nil, fmt.Errorf("list all devices: %w", err)
@@ -1480,4 +1496,37 @@ func (s *ReconStore) ListAllDevices(ctx context.Context) ([]models.Device, error
 		devices = append(devices, *d)
 	}
 	return devices, rows.Err()
+}
+
+// UpdateDeviceConnectionType updates the connection_type for a single device.
+func (s *ReconStore) UpdateDeviceConnectionType(ctx context.Context, deviceID, connType string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE recon_devices SET connection_type = ? WHERE id = ?`,
+		connType, deviceID)
+	if err != nil {
+		return fmt.Errorf("update connection type: %w", err)
+	}
+	return nil
+}
+
+// GetAllFDBMACs returns a set of MAC addresses found in any FDB topology link.
+func (s *ReconStore) GetAllFDBMACs(ctx context.Context) (map[string]bool, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT d.mac_address
+		FROM recon_topology_links l
+		JOIN recon_devices d ON d.id = l.target_device_id
+		WHERE l.link_type = 'fdb' AND d.mac_address != ''`)
+	if err != nil {
+		return nil, fmt.Errorf("get FDB MACs: %w", err)
+	}
+	defer rows.Close()
+	macs := make(map[string]bool)
+	for rows.Next() {
+		var mac string
+		if err := rows.Scan(&mac); err != nil {
+			return nil, err
+		}
+		macs[strings.ToLower(mac)] = true
+	}
+	return macs, rows.Err()
 }

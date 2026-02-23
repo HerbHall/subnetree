@@ -318,5 +318,13 @@ func migrations() []plugin.Migration {
 				return nil
 			},
 		},
+		{
+			Version:     11,
+			Description: "add connection_type column to recon_devices for WiFi heuristic detection",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`ALTER TABLE recon_devices ADD COLUMN connection_type TEXT NOT NULL DEFAULT 'unknown'`)
+				return err
+			},
+		},
 	}
 }

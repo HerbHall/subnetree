@@ -238,6 +238,12 @@ definitions:
       TierNAS: Synology/QNAP (Scout only)
       TierSBC: Pi, SBC (1 GB)
       TierSMB: Small business server
+    x-enum-descriptions:
+    - Pi, SBC (1 GB)
+    - Intel N100 (8-32 GB)
+    - Synology/QNAP (Scout only)
+    - Proxmox cluster
+    - Small business server
     x-enum-varnames:
     - TierSBC
     - TierMiniPC
@@ -254,6 +260,10 @@ definitions:
       IntegrationPlanned: On roadmap
       IntegrationPossible: Feasible, not scheduled
       IntegrationShipped: Already works
+    x-enum-descriptions:
+    - Already works
+    - On roadmap
+    - Feasible, not scheduled
     x-enum-varnames:
     - IntegrationShipped
     - IntegrationPlanned
@@ -327,6 +337,10 @@ definitions:
         type: string
       classification_source:
         example: snmp_bridge_mib
+        type: string
+      connection_type:
+        description: '"wired", "wifi", "unknown"'
+        example: wifi
         type: string
       custom_fields:
         additionalProperties:
@@ -608,6 +622,7 @@ definitions:
     - upnp
     - mqtt
     - manual
+    - wifi
     type: string
     x-enum-varnames:
     - DiscoveryAgent
@@ -618,6 +633,7 @@ definitions:
     - DiscoveryUPnP
     - DiscoveryMQTT
     - DiscoveryManual
+    - DiscoveryWiFi
   github_com_HerbHall_subnetree_pkg_models.FleetSummary:
     properties:
       avg_cpu:

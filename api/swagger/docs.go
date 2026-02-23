@@ -5541,6 +5541,13 @@ const docTemplate = `{
                 "TierSBC": "Pi, SBC (1 GB)",
                 "TierSMB": "Small business server"
             },
+            "x-enum-descriptions": [
+                "Pi, SBC (1 GB)",
+                "Intel N100 (8-32 GB)",
+                "Synology/QNAP (Scout only)",
+                "Proxmox cluster",
+                "Small business server"
+            ],
             "x-enum-varnames": [
                 "TierSBC",
                 "TierMiniPC",
@@ -5561,6 +5568,11 @@ const docTemplate = `{
                 "IntegrationPossible": "Feasible, not scheduled",
                 "IntegrationShipped": "Already works"
             },
+            "x-enum-descriptions": [
+                "Already works",
+                "On roadmap",
+                "Feasible, not scheduled"
+            ],
             "x-enum-varnames": [
                 "IntegrationShipped",
                 "IntegrationPlanned",
@@ -5661,6 +5673,11 @@ const docTemplate = `{
                 "classification_source": {
                     "type": "string",
                     "example": "snmp_bridge_mib"
+                },
+                "connection_type": {
+                    "description": "\"wired\", \"wifi\", \"unknown\"",
+                    "type": "string",
+                    "example": "wifi"
                 },
                 "custom_fields": {
                     "type": "object",
@@ -6041,7 +6058,8 @@ const docTemplate = `{
                 "mdns",
                 "upnp",
                 "mqtt",
-                "manual"
+                "manual",
+                "wifi"
             ],
             "x-enum-varnames": [
                 "DiscoveryAgent",
@@ -6051,7 +6069,8 @@ const docTemplate = `{
                 "DiscoverymDNS",
                 "DiscoveryUPnP",
                 "DiscoveryMQTT",
-                "DiscoveryManual"
+                "DiscoveryManual",
+                "DiscoveryWiFi"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {

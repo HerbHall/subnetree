@@ -16,6 +16,7 @@ import {
   Trash2,
   Monitor,
   Wifi,
+  Cable,
   AlertCircle,
   AlertTriangle,
   MapPin,
@@ -1219,6 +1220,35 @@ function StatusBadge({ status }: { status: DeviceStatus }) {
   )
 }
 
+// Connection type badge (WiFi/Wired indicator)
+function ConnectionBadge({ type }: { type?: string }) {
+  if (!type || type === 'unknown') return null
+
+  if (type === 'wifi') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-500/10 text-blue-500"
+        title="WiFi connection (heuristic)"
+      >
+        <Wifi className="h-3 w-3" />
+      </span>
+    )
+  }
+
+  if (type === 'wired') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-500"
+        title="Wired connection (FDB confirmed)"
+      >
+        <Cable className="h-3 w-3" />
+      </span>
+    )
+  }
+
+  return null
+}
+
 // Status filter pill
 function StatusPill({
   label,
@@ -1372,7 +1402,10 @@ function DeviceTableRow({
         {device.manufacturer || '-'}
       </td>
       <td className="px-4 py-1.5">
-        <span className="capitalize">{device.device_type}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="capitalize">{device.device_type}</span>
+          <ConnectionBadge type={device.connection_type} />
+        </div>
       </td>
       <td className="px-4 py-1.5">
         {device.category ? (
