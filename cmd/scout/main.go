@@ -32,7 +32,7 @@ func main() {
 		versionCmd()
 	default:
 		// Backward compatibility: if first arg starts with "-", treat as "run" flags.
-		if len(os.Args[1]) > 0 && os.Args[1][0] == '-' {
+		if os.Args[1] != "" && os.Args[1][0] == '-' {
 			runCmd(os.Args[1:])
 			return
 		}
