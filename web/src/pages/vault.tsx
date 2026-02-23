@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { HelpPopover, HelpIcon, FieldHelp } from '@/components/contextual-help'
 import {
   listCredentials,
   createCredential,
@@ -182,6 +183,12 @@ function VaultStatusBanner({
               <p className="text-sm font-medium">
                 Vault is {isSealed ? 'sealed' : 'unsealed'}
                 {!isInitialized && ' (not initialized)'}
+                <HelpPopover title="Vault Seal / Unseal">
+                  <p className="text-xs text-muted-foreground">
+                    When sealed, the vault encrypts all stored credentials and they cannot be used.
+                    Unsealing requires your passphrase and allows SubNetree to use credentials for scanning and remote access.
+                  </p>
+                </HelpPopover>
               </p>
               {!isSealed && (
                 <p className="text-xs text-muted-foreground">
@@ -699,7 +706,10 @@ function CredentialForm({
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="cred-type">Type</Label>
+              <Label htmlFor="cred-type">
+                Type
+                <HelpIcon content="SNMP: community strings for device discovery. SSH: keys or passwords for remote access. API Key: tokens for service integration. HTTP Basic: username/password for web endpoints." />
+              </Label>
               <select
                 id="cred-type"
                 value={credType}
@@ -777,6 +787,9 @@ function CredentialForm({
                         required={field.required}
                         placeholder={`Enter ${field.label.toLowerCase()}`}
                       />
+                    )}
+                    {field.key === 'community' && (
+                      <FieldHelp text="The read-only community string used for SNMP queries. Default is typically 'public'." />
                     )}
                   </div>
                 ))}

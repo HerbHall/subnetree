@@ -36,6 +36,7 @@ import { getFleetSummary } from '@/api/services'
 import { useScanProgress } from '@/hooks/use-scan-progress'
 import type { Scan, ScanStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { HelpIcon, FieldHelp } from '@/components/contextual-help'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { NLQueryBar } from '@/components/nl-query-bar'
 import { RecommendationsWidget } from '@/components/insight/recommendations'
@@ -311,6 +312,7 @@ export function DashboardPage() {
           icon={Monitor}
           loading={loading}
           href="/devices"
+          helpText="All devices discovered on your network, regardless of current status."
         />
         <StatCard
           title="Online"
@@ -327,6 +329,7 @@ export function DashboardPage() {
           variant="danger"
           loading={loading}
           href="/devices?status=offline"
+          helpText="Devices that did not respond to the last network scan. May be powered off or disconnected."
         />
         <StatCard
           title="Degraded"
@@ -335,6 +338,7 @@ export function DashboardPage() {
           variant="warning"
           loading={loading}
           href="/devices?status=degraded"
+          helpText="Devices experiencing intermittent connectivity or high response times."
         />
       </div>
 
@@ -551,7 +555,10 @@ export function DashboardPage() {
       </Card>
 
       {/* AI Insight Query Bar */}
-      <NLQueryBar />
+      <div>
+        <NLQueryBar />
+        <FieldHelp text="Ask questions about your network in plain English, e.g., 'show all offline devices' or 'which devices are on subnet 10.0.1.0/24'." />
+      </div>
 
       {/* AI Recommendations */}
       <RecommendationsWidget />
@@ -744,6 +751,7 @@ function StatCard({
   variant = 'default',
   loading,
   href,
+  helpText,
 }: {
   title: string
   value: number
@@ -751,6 +759,7 @@ function StatCard({
   variant?: 'default' | 'success' | 'danger' | 'warning'
   loading?: boolean
   href?: string
+  helpText?: string
 }) {
   const variants = {
     default: {
@@ -778,7 +787,10 @@ function StatCard({
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">
+              {title}
+              {helpText && <HelpIcon content={helpText} />}
+            </p>
             {loading ? (
               <Skeleton className="h-8 w-12 mt-1" />
             ) : (

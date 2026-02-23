@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { HelpIcon, FieldHelp } from '@/components/contextual-help'
 import {
   listChecks,
   createCheck,
@@ -362,28 +363,34 @@ function CheckForm({
             required
             disabled={!!initial}
           />
-          <select
-            value={checkType}
-            onChange={(e) => setCheckType(e.target.value as CheckType)}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <option value="icmp">ICMP</option>
-            <option value="tcp">TCP</option>
-            <option value="http">HTTP</option>
-          </select>
+          <div>
+            <select
+              value={checkType}
+              onChange={(e) => setCheckType(e.target.value as CheckType)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="icmp">ICMP</option>
+              <option value="tcp">TCP</option>
+              <option value="http">HTTP</option>
+            </select>
+            <FieldHelp text="ICMP Ping: basic reachability. TCP: port connectivity. HTTP: full web endpoint check with status code validation." />
+          </div>
           <Input
             placeholder="Target (IP or URL)"
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             required
           />
-          <Input
-            type="number"
-            placeholder="Interval (s)"
-            value={interval}
-            onChange={(e) => setInterval(e.target.value)}
-            min={5}
-          />
+          <div>
+            <Input
+              type="number"
+              placeholder="Interval (s)"
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+              min={5}
+            />
+            <FieldHelp text="How often to check this target. Lower intervals detect issues faster but increase network traffic." />
+          </div>
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm" disabled={isPending} className="gap-1">
               <CheckIcon className="h-3.5 w-3.5" />
@@ -463,6 +470,7 @@ function AlertsTab() {
             <option value="warning">Warning</option>
             <option value="info">Info</option>
           </select>
+          <HelpIcon content="Critical: immediate attention needed. Warning: degraded service. Info: notable but non-urgent." />
         </div>
         <button
           onClick={() => setActiveOnly(!activeOnly)}

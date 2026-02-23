@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 import { createEnrollmentToken, getInstallScriptUrl } from '@/api/agents'
 import { useAuthStore } from '@/stores/auth'
 
@@ -342,6 +343,7 @@ export function AgentSetupPage() {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">
               Platform
+              <HelpIcon content="Choose the operating system where Scout will be installed. The installer is pre-configured for the selected platform." />
             </label>
             <div className="flex gap-2 rounded-lg border border-[var(--nv-border-subtle)] bg-card p-1 w-fit">
               {(Object.entries(PLATFORMS) as [Platform, PlatformConfig][]).map(
@@ -458,6 +460,43 @@ export function AgentSetupPage() {
 
         {showAdvanced && (
           <div className="px-4 pb-4 space-y-6 border-t border-[var(--nv-border-subtle)] pt-4">
+            {/* Windows Installer - Primary option */}
+            {activePlatform === 'windows' && (
+              <Card className="border-[var(--nv-accent)]/30 bg-[var(--nv-accent)]/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Download className="h-4 w-4" />
+                    Recommended: Windows Installer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    The installer configures Scout as a Windows service with automatic startup,
+                    Start Menu entries, and PATH registration.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`${GITHUB_RELEASE_BASE}/SubNetreeScout-setup.exe`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2"
+                    >
+                      <Button size="sm">
+                        <Download className="h-4 w-4 mr-1" />
+                        Download Installer (.exe)
+                      </Button>
+                    </a>
+                    <span className="text-xs text-muted-foreground">
+                      Requires Windows 10+ (64-bit)
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Or use the manual installation below for more control.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Manual download instructions per architecture */}
             <div>
               <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
@@ -480,6 +519,12 @@ export function AgentSetupPage() {
               <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Terminal className="h-4 w-4 text-muted-foreground" />
                 Enroll Agent
+                <HelpPopover title="Enrollment Token">
+                  <p className="text-xs text-muted-foreground">
+                    A one-time token that authorizes a new Scout agent to register with this SubNetree server.
+                    Generate a token from the Settings page, then pass it to the agent's enroll command.
+                  </p>
+                </HelpPopover>
               </h3>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
