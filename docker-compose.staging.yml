@@ -20,6 +20,7 @@ services:
     environment:
       - NV_LOG_LEVEL=info
       - NV_SEED_DATA=true
+      - NV_DEMO_MODE=true
       - SUBNETREE_VAULT_PASSPHRASE=StagingVaultPass123!
     cap_add:
       - NET_RAW

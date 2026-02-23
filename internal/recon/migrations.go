@@ -6,6 +6,12 @@ import (
 	"github.com/HerbHall/subnetree/pkg/plugin"
 )
 
+// Migrations returns the Recon module's database migrations.
+// Exported for use by cross-package test infrastructure.
+func Migrations() []plugin.Migration {
+	return migrations()
+}
+
 // migrations returns the Recon module's database migrations.
 func migrations() []plugin.Migration {
 	return []plugin.Migration{

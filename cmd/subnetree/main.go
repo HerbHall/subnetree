@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -76,7 +77,14 @@ func main() {
 	configPath := flag.String("config", "", "path to configuration file")
 	showVersion := flag.Bool("version", false, "print version information and exit")
 	seedData := flag.Bool("seed", false, "populate database with demo network data")
+	demoMode := flag.Bool("demo", false, "enable demo mode (read-only, no auth required)")
 	flag.Parse()
+
+	// Demo mode forces seed data on and can be set via environment variable.
+	isDemoMode := *demoMode || os.Getenv("NV_DEMO_MODE") == "true"
+	if isDemoMode {
+		*seedData = true
+	}
 
 	if *showVersion {
 		fmt.Println(version.Info())
@@ -279,12 +287,15 @@ func main() {
 	// Wire SNMP credential adapter: recon -> vault.
 	var reconMod *recon.Module
 	var vaultMod *vault.Module
+	var pulseMod *pulse.Module
 	for _, m := range modules {
 		switch mod := m.(type) {
 		case *recon.Module:
 			reconMod = mod
 		case *vault.Module:
 			vaultMod = mod
+		case *pulse.Module:
+			pulseMod = mod
 		}
 	}
 	if reconMod != nil && vaultMod != nil {
@@ -321,6 +332,15 @@ func main() {
 			}
 		} else {
 			logger.Warn("cannot seed demo data: recon module not available")
+		}
+
+		// Seed Pulse monitoring data (checks, results, alerts) for demo.
+		if pulseMod != nil && pulseMod.Store() != nil {
+			if seedErr := seed.SeedPulseData(context.Background(), pulseMod.Store(), db.DB()); seedErr != nil {
+				logger.Error("failed to seed pulse data", zap.Error(seedErr))
+			} else {
+				logger.Info("pulse monitoring data seeded successfully")
+			}
 		}
 	}
 
@@ -363,7 +383,16 @@ func main() {
 	if sshHandler != nil {
 		extraRoutes = append(extraRoutes, sshHandler)
 	}
-	srv := server.New(addr, reg, logger, readyCheck, authHandler, dashboardHandler, devMode, extraRoutes...)
+	// In demo mode, use DemoAuthMiddleware instead of JWT validation.
+	var authRegistrar server.RouteRegistrar
+	if isDemoMode {
+		authRegistrar = &demoAuthRegistrar{}
+		logger.Warn("demo mode enabled: authentication bypassed, read-only access enforced")
+	} else {
+		authRegistrar = authHandler
+	}
+
+	srv := server.New(addr, reg, logger, readyCheck, authRegistrar, dashboardHandler, devMode, isDemoMode, extraRoutes...)
 
 	// Start server in background
 	go func() {
@@ -607,4 +636,17 @@ func (a *mcpDeviceAdapter) GetHardwareSummary(ctx context.Context) (*models.Hard
 
 func (a *mcpDeviceAdapter) QueryDevicesByHardware(ctx context.Context, query models.HardwareQuery) ([]models.Device, int, error) {
 	return a.store.QueryDevicesByHardware(ctx, query)
+}
+
+// demoAuthRegistrar implements server.RouteRegistrar for demo mode.
+// It registers no routes (login/setup not needed) and provides the
+// DemoAuthMiddleware that injects synthetic viewer claims on every API request.
+type demoAuthRegistrar struct{}
+
+func (d *demoAuthRegistrar) RegisterRoutes(_ *http.ServeMux) {
+	// No auth routes needed in demo mode.
+}
+
+func (d *demoAuthRegistrar) Middleware() func(http.Handler) http.Handler {
+	return auth.DemoAuthMiddleware()
 }
