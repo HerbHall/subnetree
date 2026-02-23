@@ -59,10 +59,10 @@ func TestQualityToDBm(t *testing.T) {
 		{"100 percent", 100, -50},
 		{"below zero", -10, -100},
 		{"above 100", 150, -50},
-		{"25 percent", 25, -88},  // 25/2 - 100 = -88 (integer division)
-		{"75 percent", 75, -63},  // 75/2 - 100 = -63
-		{"1 percent", 1, -100},   // 1/2 - 100 = -100
-		{"99 percent", 99, -51},  // 99/2 - 100 = -51
+		{"25 percent", 25, -88},  // integer division: half of 25 minus 100
+		{"75 percent", 75, -63},  // integer division: half of 75 minus 100
+		{"1 percent", 1, -100},   // integer division: half of 1 minus 100
+		{"99 percent", 99, -51},  // integer division: half of 99 minus 100
 	}
 
 	for _, tt := range tests {

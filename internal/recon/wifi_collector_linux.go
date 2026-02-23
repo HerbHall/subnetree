@@ -126,10 +126,13 @@ func rsnToSecurity(rsn wifi.RSNInfo) string {
 	hasWPA3 := false
 	hasWPA2 := false
 	for _, akm := range rsn.AKMs {
-		switch akm {
+		switch akm { //nolint:exhaustive // only classify common AKMs
 		case wifi.RSNAkmSAE, wifi.RSNAkmFTSAE:
 			hasWPA3 = true
 		case wifi.RSNAkmPSK, wifi.RSNAkmFTPSK, wifi.RSNAkm8021X, wifi.RSNAkmFT8021X:
+			hasWPA2 = true
+		default:
+			// Uncommon AKM suites (802.1X-SHA256, TDLS, etc.) treated as WPA2-class.
 			hasWPA2 = true
 		}
 	}
@@ -145,13 +148,15 @@ func rsnToSecurity(rsn wifi.RSNInfo) string {
 
 	// Fall back to cipher analysis for older networks.
 	for _, cipher := range rsn.PairwiseCiphers {
-		switch cipher {
+		switch cipher { //nolint:exhaustive // only classify common ciphers
 		case wifi.RSNCipherCCMP128, wifi.RSNCipherGCMP128, wifi.RSNCipherGCMP256, wifi.RSNCipherCCMP256:
 			return "WPA2"
 		case wifi.RSNCipherTKIP:
 			return "WPA"
 		case wifi.RSNCipherWEP40, wifi.RSNCipherWEP104:
 			return "WEP"
+		default:
+			return "WPA2"
 		}
 	}
 
