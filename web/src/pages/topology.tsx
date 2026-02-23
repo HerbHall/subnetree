@@ -20,6 +20,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Loader2, AlertCircle, Network, RefreshCw } from 'lucide-react'
+import { HelpIcon } from '@/components/contextual-help'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -565,7 +566,10 @@ export function TopologyPage() {
         )}
         <Panel position="top-right">
           <div className="flex flex-col items-center gap-2">
-            <TopologyViewTabs viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+            <div className="flex items-center gap-1">
+              <TopologyViewTabs viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+              <HelpIcon content="Lines between devices represent discovered network connections. Thicker lines indicate higher traffic volume. Use layout options to arrange devices by hierarchy or grouping." />
+            </div>
             <TopologyToolbar
               layout={layout} onLayoutChange={handleLayoutChange}
               direction={direction} onDirectionChange={handleDirectionChange}

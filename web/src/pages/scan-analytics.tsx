@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 import {
   getHealthScore,
   getRawMetrics,
@@ -209,6 +210,12 @@ function HealthScoreCard({ data, isLoading }: { data?: HealthScoreResponse; isLo
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
           Network Health Score
+          <HelpPopover title="Scan Health Score">
+            <p className="text-xs text-muted-foreground">
+              A composite score (0-100) based on scan success rate, device discovery rate, and response times.
+              Above 80 is healthy, 50-80 needs attention, below 50 indicates problems.
+            </p>
+          </HelpPopover>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -449,6 +456,7 @@ export function ScanAnalyticsPage() {
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Activity className="h-4 w-4 text-muted-foreground" />
             Scan Duration
+            <HelpIcon content="Time taken for each network scan, broken down by ping (host discovery) and enrich (device detail collection) phases." />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -552,6 +560,7 @@ export function ScanAnalyticsPage() {
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Monitor className="h-4 w-4 text-muted-foreground" />
             Device Discovery Trend
+            <HelpIcon content="Number of hosts responding to ping (Hosts Alive) and newly discovered devices over time." />
           </CardTitle>
         </CardHeader>
         <CardContent>

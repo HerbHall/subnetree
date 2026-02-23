@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { listServices } from '@/api/services'
 import type { Service, ServiceType, ServiceStatus } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { HelpIcon } from '@/components/contextual-help'
 
 const serviceTypeIcons: Record<ServiceType, React.ElementType> = {
   'docker-container': Container,
@@ -86,7 +87,10 @@ export function ServiceMapPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Service Map</h1>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            Service Map
+            <HelpIcon content="Running: service is active. Stopped: service is registered but not running. Unknown: status could not be determined. Services are auto-discovered from Scout agents." />
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Services discovered across your infrastructure
           </p>

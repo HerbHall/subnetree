@@ -32,6 +32,7 @@ import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ThemeImportExport } from '@/components/settings/theme-import-export'
 import { ThemeEditor } from '@/components/settings/theme-editor'
 import type { ThemeDefinition } from '@/api/themes'
+import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 
 type SettingsTab = 'network' | 'appearance' | 'llm' | 'agents'
 
@@ -62,12 +63,15 @@ export function SettingsPage() {
           icon={<Palette className="h-4 w-4" />}
           label="Appearance"
         />
-        <TabButton
-          active={activeTab === 'llm'}
-          onClick={() => setActiveTab('llm')}
-          icon={<Brain className="h-4 w-4" />}
-          label="AI / LLM"
-        />
+        <div className="flex items-center">
+          <TabButton
+            active={activeTab === 'llm'}
+            onClick={() => setActiveTab('llm')}
+            icon={<Brain className="h-4 w-4" />}
+            label="AI / LLM"
+          />
+          <HelpIcon content="Configure an AI model for natural language device queries and analytics. Supports local models via Ollama or cloud providers." />
+        </div>
         <TabButton
           active={activeTab === 'agents'}
           onClick={() => setActiveTab('agents')}
@@ -130,6 +134,10 @@ function AppearanceTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Theme</h2>
+        <HelpIcon content="Customize the dashboard appearance. Changes are applied immediately. You can also import and export themes to share with others." />
+      </div>
       <ThemeSelector onCustomize={handleCustomize} />
       <ThemeImportExport />
     </div>
@@ -228,6 +236,12 @@ function AgentsTab() {
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Key className="h-4 w-4 text-muted-foreground" />
             Agent Enrollment
+            <HelpPopover title="Enrollment Tokens">
+              <p className="text-xs text-muted-foreground">
+                A one-time token that authorizes a new Scout agent to register with this SubNetree server.
+                Generate a token, then pass it to the agent's install command. Tokens expire after the configured duration.
+              </p>
+            </HelpPopover>
           </CardTitle>
           <CardDescription>
             Generate enrollment tokens for Scout agents to register with this server.
@@ -360,7 +374,10 @@ function NetworkTab() {
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="scan-interface">Network Interface</Label>
+              <Label htmlFor="scan-interface">
+                Network Interface
+                <HelpIcon content="The network interface used for scanning. Select the interface connected to the network you want to monitor, or use Auto-detect to let SubNetree choose." />
+              </Label>
               <select
                 id="scan-interface"
                 value={selectedInterface}
