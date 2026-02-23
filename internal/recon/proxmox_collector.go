@@ -203,6 +203,63 @@ func (c *ProxmoxCollector) CollectContainers(ctx context.Context, node string) (
 	return containers, nil
 }
 
+// ProxmoxResourceStatus holds resource utilisation metrics for a VM or container.
+type ProxmoxResourceStatus struct {
+	CPUPercent  float64
+	MemUsedMB   int
+	MemTotalMB  int
+	DiskUsedGB  int
+	DiskTotalGB int
+	UptimeSec   int64
+	NetInBytes  int64
+	NetOutBytes int64
+}
+
+// CollectVMStatus returns live resource utilisation for a QEMU VM.
+func (c *ProxmoxCollector) CollectVMStatus(ctx context.Context, node string, vmid int) (*ProxmoxResourceStatus, error) {
+	path := fmt.Sprintf("/api2/json/nodes/%s/qemu/%d/status/current", node, vmid)
+	return c.collectResourceStatus(ctx, path)
+}
+
+// CollectContainerStatus returns live resource utilisation for an LXC container.
+func (c *ProxmoxCollector) CollectContainerStatus(ctx context.Context, node string, vmid int) (*ProxmoxResourceStatus, error) {
+	path := fmt.Sprintf("/api2/json/nodes/%s/lxc/%d/status/current", node, vmid)
+	return c.collectResourceStatus(ctx, path)
+}
+
+// collectResourceStatus fetches and maps a Proxmox status/current response.
+func (c *ProxmoxCollector) collectResourceStatus(ctx context.Context, path string) (*ProxmoxResourceStatus, error) {
+	body, err := c.apiGet(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("get resource status: %w", err)
+	}
+
+	var raw struct {
+		CPU     float64 `json:"cpu"`
+		Mem     int64   `json:"mem"`
+		Maxmem  int64   `json:"maxmem"`
+		Disk    int64   `json:"disk"`
+		Maxdisk int64   `json:"maxdisk"`
+		Uptime  int64   `json:"uptime"`
+		Netin   int64   `json:"netin"`
+		Netout  int64   `json:"netout"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("parse resource status: %w", err)
+	}
+
+	return &ProxmoxResourceStatus{
+		CPUPercent:  raw.CPU * 100,
+		MemUsedMB:   int(raw.Mem / (1024 * 1024)),
+		MemTotalMB:  int(raw.Maxmem / (1024 * 1024)),
+		DiskUsedGB:  int(raw.Disk / (1024 * 1024 * 1024)),
+		DiskTotalGB: int(raw.Maxdisk / (1024 * 1024 * 1024)),
+		UptimeSec:   raw.Uptime,
+		NetInBytes:  raw.Netin,
+		NetOutBytes: raw.Netout,
+	}, nil
+}
+
 // apiGet performs an authenticated GET request to the Proxmox API and
 // returns the unwrapped "data" field from the response envelope.
 func (c *ProxmoxCollector) apiGet(ctx context.Context, path string) (json.RawMessage, error) {

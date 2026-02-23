@@ -392,6 +392,136 @@ func TestProxmoxCollector_AuthHeader(t *testing.T) {
 	}
 }
 
+func TestProxmoxCollector_CollectVMStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		response   any
+		statusCode int
+		wantCPU    float64
+		wantMemMB  int
+		wantErr    bool
+	}{
+		{
+			name: "running VM",
+			response: map[string]any{
+				"data": map[string]any{
+					"cpu":     0.25,
+					"mem":     4294967296,  // 4 GB
+					"maxmem":  8589934592,  // 8 GB
+					"disk":    10737418240, // 10 GB
+					"maxdisk": 53687091200, // 50 GB
+					"uptime":  86400,
+					"netin":   1073741824, // 1 GB
+					"netout":  536870912,  // 512 MB
+				},
+			},
+			statusCode: http.StatusOK,
+			wantCPU:    25.0,
+			wantMemMB:  4096,
+		},
+		{
+			name:       "API error",
+			response:   "Forbidden",
+			statusCode: http.StatusForbidden,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newTestProxmoxServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api2/json/nodes/pve1/qemu/100/status/current" {
+					http.NotFound(w, r)
+					return
+				}
+				w.WriteHeader(tt.statusCode)
+				if err := json.NewEncoder(w).Encode(tt.response); err != nil {
+					t.Fatalf("encode response: %v", err)
+				}
+			})
+
+			c := NewProxmoxCollector(srv.URL, "test@pve!token", "secret", zap.NewNop())
+			status, err := c.CollectVMStatus(context.Background(), "pve1", 100)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if status.CPUPercent != tt.wantCPU {
+				t.Errorf("CPUPercent = %f, want %f", status.CPUPercent, tt.wantCPU)
+			}
+			if status.MemUsedMB != tt.wantMemMB {
+				t.Errorf("MemUsedMB = %d, want %d", status.MemUsedMB, tt.wantMemMB)
+			}
+			if status.MemTotalMB != 8192 {
+				t.Errorf("MemTotalMB = %d, want 8192", status.MemTotalMB)
+			}
+			if status.DiskUsedGB != 10 {
+				t.Errorf("DiskUsedGB = %d, want 10", status.DiskUsedGB)
+			}
+			if status.DiskTotalGB != 50 {
+				t.Errorf("DiskTotalGB = %d, want 50", status.DiskTotalGB)
+			}
+			if status.UptimeSec != 86400 {
+				t.Errorf("UptimeSec = %d, want 86400", status.UptimeSec)
+			}
+			if status.NetInBytes != 1073741824 {
+				t.Errorf("NetInBytes = %d, want 1073741824", status.NetInBytes)
+			}
+		})
+	}
+}
+
+func TestProxmoxCollector_CollectContainerStatus(t *testing.T) {
+	srv := newTestProxmoxServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api2/json/nodes/pve1/lxc/200/status/current" {
+			http.NotFound(w, r)
+			return
+		}
+		resp := map[string]any{
+			"data": map[string]any{
+				"cpu":     0.05,
+				"mem":     268435456,   // 256 MB
+				"maxmem":  536870912,   // 512 MB
+				"disk":    2147483648,  // 2 GB
+				"maxdisk": 10737418240, // 10 GB
+				"uptime":  3600,
+				"netin":   104857600,
+				"netout":  52428800,
+			},
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Fatalf("encode response: %v", err)
+		}
+	})
+
+	c := NewProxmoxCollector(srv.URL, "test@pve!token", "secret", zap.NewNop())
+	status, err := c.CollectContainerStatus(context.Background(), "pve1", 200)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status.CPUPercent != 5.0 {
+		t.Errorf("CPUPercent = %f, want 5.0", status.CPUPercent)
+	}
+	if status.MemUsedMB != 256 {
+		t.Errorf("MemUsedMB = %d, want 256", status.MemUsedMB)
+	}
+	if status.MemTotalMB != 512 {
+		t.Errorf("MemTotalMB = %d, want 512", status.MemTotalMB)
+	}
+	if status.DiskUsedGB != 2 {
+		t.Errorf("DiskUsedGB = %d, want 2", status.DiskUsedGB)
+	}
+	if status.UptimeSec != 3600 {
+		t.Errorf("UptimeSec = %d, want 3600", status.UptimeSec)
+	}
+}
+
 func TestNormalizeDiskType(t *testing.T) {
 	tests := []struct {
 		input string

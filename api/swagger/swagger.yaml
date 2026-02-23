@@ -584,6 +584,8 @@ definitions:
     - phone
     - tablet
     - camera
+    - virtual_machine
+    - container
     - unknown
     type: string
     x-enum-varnames:
@@ -601,6 +603,8 @@ definitions:
     - DeviceTypePhone
     - DeviceTypeTablet
     - DeviceTypeCamera
+    - DeviceTypeVM
+    - DeviceTypeContainer
     - DeviceTypeUnknown
   github_com_HerbHall_subnetree_pkg_models.DiscoveryMethod:
     enum:
@@ -613,6 +617,7 @@ definitions:
     - mqtt
     - manual
     - wifi
+    - proxmox
     type: string
     x-enum-varnames:
     - DiscoveryAgent
@@ -624,6 +629,7 @@ definitions:
     - DiscoveryMQTT
     - DiscoveryManual
     - DiscoveryWiFi
+    - DiscoveryProxmox
   github_com_HerbHall_subnetree_pkg_models.FleetSummary:
     properties:
       avg_cpu:
@@ -1482,6 +1488,63 @@ definitions:
       stale_count:
         type: integer
       total_devices:
+        type: integer
+    type: object
+  internal_recon.ProxmoxResource:
+    properties:
+      collected_at:
+        type: string
+      cpu_percent:
+        type: number
+      device_id:
+        type: string
+      device_name:
+        type: string
+      device_type:
+        type: string
+      disk_total_gb:
+        type: integer
+      disk_used_gb:
+        type: integer
+      mem_total_mb:
+        type: integer
+      mem_used_mb:
+        type: integer
+      netin_bytes:
+        type: integer
+      netout_bytes:
+        type: integer
+      status:
+        type: string
+      uptime_sec:
+        type: integer
+    type: object
+  internal_recon.ProxmoxSyncRequest:
+    properties:
+      base_url:
+        example: https://pve:8006
+        type: string
+      host_device_id:
+        example: device-uuid
+        type: string
+      token_id:
+        example: user@pam!token
+        type: string
+      token_secret:
+        example: uuid-secret-here
+        type: string
+    type: object
+  internal_recon.ProxmoxSyncResult:
+    properties:
+      created:
+        type: integer
+      lxcs_found:
+        type: integer
+      nodes_scanned:
+        type: integer
+      updated:
+        type: integer
+      vms_found:
         type: integer
     type: object
   internal_recon.RefreshHardwareResponse:
@@ -4320,6 +4383,104 @@ paths:
       security:
       - BearerAuth: []
       summary: List service movements
+      tags:
+      - recon
+  /recon/proxmox/sync:
+    post:
+      consumes:
+      - application/json
+      description: Connects to a Proxmox VE host, enumerates VMs and containers, and
+        syncs them as child devices with resource snapshots.
+      parameters:
+      - description: Proxmox connection details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_recon.ProxmoxSyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.ProxmoxSyncResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Trigger Proxmox sync
+      tags:
+      - recon
+  /recon/proxmox/vms:
+    get:
+      description: Returns all Proxmox-managed VMs and containers with their latest
+        resource snapshots.
+      parameters:
+      - description: Filter by parent host device ID
+        in: query
+        name: parent_id
+        type: string
+      - description: Filter by status (online/offline)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.ProxmoxResource'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List Proxmox VMs and containers
+      tags:
+      - recon
+  /recon/proxmox/vms/{id}/resources:
+    get:
+      description: Returns the latest resource snapshot for a specific Proxmox VM
+        or container.
+      parameters:
+      - description: Device ID of the VM/container
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_recon.ProxmoxResource'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Get VM/container resources
       tags:
       - recon
   /recon/scan:

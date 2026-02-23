@@ -72,10 +72,12 @@ export type DeviceType =
   | 'phone'
   | 'tablet'
   | 'camera'
+  | 'virtual_machine'
+  | 'container'
   | 'unknown'
 
 /** How the device was discovered. */
-export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp' | 'wifi'
+export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp' | 'wifi' | 'proxmox'
 
 /** How the device connects to the network. */
 export type ConnectionType = 'wired' | 'wifi' | 'unknown'

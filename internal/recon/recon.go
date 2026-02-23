@@ -35,10 +35,11 @@ type Module struct {
 	upnp          *UPNPDiscoverer
 	scheduler     *ScanScheduler
 	consolidator  *ScanConsolidator
-	credAccessor  CredentialAccessor
-	credProvider  roles.CredentialProvider
-	profileSource ProfileSource
-	activeScans   sync.Map // scanID -> context.CancelFunc
+	credAccessor   CredentialAccessor
+	credProvider   roles.CredentialProvider
+	profileSource  ProfileSource
+	proxmoxSyncer  *ProxmoxSyncer
+	activeScans    sync.Map // scanID -> context.CancelFunc
 	wg            sync.WaitGroup
 	scanCtx       context.Context
 	scanCancel    context.CancelFunc
@@ -157,6 +158,8 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 	if m.cfg.UPNPEnabled {
 		m.upnp = NewUPNPDiscoverer(m.store, m.bus, m.logger.Named("upnp"), m.cfg.UPNPInterval)
 	}
+
+	m.proxmoxSyncer = NewProxmoxSyncer(m.store, m.logger.Named("proxmox-sync"))
 
 	m.logger.Info("recon module initialized")
 	return nil
@@ -342,6 +345,9 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices/{id}/services", Handler: m.handleGetDeviceServices},
 		{Method: "GET", Path: "/inventory/hardware-summary", Handler: m.handleHardwareSummary},
 		{Method: "GET", Path: "/devices/query/hardware", Handler: m.handleQueryDevicesByHardware},
+		{Method: "POST", Path: "/proxmox/sync", Handler: m.handleProxmoxSync},
+		{Method: "GET", Path: "/proxmox/vms", Handler: m.handleListProxmoxVMs},
+		{Method: "GET", Path: "/proxmox/vms/{id}/resources", Handler: m.handleGetProxmoxVMResources},
 	}
 }
 

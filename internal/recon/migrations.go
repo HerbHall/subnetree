@@ -332,5 +332,24 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     12,
+			Description: "create recon_proxmox_resources table for VM/container resource snapshots",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE recon_proxmox_resources (
+					device_id     TEXT PRIMARY KEY REFERENCES recon_devices(id) ON DELETE CASCADE,
+					cpu_percent   REAL NOT NULL DEFAULT 0,
+					mem_used_mb   INTEGER NOT NULL DEFAULT 0,
+					mem_total_mb  INTEGER NOT NULL DEFAULT 0,
+					disk_used_gb  INTEGER NOT NULL DEFAULT 0,
+					disk_total_gb INTEGER NOT NULL DEFAULT 0,
+					uptime_sec    INTEGER NOT NULL DEFAULT 0,
+					netin_bytes   INTEGER NOT NULL DEFAULT 0,
+					netout_bytes  INTEGER NOT NULL DEFAULT 0,
+					collected_at  DATETIME NOT NULL
+				)`)
+				return err
+			},
+		},
 	}
 }

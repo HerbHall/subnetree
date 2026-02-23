@@ -334,6 +334,15 @@ func main() {
 			logger.Warn("cannot seed demo data: recon module not available")
 		}
 
+		// Seed Proxmox VM/container data under the proxmox-host device.
+		if reconMod != nil {
+			if seedErr := seed.SeedProxmoxData(context.Background(), reconMod.Store(), db.DB()); seedErr != nil {
+				logger.Error("failed to seed proxmox data", zap.Error(seedErr))
+			} else {
+				logger.Info("proxmox VM/container data seeded successfully")
+			}
+		}
+
 		// Seed Pulse monitoring data (checks, results, alerts) for demo.
 		if pulseMod != nil && pulseMod.Store() != nil {
 			if seedErr := seed.SeedPulseData(context.Background(), pulseMod.Store(), db.DB()); seedErr != nil {

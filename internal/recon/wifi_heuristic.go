@@ -142,7 +142,8 @@ func isInfrastructureType(dt models.DeviceType) bool {
 	case models.DeviceTypeServer, models.DeviceTypeDesktop, models.DeviceTypeLaptop,
 		models.DeviceTypeMobile, models.DeviceTypePrinter, models.DeviceTypeIoT,
 		models.DeviceTypeNAS, models.DeviceTypePhone, models.DeviceTypeTablet,
-		models.DeviceTypeCamera, models.DeviceTypeUnknown:
+		models.DeviceTypeCamera, models.DeviceTypeVM, models.DeviceTypeContainer,
+		models.DeviceTypeUnknown:
 		return false
 	}
 	return false
