@@ -1798,6 +1798,33 @@ definitions:
           type: string
         type: array
     type: object
+  internal_recon.WiFiClientSnapshot:
+    properties:
+      ap_bssid:
+        type: string
+      ap_ssid:
+        type: string
+      collected_at:
+        type: string
+      connected_sec:
+        type: integer
+      device_id:
+        type: string
+      inactive_sec:
+        type: integer
+      rx_bitrate_bps:
+        type: integer
+      rx_bytes:
+        type: integer
+      signal_avg_dbm:
+        type: integer
+      signal_dbm:
+        type: integer
+      tx_bitrate_bps:
+        type: integer
+      tx_bytes:
+        type: integer
+    type: object
   internal_server.HealthResponse:
     properties:
       service:
@@ -4855,6 +4882,33 @@ paths:
       security:
       - BearerAuth: []
       summary: Run traceroute
+      tags:
+      - recon
+  /recon/wifi/clients:
+    get:
+      description: Returns devices connected to the server's WiFi AP/hotspot with
+        signal data
+      parameters:
+      - description: Filter by AP device ID
+        in: query
+        name: ap_device_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_recon.WiFiClientSnapshot'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: List WiFi hotspot clients
       tags:
       - recon
   /settings/interfaces:

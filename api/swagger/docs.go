@@ -4504,6 +4504,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/recon/wifi/clients": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns devices connected to the server's WiFi AP/hotspot with signal data",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "List WiFi hotspot clients",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by AP device ID",
+                        "name": "ap_device_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_recon.WiFiClientSnapshot"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/interfaces": {
             "get": {
                 "description": "Get a list of all network interfaces available on the server.",
@@ -7961,6 +8003,47 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_recon.WiFiClientSnapshot": {
+            "type": "object",
+            "properties": {
+                "ap_bssid": {
+                    "type": "string"
+                },
+                "ap_ssid": {
+                    "type": "string"
+                },
+                "collected_at": {
+                    "type": "string"
+                },
+                "connected_sec": {
+                    "type": "integer"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "inactive_sec": {
+                    "type": "integer"
+                },
+                "rx_bitrate_bps": {
+                    "type": "integer"
+                },
+                "rx_bytes": {
+                    "type": "integer"
+                },
+                "signal_avg_dbm": {
+                    "type": "integer"
+                },
+                "signal_dbm": {
+                    "type": "integer"
+                },
+                "tx_bitrate_bps": {
+                    "type": "integer"
+                },
+                "tx_bytes": {
+                    "type": "integer"
                 }
             }
         },

@@ -351,5 +351,26 @@ func migrations() []plugin.Migration {
 				return err
 			},
 		},
+		{
+			Version:     13,
+			Description: "create recon_wifi_clients table for WiFi AP client snapshots",
+			Up: func(tx *sql.Tx) error {
+				_, err := tx.Exec(`CREATE TABLE IF NOT EXISTS recon_wifi_clients (
+					device_id      TEXT PRIMARY KEY REFERENCES recon_devices(id) ON DELETE CASCADE,
+					signal_dbm     INTEGER NOT NULL DEFAULT 0,
+					signal_avg_dbm INTEGER NOT NULL DEFAULT 0,
+					connected_sec  INTEGER NOT NULL DEFAULT 0,
+					inactive_sec   INTEGER NOT NULL DEFAULT 0,
+					rx_bitrate_bps INTEGER NOT NULL DEFAULT 0,
+					tx_bitrate_bps INTEGER NOT NULL DEFAULT 0,
+					rx_bytes       INTEGER NOT NULL DEFAULT 0,
+					tx_bytes       INTEGER NOT NULL DEFAULT 0,
+					ap_bssid       TEXT NOT NULL DEFAULT '',
+					ap_ssid        TEXT NOT NULL DEFAULT '',
+					collected_at   DATETIME NOT NULL
+				)`)
+				return err
+			},
+		},
 	}
 }
