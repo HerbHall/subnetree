@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C d:/NetVantage push)",
       "mcp__memory__create_entities"
     ]
   },
