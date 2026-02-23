@@ -30,6 +30,7 @@ type Module struct {
 	oui           *OUITable
 	orchestrator  *ScanOrchestrator
 	snmpCollector *SNMPCollector
+	wifiScanner   WifiScanner
 	mdns          *MDNSListener
 	upnp          *UPNPDiscoverer
 	scheduler     *ScanScheduler
@@ -142,6 +143,10 @@ func (m *Module) Init(ctx context.Context, deps plugin.Dependencies) error {
 	}
 
 	m.orchestrator = NewScanOrchestrator(m.store, m.bus, m.oui, pinger, arp, m.logger)
+
+	// Initialize WiFi scanner (auto-detects hardware availability).
+	m.wifiScanner = NewWifiScanner(m.logger.Named("wifi"))
+	m.orchestrator.SetWifiScanner(m.wifiScanner)
 
 	// Initialize mDNS listener if enabled.
 	if m.cfg.MDNSEnabled {
