@@ -36,7 +36,7 @@ func TestDemoMiddleware(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(tc.method, "/api/v1/test", nil)
+			req := httptest.NewRequest(tc.method, "/api/v1/test", http.NoBody)
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
