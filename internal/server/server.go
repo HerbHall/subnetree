@@ -51,8 +51,9 @@ type SimpleRouteRegistrar interface {
 // The auth parameter is optional; pass nil to disable authentication.
 // The dashboard parameter is optional; pass nil to disable dashboard serving.
 // When devMode is true, Swagger UI is served at /swagger/.
+// When demoMode is true, all write operations (POST/PUT/DELETE/PATCH) are blocked.
 // Additional route registrars can be passed to register extra API routes.
-func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar, dashboard http.Handler, devMode bool, extraRoutes ...SimpleRouteRegistrar) *Server {
+func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessChecker, auth RouteRegistrar, dashboard http.Handler, devMode, demoMode bool, extraRoutes ...SimpleRouteRegistrar) *Server {
 	mux := http.NewServeMux()
 
 	s := &Server{
@@ -94,6 +95,10 @@ func New(addr string, plugins PluginSource, logger *zap.Logger, ready ReadinessC
 	}
 	if auth != nil {
 		middlewares = append(middlewares, auth.Middleware())
+	}
+	if demoMode {
+		middlewares = append(middlewares, DemoMiddleware)
+		logger.Warn("DEMO MODE ACTIVE: all write operations are blocked")
 	}
 
 	handler := Chain(mux, middlewares...)

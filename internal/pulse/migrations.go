@@ -6,6 +6,12 @@ import (
 	"github.com/HerbHall/subnetree/pkg/plugin"
 )
 
+// Migrations returns the Pulse module's database migrations.
+// Exported for use by cross-package test infrastructure.
+func Migrations() []plugin.Migration {
+	return migrations()
+}
+
 func migrations() []plugin.Migration {
 	return []plugin.Migration{
 		{

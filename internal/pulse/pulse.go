@@ -306,4 +306,9 @@ func (m *Module) Status(ctx context.Context, deviceID string) (*roles.MonitorSta
 	return status, nil
 }
 
+// Store returns the PulseStore for external use (e.g., seeding demo data).
+func (m *Module) Store() *PulseStore {
+	return m.store
+}
+
 // Routes is implemented in handlers.go.
