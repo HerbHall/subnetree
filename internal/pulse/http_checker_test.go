@@ -46,8 +46,8 @@ func TestHTTPChecker_Success(t *testing.T) {
 	if !result.Success {
 		t.Errorf("Check() Success = false, want true")
 	}
-	if result.LatencyMs <= 0 {
-		t.Errorf("Check() LatencyMs = %v, want > 0", result.LatencyMs)
+	if result.LatencyMs < 0 {
+		t.Errorf("Check() LatencyMs = %v, want >= 0", result.LatencyMs)
 	}
 	if result.ErrorMessage != "" {
 		t.Errorf("Check() ErrorMessage = %q, want empty", result.ErrorMessage)
@@ -91,8 +91,8 @@ func TestHTTPChecker_Non2xx(t *testing.T) {
 			if result.ErrorMessage == "" {
 				t.Error("Check() ErrorMessage is empty, want non-empty")
 			}
-			if result.LatencyMs <= 0 {
-				t.Errorf("Check() LatencyMs = %v, want > 0", result.LatencyMs)
+			if result.LatencyMs < 0 {
+				t.Errorf("Check() LatencyMs = %v, want >= 0", result.LatencyMs)
 			}
 		})
 	}

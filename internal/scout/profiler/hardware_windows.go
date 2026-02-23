@@ -123,8 +123,18 @@ func collectHardware(ctx context.Context, logger *zap.Logger) (*scoutpb.Hardware
 	return hw, nil
 }
 
-// runWMIC executes a wmic command and parses the CSV output into maps.
+// runWMIC queries Windows hardware info via PowerShell Get-CimInstance (preferred)
+// with a fallback to the legacy wmic command for older Windows versions.
 func runWMIC(ctx context.Context, wmicClass, fields string) ([]map[string]string, error) {
+	// Try PowerShell Get-CimInstance first (wmic removed in Windows 11 24H2+).
+	if className, filter, ok := wmicToCIMClass(wmicClass); ok {
+		rows, err := runCIMQuery(ctx, className, filter, fields)
+		if err == nil && len(rows) > 0 {
+			return rows, nil
+		}
+	}
+
+	// Fall back to legacy wmic.
 	args := strings.Fields(wmicClass)
 	args = append(args, "get", fields, "/format:csv")
 
@@ -135,6 +145,55 @@ func runWMIC(ctx context.Context, wmicClass, fields string) ([]map[string]string
 
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("wmic %s: %w (stderr: %s)", wmicClass, err, stderr.String())
+	}
+
+	return parseWMICCSV(stdout.Bytes())
+}
+
+// wmicToCIMClass maps a wmic alias to the corresponding CIM class name and optional filter.
+func wmicToCIMClass(wmicClass string) (className, filter string, ok bool) {
+	mapping := map[string][2]string{
+		"cpu":                        {"Win32_Processor", ""},
+		"memorychip":                 {"Win32_PhysicalMemory", ""},
+		"diskdrive":                  {"Win32_DiskDrive", ""},
+		"os":                         {"Win32_OperatingSystem", ""},
+		"bios":                       {"Win32_BIOS", ""},
+		"computersystem":             {"Win32_ComputerSystem", ""},
+		"path win32_videocontroller": {"Win32_VideoController", ""},
+	}
+
+	if m, found := mapping[wmicClass]; found {
+		return m[0], m[1], true
+	}
+
+	// Handle "nic where ..." pattern.
+	if strings.HasPrefix(wmicClass, "nic") {
+		return "Win32_NetworkAdapter", "NetEnabled=True", true
+	}
+
+	return "", "", false
+}
+
+// runCIMQuery executes a PowerShell Get-CimInstance query and parses the CSV output.
+func runCIMQuery(ctx context.Context, className, filter, fields string) ([]map[string]string, error) {
+	var psCmd string
+	if filter != "" {
+		psCmd = fmt.Sprintf(
+			"Get-CimInstance %s -Filter '%s' | Select-Object %s | ConvertTo-Csv -NoTypeInformation",
+			className, filter, fields)
+	} else {
+		psCmd = fmt.Sprintf(
+			"Get-CimInstance %s | Select-Object %s | ConvertTo-Csv -NoTypeInformation",
+			className, fields)
+	}
+
+	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-Command", psCmd)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("powershell CIM %s: %w (stderr: %s)", className, err, stderr.String())
 	}
 
 	return parseWMICCSV(stdout.Bytes())
