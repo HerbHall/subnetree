@@ -44,15 +44,16 @@ type CredentialLookup interface {
 // ScanOrchestrator coordinates ICMP scanning, ARP enrichment, OUI lookup,
 // device persistence, and event publishing.
 type ScanOrchestrator struct {
-	store      *ReconStore
-	bus        plugin.EventBus
-	oui        OUIResolver
-	pinger     PingScanner
-	arp        ARPTableReader
-	snmpWalker SNMPWalker
-	credLookup CredentialLookup
-	credAccess CredentialAccessor
-	logger     *zap.Logger
+	store       *ReconStore
+	bus         plugin.EventBus
+	oui         OUIResolver
+	pinger      PingScanner
+	arp         ARPTableReader
+	snmpWalker  SNMPWalker
+	wifiScanner WifiScanner
+	credLookup  CredentialLookup
+	credAccess  CredentialAccessor
+	logger      *zap.Logger
 }
 
 // NewScanOrchestrator creates a new orchestrator.
@@ -77,6 +78,11 @@ func NewScanOrchestrator(
 // SetSNMPWalker configures the SNMP FDB walker used during scan post-processing.
 func (o *ScanOrchestrator) SetSNMPWalker(w SNMPWalker) {
 	o.snmpWalker = w
+}
+
+// SetWifiScanner configures the WiFi scanner used to discover nearby access points.
+func (o *ScanOrchestrator) SetWifiScanner(ws WifiScanner) {
+	o.wifiScanner = ws
 }
 
 // SetCredentialLookup configures the credential lookup used for FDB walks.
@@ -242,6 +248,7 @@ func (o *ScanOrchestrator) RunScan(ctx context.Context, scanID, subnet string) {
 
 	// Run post-scan processing stages.
 	o.runStages(ctx, []scanStage{
+		{"wifi-scan", func(ctx context.Context) { o.scanWifiNetworks(ctx) }},
 		{"port-scan", func(ctx context.Context) { o.portScanInfraDevices(ctx, alive, arpTable) }},
 		{"classify", func(ctx context.Context) { o.classifyDevices(ctx, alive, arpTable) }},
 		{"unmanaged-switch", func(ctx context.Context) { o.detectUnmanagedSwitches(ctx, alive, arpTable) }},
@@ -728,4 +735,46 @@ func (o *ScanOrchestrator) publishEvent(ctx context.Context, topic string, paylo
 func (o *ScanOrchestrator) analyzeWiFiConnections(ctx context.Context) {
 	analyzer := NewWiFiHeuristicAnalyzer(o.store, o.logger.Named("wifi-heuristic"))
 	analyzer.AnalyzeAll(ctx)
+}
+
+// scanWifiNetworks discovers nearby WiFi access points via OS APIs and upserts
+// them as devices. Runs before port-scan so newly discovered APs are available
+// for subsequent stages.
+func (o *ScanOrchestrator) scanWifiNetworks(ctx context.Context) {
+	if o.wifiScanner == nil || !o.wifiScanner.Available() {
+		return
+	}
+
+	aps, err := o.wifiScanner.Scan(ctx)
+	if err != nil {
+		o.logger.Warn("wifi scan failed", zap.Error(err))
+		return
+	}
+
+	for _, ap := range aps {
+		if ap.BSSID == "" {
+			continue
+		}
+
+		device := &models.Device{
+			Hostname:        ap.SSID,
+			MACAddress:      ap.BSSID,
+			DeviceType:      models.DeviceTypeAccessPoint,
+			Status:          models.DeviceStatusOnline,
+			DiscoveryMethod: models.DiscoveryWiFi,
+			ConnectionType:  models.ConnectionWiFi,
+		}
+
+		created, upsertErr := o.store.UpsertDevice(ctx, device)
+		if upsertErr != nil {
+			o.logger.Error("failed to upsert wifi AP",
+				zap.String("bssid", ap.BSSID), zap.Error(upsertErr))
+			continue
+		}
+		if created {
+			o.publishEvent(ctx, TopicDeviceDiscovered, &DeviceEvent{Device: device})
+		}
+	}
+
+	o.logger.Info("wifi scan complete", zap.Int("aps_found", len(aps)))
 }
