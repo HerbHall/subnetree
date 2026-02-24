@@ -213,17 +213,17 @@
 
 ### Phase 1b: Windows Scout Agent
 
-**Status:** Complete. Core agent shipped 2026-02-13 (PRs #179-182, #190-192). mTLS + CA shipped 2026-02-14 (PRs #207-212). Scout reports metrics and system profiles to Dispatch via gRPC with mTLS.
+**Status:** Complete. Core agent shipped 2026-02-13 (PRs #179-182, #190-192). mTLS + CA shipped 2026-02-14 (PRs #207-212). Windows service mode + installer (Sprint 5, PRs #451, #453). Scout reports metrics and system profiles to Dispatch via gRPC with mTLS.
 
 **Goal:** First agent reporting metrics to server.
 
 #### Pre-Phase Tooling Research
 
-- [ ] Evaluate gRPC tooling: buf vs protoc, connect-go vs grpc-go
-- [ ] Research Windows cross-compilation CI (GitHub Actions Windows runners, MSYS2 in CI)
+- [x] Evaluate gRPC tooling: buf vs protoc, connect-go vs grpc-go (protoc + grpc-go adopted; buf deferred)
+- [x] Research Windows cross-compilation CI (GoReleaser cross-compile matrix in ci.yml)
 - [x] Evaluate agent packaging: Inno Setup 6 for Windows Scout installer (PR #446, Sprint 4)
 - [x] Research certificate management libraries for mTLS (Go stdlib crypto/x509 patterns -- internal/ca/ package, PRs #207-208)
-- [ ] Evaluate Windows service management (golang.org/x/sys/windows/svc)
+- [x] Evaluate Windows service management (golang.org/x/sys/windows/svc) (Sprint 5, PR #451)
 
 #### Scout Agent Implementation
 
@@ -233,7 +233,7 @@
 - [x] gRPC communication (mTLS -- PRs #209-210)
 - [x] System metrics: CPU, memory, disk, network (PR #181)
 - [x] System profiling: hardware specs, installed software, running services (#164, PR #182)
-- [ ] Exponential backoff reconnection
+- [x] Exponential backoff reconnection (implemented in agent.go connectWithBackoff, 1s-5min doubling)
 - [x] Certificate auto-renewal (90-day certs, renew at day 60 -- PR #211)
 - [x] Dispatch module: agent list, status, check-in tracking (full implementation -- PR #179)
 - [x] Dashboard: agent status view, enrollment flow (PRs #190, #191, #192)
@@ -268,7 +268,7 @@
 
 #### P0 - Infrastructure
 
-- [ ] Set up MkDocs Material scaffolding (`mkdocs.yml`, `docs-site/` directory)
+- [x] Set up MkDocs Material scaffolding (`mkdocs.yml`, theme config, nav structure) (PR #270)
 - [ ] Deploy docs site to GitHub Pages (`herbhall.github.io/subnetree`)
 - [x] Verify Docker image is pullable on GHCR (#215, PR #225)
 - [x] Simplify Quick Start to single recommended Docker path (#214, PR #231)
@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test, classification confidence, ICMP traceroute. Sprint 2: SNMP FDB walks, seed data, interactive diagnostics. Sprint 3: network hierarchy, E2E tests. Post-QC: one-click Scout deployment. Sprint 4: MCP server, Linux GPU + Proxmox VE collectors, Inno Setup installer. Sprint 5: Windows Scout service mode + installer, subnet grouping, contextual help. Sprint 6: WiFi scanning (Linux + Windows), demo mode with Pulse seed data. Sprint 7-8: WiFi hotspot clients, Proxmox VE VMs/LXC. Sprint 9: Tailscale overlay network plugin, MFA/TOTP authentication. Remaining: multi-tenancy, seasonal baselines, alert pattern learning.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test, classification confidence, ICMP traceroute. Sprint 2: SNMP FDB walks, seed data, interactive diagnostics. Sprint 3: network hierarchy, E2E tests. Post-QC: one-click Scout deployment. Sprint 4: MCP server, Linux GPU + Proxmox VE collectors, Inno Setup installer. Sprint 5: Windows Scout service mode + installer, subnet grouping, contextual help. Sprint 6: WiFi scanning (Linux + Windows), demo mode with Pulse seed data. Sprint 7-8: WiFi hotspot clients, Proxmox VE VMs/LXC. Sprint 9: Tailscale overlay network plugin, MFA/TOTP authentication. Sprint 10: MCP tools expansion (PR #469), devices table columns (PR #470), roadmap sync (PR #468). Remaining: multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -388,7 +388,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Frontend hardware tab on device detail page with collection source badges (PR #443)
 - [x] Seed data: 5 demo devices with realistic hardware profiles (PR #443)
 - [x] Linux Scout collection: GPU detection via sysfs + lspci (Sprint 4, PR #445)
-- [ ] Linux Scout collection: complete `services_other.go`, `software_other.go` stubs (#438)
+- [x] Linux Scout collection: `services_other.go` (systemd), `software_other.go` (dpkg/rpm + Docker) (#438)
 - [x] Proxmox VE API collector: node hardware, VMs, LXC inventory (Sprint 4, PR #445)
 - [ ] UnRAID API integration: disk array, Docker containers, agentless (#438)
 - [ ] Home Assistant API integration: entity-to-device mapping (#438)
@@ -557,7 +557,7 @@ Builds on Phase 2 framework. Adds remote catalog, usage-pattern triggers, and ri
 
 - [x] MCP server plugin implementing `plugin.Plugin` interface (Sprint 4, PR #444)
 - [x] Tools: `get_device`, `list_devices`, `get_hardware_profile`, `query_devices`, `get_fleet_summary` (Sprint 4, PR #444)
-- [ ] Tools: `get_service_inventory`, `get_stale_devices` (#439)
+- [x] Tools: `get_service_inventory`, `get_stale_devices` (Sprint 10, PR #469)
 - [x] stdio transport for Claude Desktop integration (Sprint 4, PR #444)
 - [x] HTTP transport at `/api/v1/mcp/` (Sprint 4, PR #444)
 - [x] Vault credentials never exposed through MCP tools (Sprint 4, PR #444)
