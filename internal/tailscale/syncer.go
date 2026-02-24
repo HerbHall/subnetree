@@ -92,11 +92,12 @@ func (s *Syncer) Sync(ctx context.Context, client *TailscaleClient) (result *Syn
 			seenIDs[device.ID] = true
 		}
 
-		if created {
+		switch {
+		case created:
 			res.Created++
-		} else if matched != nil {
+		case matched != nil:
 			res.Updated++
-		} else {
+		default:
 			res.Unchanged++
 		}
 	}
