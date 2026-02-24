@@ -28,16 +28,24 @@ type DeviceQuerier interface {
 	GetDeviceHardware(ctx context.Context, deviceID string) (*models.DeviceHardware, error)
 	GetHardwareSummary(ctx context.Context) (*models.HardwareSummary, error)
 	QueryDevicesByHardware(ctx context.Context, query models.HardwareQuery) ([]models.Device, int, error)
+	FindStaleDevices(ctx context.Context, threshold time.Time) ([]models.Device, error)
+}
+
+// ServiceQuerier abstracts service data access for the MCP module.
+// Implemented by the svcmap store; resolved at runtime via composition root adapter.
+type ServiceQuerier interface {
+	ListServicesFiltered(ctx context.Context, deviceID, serviceType, status string) ([]models.Service, error)
 }
 
 // Module implements the MCP (Model Context Protocol) server plugin.
 // It exposes SubNetree device data to external AI tools via the MCP protocol.
 type Module struct {
-	logger  *zap.Logger
-	bus     plugin.EventBus
-	querier DeviceQuerier
-	server  *sdkmcp.Server
-	apiKey  string
+	logger         *zap.Logger
+	bus            plugin.EventBus
+	querier        DeviceQuerier
+	serviceQuerier ServiceQuerier
+	server         *sdkmcp.Server
+	apiKey         string
 }
 
 // New creates a new MCP plugin instance.
@@ -71,6 +79,12 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 // (main.go) to wire the recon module's store without cross-internal imports.
 func (m *Module) SetQuerier(q DeviceQuerier) {
 	m.querier = q
+}
+
+// SetServiceQuerier injects the service querier. Called from the composition root
+// (main.go) to wire the svcmap store without cross-internal imports.
+func (m *Module) SetServiceQuerier(q ServiceQuerier) {
+	m.serviceQuerier = q
 }
 
 func (m *Module) Start(_ context.Context) error {

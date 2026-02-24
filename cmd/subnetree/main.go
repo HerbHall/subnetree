@@ -314,12 +314,13 @@ func main() {
 		logger.Info("hardware profile bridge wired", zap.String("component", "recon"))
 	}
 
-	// Wire MCP device querier: mcp -> recon store.
+	// Wire MCP device querier and service querier: mcp -> recon store, svcmap store.
 	if reconMod != nil {
 		for _, m := range modules {
 			if mcpMod, ok := m.(*mcpmod.Module); ok {
 				mcpMod.SetQuerier(&mcpDeviceAdapter{store: reconMod.Store()})
-				logger.Info("MCP device querier wired", zap.String("component", "mcp"))
+				mcpMod.SetServiceQuerier(&mcpServiceAdapter{store: svcmapStore})
+				logger.Info("MCP device and service queriers wired", zap.String("component", "mcp"))
 				break
 			}
 		}
@@ -660,6 +661,24 @@ func (a *mcpDeviceAdapter) GetHardwareSummary(ctx context.Context) (*models.Hard
 
 func (a *mcpDeviceAdapter) QueryDevicesByHardware(ctx context.Context, query models.HardwareQuery) ([]models.Device, int, error) {
 	return a.store.QueryDevicesByHardware(ctx, query)
+}
+
+func (a *mcpDeviceAdapter) FindStaleDevices(ctx context.Context, threshold time.Time) ([]models.Device, error) {
+	return a.store.FindStaleDevices(ctx, threshold)
+}
+
+// mcpServiceAdapter adapts svcmap.Store to mcp.ServiceQuerier.
+// Lives in the composition root to avoid coupling mcp -> svcmap.
+type mcpServiceAdapter struct {
+	store *svcmap.Store
+}
+
+func (a *mcpServiceAdapter) ListServicesFiltered(ctx context.Context, deviceID, serviceType, status string) ([]models.Service, error) {
+	return a.store.ListServicesFiltered(ctx, svcmap.ServiceFilter{
+		DeviceID:    deviceID,
+		ServiceType: serviceType,
+		Status:      status,
+	})
 }
 
 // tailscaleDeviceAdapter adapts recon.ReconStore to tailscale.DeviceStore.

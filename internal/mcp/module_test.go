@@ -30,8 +30,69 @@ type mockQuerier struct {
 	queryDevicesErr error
 }
 
+// mockServiceQuerier implements ServiceQuerier for testing.
+type mockServiceQuerier struct {
+	services []models.Service
+}
+
+func newMockServiceQuerier() *mockServiceQuerier {
+	now := time.Now().UTC()
+	return &mockServiceQuerier{
+		services: []models.Service{
+			{
+				ID:          "svc-001",
+				Name:        "nginx",
+				DisplayName: "NGINX Web Server",
+				ServiceType: models.ServiceTypeDockerContainer,
+				DeviceID:    "dev-001",
+				Status:      models.ServiceStatusRunning,
+				FirstSeen:   now,
+				LastSeen:    now,
+			},
+			{
+				ID:          "svc-002",
+				Name:        "postgres",
+				DisplayName: "PostgreSQL",
+				ServiceType: models.ServiceTypeDockerContainer,
+				DeviceID:    "dev-001",
+				Status:      models.ServiceStatusRunning,
+				FirstSeen:   now,
+				LastSeen:    now,
+			},
+			{
+				ID:          "svc-003",
+				Name:        "sshd",
+				DisplayName: "SSH Daemon",
+				ServiceType: models.ServiceTypeSystemdService,
+				DeviceID:    "dev-002",
+				Status:      models.ServiceStatusRunning,
+				FirstSeen:   now,
+				LastSeen:    now,
+			},
+		},
+	}
+}
+
+func (q *mockServiceQuerier) ListServicesFiltered(_ context.Context, deviceID, serviceType, status string) ([]models.Service, error) {
+	var result []models.Service
+	for _, s := range q.services {
+		if deviceID != "" && s.DeviceID != deviceID {
+			continue
+		}
+		if serviceType != "" && string(s.ServiceType) != serviceType {
+			continue
+		}
+		if status != "" && string(s.Status) != status {
+			continue
+		}
+		result = append(result, s)
+	}
+	return result, nil
+}
+
 func newMockQuerier() *mockQuerier {
 	now := time.Now().UTC()
+	staleTime := now.Add(-48 * time.Hour)
 	devices := map[string]*models.Device{
 		"dev-001": {
 			ID:          "dev-001",
@@ -50,6 +111,15 @@ func newMockQuerier() *mockQuerier {
 			Status:      models.DeviceStatusOnline,
 			FirstSeen:   now,
 			LastSeen:    now,
+		},
+		"dev-003": {
+			ID:          "dev-003",
+			Hostname:    "stale-printer",
+			IPAddresses: []string{"192.168.1.30"},
+			DeviceType:  models.DeviceTypePrinter,
+			Status:      models.DeviceStatusOnline,
+			FirstSeen:   staleTime,
+			LastSeen:    staleTime,
 		},
 	}
 
@@ -120,6 +190,16 @@ func (q *mockQuerier) QueryDevicesByHardware(_ context.Context, query models.Har
 	return result, len(result), nil
 }
 
+func (q *mockQuerier) FindStaleDevices(_ context.Context, threshold time.Time) ([]models.Device, error) {
+	var stale []models.Device
+	for _, d := range q.allDevices {
+		if d.Status == models.DeviceStatusOnline && d.LastSeen.Before(threshold) {
+			stale = append(stale, d)
+		}
+	}
+	return stale, nil
+}
+
 func newTestModule(t *testing.T) *Module {
 	t.Helper()
 	m := New()
@@ -135,6 +215,7 @@ func newTestModule(t *testing.T) *Module {
 	}
 
 	m.SetQuerier(newMockQuerier())
+	m.SetServiceQuerier(newMockServiceQuerier())
 
 	err = m.Start(context.Background())
 	if err != nil {
@@ -242,11 +323,11 @@ func TestToolHandlers(t *testing.T) {
 				if err := json.Unmarshal([]byte(data), &resp); err != nil {
 					t.Fatalf("unmarshal list: %v", err)
 				}
-				if resp.Total != 2 {
-					t.Errorf("total = %d, want 2", resp.Total)
+				if resp.Total != 3 {
+					t.Errorf("total = %d, want 3", resp.Total)
 				}
-				if len(resp.Devices) != 2 {
-					t.Errorf("devices count = %d, want 2", len(resp.Devices))
+				if len(resp.Devices) != 3 {
+					t.Errorf("devices count = %d, want 3", len(resp.Devices))
 				}
 			},
 		},
@@ -308,8 +389,116 @@ func TestToolHandlers(t *testing.T) {
 				if err := json.Unmarshal([]byte(data), &resp); err != nil {
 					t.Fatalf("unmarshal query result: %v", err)
 				}
+				// Mock returns all devices regardless of query filter.
 				if resp.Total < 1 {
 					t.Errorf("total = %d, want >= 1", resp.Total)
+				}
+			},
+		},
+		{
+			name: "get_stale_devices_default",
+			handler: func() (*CallToolResultCheck, error) {
+				result, _, err := m.handleGetStaleDevices(context.Background(), nil, getStaleDevicesInput{})
+				return toCheck(result), err
+			},
+			checkJSON: func(t *testing.T, data string) {
+				var resp struct {
+					Devices         []models.Device `json:"devices"`
+					Count           int             `json:"count"`
+					StaleAfterHours int             `json:"stale_after_hours"`
+				}
+				if err := json.Unmarshal([]byte(data), &resp); err != nil {
+					t.Fatalf("unmarshal stale result: %v", err)
+				}
+				if resp.StaleAfterHours != 24 {
+					t.Errorf("stale_after_hours = %d, want 24", resp.StaleAfterHours)
+				}
+				if resp.Count != 1 {
+					t.Errorf("count = %d, want 1 (stale-printer)", resp.Count)
+				}
+				if len(resp.Devices) > 0 && resp.Devices[0].Hostname != "stale-printer" {
+					t.Errorf("hostname = %q, want %q", resp.Devices[0].Hostname, "stale-printer")
+				}
+			},
+		},
+		{
+			name: "get_stale_devices_custom_hours",
+			handler: func() (*CallToolResultCheck, error) {
+				result, _, err := m.handleGetStaleDevices(context.Background(), nil, getStaleDevicesInput{StaleAfterHours: 100})
+				return toCheck(result), err
+			},
+			checkJSON: func(t *testing.T, data string) {
+				var resp struct {
+					Count           int `json:"count"`
+					StaleAfterHours int `json:"stale_after_hours"`
+				}
+				if err := json.Unmarshal([]byte(data), &resp); err != nil {
+					t.Fatalf("unmarshal stale result: %v", err)
+				}
+				if resp.StaleAfterHours != 100 {
+					t.Errorf("stale_after_hours = %d, want 100", resp.StaleAfterHours)
+				}
+				// With 100h window, stale-printer (48h old) is NOT stale.
+				if resp.Count != 0 {
+					t.Errorf("count = %d, want 0 (100h window should include 48h-old device)", resp.Count)
+				}
+			},
+		},
+		{
+			name: "get_service_inventory_all",
+			handler: func() (*CallToolResultCheck, error) {
+				result, _, err := m.handleGetServiceInventory(context.Background(), nil, getServiceInventoryInput{})
+				return toCheck(result), err
+			},
+			checkJSON: func(t *testing.T, data string) {
+				var resp struct {
+					ServicesByDevice map[string][]models.Service `json:"services_by_device"`
+					TotalServices    int                         `json:"total_services"`
+				}
+				if err := json.Unmarshal([]byte(data), &resp); err != nil {
+					t.Fatalf("unmarshal services result: %v", err)
+				}
+				if resp.TotalServices != 3 {
+					t.Errorf("total_services = %d, want 3", resp.TotalServices)
+				}
+				if len(resp.ServicesByDevice) != 2 {
+					t.Errorf("device groups = %d, want 2", len(resp.ServicesByDevice))
+				}
+			},
+		},
+		{
+			name: "get_service_inventory_filtered_by_device",
+			handler: func() (*CallToolResultCheck, error) {
+				result, _, err := m.handleGetServiceInventory(context.Background(), nil, getServiceInventoryInput{DeviceID: "dev-001"})
+				return toCheck(result), err
+			},
+			checkJSON: func(t *testing.T, data string) {
+				var resp struct {
+					TotalServices int `json:"total_services"`
+				}
+				if err := json.Unmarshal([]byte(data), &resp); err != nil {
+					t.Fatalf("unmarshal services result: %v", err)
+				}
+				if resp.TotalServices != 2 {
+					t.Errorf("total_services = %d, want 2 (nginx + postgres on dev-001)", resp.TotalServices)
+				}
+			},
+		},
+		{
+			name: "get_service_inventory_filtered_by_type",
+			handler: func() (*CallToolResultCheck, error) {
+				result, _, err := m.handleGetServiceInventory(context.Background(), nil, getServiceInventoryInput{ServiceType: "systemd-service"})
+				return toCheck(result), err
+			},
+			checkJSON: func(t *testing.T, data string) {
+				var resp struct {
+					TotalServices int `json:"total_services"`
+				}
+				if err := json.Unmarshal([]byte(data), &resp); err != nil {
+					t.Fatalf("unmarshal services result: %v", err)
+				}
+				if resp.TotalServices != 1 {
+					t.Errorf("total_services = %d, want 1 (sshd)", resp.TotalServices)
 				}
 			},
 		},
@@ -362,6 +551,16 @@ func TestNoQuerier(t *testing.T) {
 	check := toCheck(result)
 	if check.text == "" {
 		t.Fatal("expected non-empty response when querier is nil")
+	}
+
+	// Also test service inventory with nil serviceQuerier.
+	svcResult, _, svcErr := m.handleGetServiceInventory(context.Background(), nil, getServiceInventoryInput{})
+	if svcErr != nil {
+		t.Fatalf("unexpected error: %v", svcErr)
+	}
+	svcCheck := toCheck(svcResult)
+	if svcCheck.text == "" {
+		t.Fatal("expected non-empty response when serviceQuerier is nil")
 	}
 }
 
