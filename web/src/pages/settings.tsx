@@ -15,6 +15,8 @@ import {
   Copy,
   Check,
   AlertTriangle,
+  Globe,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -33,8 +35,10 @@ import { ThemeImportExport } from '@/components/settings/theme-import-export'
 import { ThemeEditor } from '@/components/settings/theme-editor'
 import type { ThemeDefinition } from '@/api/themes'
 import { HelpIcon, HelpPopover } from '@/components/contextual-help'
+import { getTailscaleStatus, triggerTailscaleSync } from '@/api/tailscale'
+import type { TailscaleStatus } from '@/api/tailscale'
 
-type SettingsTab = 'network' | 'appearance' | 'llm' | 'agents'
+type SettingsTab = 'network' | 'appearance' | 'llm' | 'agents' | 'tailscale'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('network')
@@ -78,6 +82,12 @@ export function SettingsPage() {
           icon={<Key className="h-4 w-4" />}
           label="Agents"
         />
+        <TabButton
+          active={activeTab === 'tailscale'}
+          onClick={() => setActiveTab('tailscale')}
+          icon={<Globe className="h-4 w-4" />}
+          label="Tailscale"
+        />
       </div>
 
       {/* Tab content */}
@@ -85,6 +95,7 @@ export function SettingsPage() {
       {activeTab === 'appearance' && <AppearanceTab />}
       {activeTab === 'llm' && <LLMConfigPanel />}
       {activeTab === 'agents' && <AgentsTab />}
+      {activeTab === 'tailscale' && <TailscaleTab />}
     </div>
   )
 }
@@ -508,5 +519,146 @@ function InterfaceRow({
         </div>
       </div>
     </button>
+  )
+}
+
+function TailscaleTab() {
+  const {
+    data: status,
+    isLoading,
+    error,
+  } = useQuery<TailscaleStatus>({
+    queryKey: ['settings', 'tailscale-status'],
+    queryFn: getTailscaleStatus,
+    refetchInterval: 30000,
+  })
+
+  const syncMutation = useMutation({
+    mutationFn: triggerTailscaleSync,
+    onSuccess: (data) => {
+      toast.success(
+        `Tailscale sync complete: ${data.devices_found} found, ${data.created} created, ${data.updated} updated`
+      )
+    },
+    onError: () => {
+      toast.error('Tailscale sync failed')
+    },
+  })
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            Tailscale Integration
+            <HelpPopover title="Tailscale Integration">
+              <p className="text-xs text-muted-foreground">
+                Syncs devices from your Tailscale tailnet into SubNetree. Devices are matched by hostname or IP
+                and merged with existing records. Configure a Tailscale API key credential in the Vault first.
+              </p>
+            </HelpPopover>
+          </CardTitle>
+          <CardDescription>
+            Discover and sync devices from your Tailscale tailnet overlay network.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <p className="text-sm text-red-400 py-4">
+              Failed to load Tailscale status. Ensure the server is running.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Status:</span>
+                {status?.enabled ? (
+                  <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-500">
+                    Enabled
+                  </span>
+                ) : (
+                  <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                    Disabled
+                  </span>
+                )}
+              </div>
+
+              {/* Last sync info */}
+              {status?.last_sync_time && (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Last sync: {new Date(status.last_sync_time).toLocaleString()}
+                  </p>
+                  {status.last_sync_result && (
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      <div>
+                        <p className="text-lg font-semibold">{status.last_sync_result.devices_found}</p>
+                        <p className="text-xs text-muted-foreground">Found</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold text-green-500">{status.last_sync_result.created}</p>
+                        <p className="text-xs text-muted-foreground">Created</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold text-blue-500">{status.last_sync_result.updated}</p>
+                        <p className="text-xs text-muted-foreground">Updated</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold">{status.last_sync_result.unchanged}</p>
+                        <p className="text-xs text-muted-foreground">Unchanged</p>
+                      </div>
+                    </div>
+                  )}
+                  {status.error && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {status.error}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Sync button */}
+              {status?.enabled && (
+                <Button
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                  className="gap-2"
+                >
+                  {syncMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
+                </Button>
+              )}
+
+              {/* Configuration help */}
+              {!status?.enabled && (
+                <div className="rounded-md border border-dashed p-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    To enable Tailscale integration, add the following to your configuration file:
+                  </p>
+                  <pre className="mt-2 text-xs bg-muted/50 rounded p-2 text-left inline-block">
+{`plugins:
+  tailscale:
+    enabled: true
+    credential_id: "<vault-credential-id>"
+    tailnet: "-"
+    sync_interval: 5m`}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

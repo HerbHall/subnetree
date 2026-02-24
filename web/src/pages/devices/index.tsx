@@ -1407,6 +1407,11 @@ function DeviceTableRow({
         <div className="flex items-center gap-1.5">
           <span className="capitalize">{device.device_type}</span>
           <ConnectionBadge type={device.connection_type} />
+          {device.discovery_method === 'tailscale' && (
+            <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded" title="Discovered via Tailscale">
+              Tailscale
+            </span>
+          )}
         </div>
       </td>
       <td className="px-4 py-1.5">

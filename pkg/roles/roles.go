@@ -24,6 +24,7 @@ const (
 	RoleRemoteAccess    = "remote_access"
 	RoleLLM             = "llm"
 	RoleAnalytics       = "analytics"
+	RoleOverlayNetwork  = "overlay_network"
 )
 
 // DiscoveryProvider is implemented by plugins that discover network devices.
