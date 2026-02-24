@@ -224,12 +224,11 @@ jobs:
         run: go mod download
 
       - name: Regenerate swagger spec
-        run: >-
-          swag init
-          -g cmd/subnetree/main.go
-          -o api/swagger
-          --parseDependency
-          --parseInternal
+        run: |
+          swag init -g cmd/subnetree/main.go -o api/swagger --parseDependency --parseInternal
+          # Strip x-enum-descriptions (Windows swag generates them, Linux doesn't)
+          perl -i -0pe 's/\s*"x-enum-descriptions":\s*\[[^\]]*\],?//gs' api/swagger/docs.go api/swagger/swagger.json
+          perl -i -0pe 's/^    x-enum-descriptions:\n(    - [^\n]*\n)*//gm' api/swagger/swagger.yaml
 
       - name: Check for drift
         run: |

@@ -25,16 +25,10 @@ vi.mock('jwt-decode', () => ({
 }))
 
 // Mock API calls
-vi.mock('@/api/auth', () => ({
-  loginApi: vi.fn(),
-  refreshApi: vi.fn(),
-  logoutApi: vi.fn(),
-  verifyMFAApi: vi.fn(),
-  verifyMFARecoveryApi: vi.fn(),
-  isMFAChallenge: vi.fn((data: unknown) => {
-    return typeof data === 'object' && data !== null && 'mfa_required' in data
-  }),
-}))
+vi.mock('@/api/auth', async () => {
+  const { authMockFactory } = await import('@/test/mocks/auth')
+  return authMockFactory()
+})
 
 describe('useAuthStore', () => {
   beforeEach(() => {

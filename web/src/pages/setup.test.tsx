@@ -16,12 +16,13 @@ vi.mock('react-router-dom', async () => {
 })
 
 // Mock auth API
-vi.mock('@/api/auth', () => ({
-  setupApi: vi.fn(),
-  loginApi: vi.fn(),
-  checkSetupRequired: vi.fn().mockResolvedValue(true),
-  isMFAChallenge: vi.fn(() => false),
-}))
+vi.mock('@/api/auth', async () => {
+  const { authMockFactory } = await import('@/test/mocks/auth')
+  const mocks = authMockFactory()
+  mocks.checkSetupRequired.mockResolvedValue(true)
+  mocks.isMFAChallenge.mockReturnValue(false)
+  return mocks
+})
 
 // Mock settings API
 vi.mock('@/api/settings', () => ({
