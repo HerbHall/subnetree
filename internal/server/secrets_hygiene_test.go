@@ -42,7 +42,8 @@ func testEnvWithObservedLogs(t *testing.T) (*http.ServeMux, *observer.ObservedLo
 	}
 
 	tokens := auth.NewTokenService([]byte("test-secret-key-32bytes-long!!"), 15*time.Minute, 7*24*time.Hour)
-	svc := auth.NewService(userStore, tokens, logger)
+	totpSvc := auth.NewTOTPService([]byte("test-secret-key-32bytes-long!!"))
+	svc := auth.NewService(userStore, tokens, totpSvc, logger)
 	handler := auth.NewHandler(svc, logger)
 
 	mux := http.NewServeMux()

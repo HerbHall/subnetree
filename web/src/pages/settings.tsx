@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Globe,
   RefreshCw,
+  Shield,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -37,8 +38,9 @@ import type { ThemeDefinition } from '@/api/themes'
 import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 import { getTailscaleStatus, triggerTailscaleSync } from '@/api/tailscale'
 import type { TailscaleStatus } from '@/api/tailscale'
+import { MFAStatus } from '@/components/settings/mfa-status'
 
-type SettingsTab = 'network' | 'appearance' | 'llm' | 'agents' | 'tailscale'
+type SettingsTab = 'network' | 'appearance' | 'llm' | 'agents' | 'tailscale' | 'security'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('network')
@@ -88,6 +90,12 @@ export function SettingsPage() {
           icon={<Globe className="h-4 w-4" />}
           label="Tailscale"
         />
+        <TabButton
+          active={activeTab === 'security'}
+          onClick={() => setActiveTab('security')}
+          icon={<Shield className="h-4 w-4" />}
+          label="Security"
+        />
       </div>
 
       {/* Tab content */}
@@ -96,6 +104,7 @@ export function SettingsPage() {
       {activeTab === 'llm' && <LLMConfigPanel />}
       {activeTab === 'agents' && <AgentsTab />}
       {activeTab === 'tailscale' && <TailscaleTab />}
+      {activeTab === 'security' && <SecurityTab />}
     </div>
   )
 }
@@ -659,6 +668,14 @@ function TailscaleTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function SecurityTab() {
+  return (
+    <div className="space-y-4">
+      <MFAStatus />
     </div>
   )
 }

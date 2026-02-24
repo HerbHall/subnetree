@@ -35,3 +35,37 @@ type SetupStatusResponse struct {
 	SetupRequired bool   `json:"setup_required" example:"false"`
 	Version       string `json:"version" example:"0.4.0"`
 }
+
+// MFAChallengeResponse is returned when MFA verification is required after password auth.
+type MFAChallengeResponse struct {
+	MFARequired bool   `json:"mfa_required" example:"true"`
+	MFAToken    string `json:"mfa_token" example:"eyJhbG..."`
+}
+
+// MFAVerifyRequest is the request body for POST /auth/mfa/verify.
+type MFAVerifyRequest struct {
+	MFAToken string `json:"mfa_token" example:"eyJhbG..."`
+	TOTPCode string `json:"totp_code" example:"123456"`
+}
+
+// MFARecoveryRequest is the request body for POST /auth/mfa/verify-recovery.
+type MFARecoveryRequest struct {
+	MFAToken     string `json:"mfa_token" example:"eyJhbG..."`
+	RecoveryCode string `json:"recovery_code" example:"a1b2c3d4"`
+}
+
+// MFASetupResponse is the response from POST /auth/mfa/setup.
+type MFASetupResponse struct {
+	OTPAuthURL    string   `json:"otpauth_url" example:"otpauth://totp/SubNetree:admin?secret=..."`
+	RecoveryCodes []string `json:"recovery_codes"`
+}
+
+// MFAVerifySetupRequest is the request body for POST /auth/mfa/verify-setup.
+type MFAVerifySetupRequest struct {
+	TOTPCode string `json:"totp_code" example:"123456"`
+}
+
+// MFADisableRequest is the request body for POST /auth/mfa/disable.
+type MFADisableRequest struct {
+	TOTPCode string `json:"totp_code" example:"123456"`
+}

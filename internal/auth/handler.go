@@ -30,6 +30,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/setup", h.handleSetup)
 	mux.HandleFunc("GET /api/v1/auth/setup/status", h.handleSetupStatus)
 
+	// MFA endpoints (verify/recovery are public since the user only has an MFA token).
+	mux.HandleFunc("POST /api/v1/auth/mfa/verify", h.handleMFAVerify)
+	mux.HandleFunc("POST /api/v1/auth/mfa/verify-recovery", h.handleMFAVerifyRecovery)
+	// MFA management endpoints (require authentication).
+	mux.HandleFunc("POST /api/v1/auth/mfa/setup", h.handleMFASetup)
+	mux.HandleFunc("POST /api/v1/auth/mfa/verify-setup", h.handleMFAVerifySetup)
+	mux.HandleFunc("POST /api/v1/auth/mfa/disable", h.handleMFADisable)
+
 	// Admin-only user management endpoints (auth enforced by middleware,
 	// role checked in handlers).
 	mux.HandleFunc("GET /api/v1/users", h.handleListUsers)
@@ -70,10 +78,14 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pair, err := h.service.Login(r.Context(), req.Username, req.Password)
+	result, err := h.service.Login(r.Context(), req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrUserDisabled) {
 			writeAuthError(w, http.StatusUnauthorized, "invalid username or password")
+			return
+		}
+		if errors.Is(err, ErrAccountLocked) {
+			writeAuthError(w, http.StatusUnauthorized, "account is locked")
 			return
 		}
 		h.logger.Error("login error", zap.Error(err))
@@ -81,7 +93,14 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, pair)
+	if result.MFARequired {
+		writeJSON(w, http.StatusOK, MFAChallengeResponse{
+			MFARequired: true,
+			MFAToken:    result.MFAToken,
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, result.Pair)
 }
 
 // handleRefresh validates a refresh token and returns a new token pair.
@@ -356,6 +375,219 @@ func (h *Handler) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		}
 		h.logger.Error("delete user error", zap.Error(err))
 		writeAuthError(w, http.StatusInternalServerError, "failed to delete user")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleMFAVerify completes an MFA login with a TOTP code.
+//
+//	@Summary		Verify MFA code
+//	@Description	Complete login by providing the TOTP code from an authenticator app.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		MFAVerifyRequest	true	"MFA token and TOTP code"
+//	@Success		200		{object}	TokenPair
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/mfa/verify [post]
+func (h *Handler) handleMFAVerify(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		MFAToken string `json:"mfa_token"`
+		TOTPCode string `json:"totp_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.MFAToken == "" || req.TOTPCode == "" {
+		writeAuthError(w, http.StatusBadRequest, "mfa_token and totp_code are required")
+		return
+	}
+
+	pair, err := h.service.CompleteMFALogin(r.Context(), req.MFAToken, req.TOTPCode)
+	if err != nil {
+		if errors.Is(err, ErrInvalidMFACode) {
+			writeAuthError(w, http.StatusUnauthorized, "invalid or expired MFA code")
+			return
+		}
+		h.logger.Error("MFA verify error", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "MFA verification failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pair)
+}
+
+// handleMFAVerifyRecovery completes an MFA login with a recovery code.
+//
+//	@Summary		Verify MFA with recovery code
+//	@Description	Complete login using a one-time recovery code instead of a TOTP code.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		MFARecoveryRequest	true	"MFA token and recovery code"
+//	@Success		200		{object}	TokenPair
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/mfa/verify-recovery [post]
+func (h *Handler) handleMFAVerifyRecovery(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		MFAToken     string `json:"mfa_token"`
+		RecoveryCode string `json:"recovery_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.MFAToken == "" || req.RecoveryCode == "" {
+		writeAuthError(w, http.StatusBadRequest, "mfa_token and recovery_code are required")
+		return
+	}
+
+	pair, err := h.service.CompleteMFAWithRecovery(r.Context(), req.MFAToken, req.RecoveryCode)
+	if err != nil {
+		if errors.Is(err, ErrInvalidMFACode) {
+			writeAuthError(w, http.StatusUnauthorized, "invalid or expired recovery code")
+			return
+		}
+		h.logger.Error("MFA recovery verify error", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "MFA recovery verification failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pair)
+}
+
+// handleMFASetup initiates MFA enrollment for the authenticated user.
+//
+//	@Summary		Setup MFA
+//	@Description	Begin TOTP enrollment. Returns the otpauth URL and recovery codes.
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	MFASetupResponse
+//	@Failure		401	{object}	models.APIProblem
+//	@Failure		500	{object}	models.APIProblem
+//	@Router			/auth/mfa/setup [post]
+func (h *Handler) handleMFASetup(w http.ResponseWriter, r *http.Request) {
+	claims := UserFromContext(r.Context())
+	if claims == nil {
+		writeAuthError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	url, codes, err := h.service.SetupTOTP(r.Context(), claims.UserID)
+	if err != nil {
+		h.logger.Error("MFA setup error", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "MFA setup failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, MFASetupResponse{
+		OTPAuthURL:    url,
+		RecoveryCodes: codes,
+	})
+}
+
+// handleMFAVerifySetup completes MFA enrollment by verifying the user's first TOTP code.
+//
+//	@Summary		Verify MFA setup
+//	@Description	Complete TOTP enrollment by providing a valid code from the authenticator app.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body	MFAVerifySetupRequest	true	"TOTP code from authenticator"
+//	@Success		204		"No Content"
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/mfa/verify-setup [post]
+func (h *Handler) handleMFAVerifySetup(w http.ResponseWriter, r *http.Request) {
+	claims := UserFromContext(r.Context())
+	if claims == nil {
+		writeAuthError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	var req struct {
+		TOTPCode string `json:"totp_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.TOTPCode == "" {
+		writeAuthError(w, http.StatusBadRequest, "totp_code is required")
+		return
+	}
+
+	if err := h.service.VerifyTOTPSetup(r.Context(), claims.UserID, req.TOTPCode); err != nil {
+		if errors.Is(err, ErrInvalidMFACode) {
+			writeAuthError(w, http.StatusUnauthorized, "invalid TOTP code")
+			return
+		}
+		if errors.Is(err, ErrMFANotEnabled) {
+			writeAuthError(w, http.StatusBadRequest, "MFA setup has not been initiated")
+			return
+		}
+		h.logger.Error("MFA verify setup error", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "MFA setup verification failed")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleMFADisable disables MFA for the authenticated user.
+//
+//	@Summary		Disable MFA
+//	@Description	Disable TOTP-based MFA. Requires a valid TOTP code for confirmation.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body	MFADisableRequest	true	"TOTP code for confirmation"
+//	@Success		204		"No Content"
+//	@Failure		400		{object}	models.APIProblem
+//	@Failure		401		{object}	models.APIProblem
+//	@Failure		500		{object}	models.APIProblem
+//	@Router			/auth/mfa/disable [post]
+func (h *Handler) handleMFADisable(w http.ResponseWriter, r *http.Request) {
+	claims := UserFromContext(r.Context())
+	if claims == nil {
+		writeAuthError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+
+	var req struct {
+		TOTPCode string `json:"totp_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAuthError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.TOTPCode == "" {
+		writeAuthError(w, http.StatusBadRequest, "totp_code is required")
+		return
+	}
+
+	if err := h.service.DisableTOTP(r.Context(), claims.UserID, req.TOTPCode); err != nil {
+		if errors.Is(err, ErrInvalidMFACode) {
+			writeAuthError(w, http.StatusUnauthorized, "invalid TOTP code")
+			return
+		}
+		if errors.Is(err, ErrMFANotEnabled) {
+			writeAuthError(w, http.StatusBadRequest, "MFA is not enabled")
+			return
+		}
+		h.logger.Error("MFA disable error", zap.Error(err))
+		writeAuthError(w, http.StatusInternalServerError, "failed to disable MFA")
 		return
 	}
 

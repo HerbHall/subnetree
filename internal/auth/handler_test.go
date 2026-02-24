@@ -36,7 +36,8 @@ func setupHandlerEnv(t *testing.T) (*Handler, *http.ServeMux) {
 	}
 
 	tokens := NewTokenService([]byte("test-secret-key-32bytes-long!!"), 15*time.Minute, 7*24*time.Hour)
-	svc := NewService(userStore, tokens, testLogger())
+	totpSvc := NewTOTPService([]byte("test-secret-key-32bytes-long!!"))
+	svc := NewService(userStore, tokens, totpSvc, testLogger())
 	handler := NewHandler(svc, testLogger())
 
 	mux := http.NewServeMux()

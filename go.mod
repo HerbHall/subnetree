@@ -10,7 +10,9 @@ require (
 	github.com/gosnmp/gosnmp v1.43.2
 	github.com/hashicorp/mdns v1.0.6
 	github.com/huin/goupnp v1.3.0
+	github.com/mdlayher/wifi v0.7.2
 	github.com/modelcontextprotocol/go-sdk v1.3.1
+	github.com/pquerna/otp v1.5.0
 	github.com/prometheus-community/pro-bing v0.8.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/viper v1.21.0
@@ -32,6 +34,7 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -50,7 +53,6 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.8.0 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
-	github.com/mdlayher/wifi v0.7.2 // indirect
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
