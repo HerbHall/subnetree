@@ -17,17 +17,10 @@ vi.mock('react-router-dom', async () => {
 })
 
 // Mock auth API
-vi.mock('@/api/auth', () => ({
-  checkSetupRequired: vi.fn(),
-  loginApi: vi.fn(),
-  refreshApi: vi.fn(),
-  logoutApi: vi.fn(),
-  verifyMFAApi: vi.fn(),
-  verifyMFARecoveryApi: vi.fn(),
-  isMFAChallenge: vi.fn((data: unknown) => {
-    return typeof data === 'object' && data !== null && 'mfa_required' in data
-  }),
-}))
+vi.mock('@/api/auth', async () => {
+  const { authMockFactory } = await import('@/test/mocks/auth')
+  return authMockFactory()
+})
 
 describe('LoginPage', () => {
   const user = userEvent.setup()
