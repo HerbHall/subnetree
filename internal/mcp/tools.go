@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -35,6 +36,16 @@ type queryDevicesInput struct {
 	Offset       int    `json:"offset,omitempty" jsonschema:"Number of devices to skip for pagination"`
 }
 
+type getStaleDevicesInput struct {
+	StaleAfterHours int `json:"stale_after_hours,omitempty" jsonschema:"Hours since last seen to consider stale (default 24)"`
+}
+
+type getServiceInventoryInput struct {
+	DeviceID    string `json:"device_id,omitempty" jsonschema:"Filter by device ID"`
+	ServiceType string `json:"service_type,omitempty" jsonschema:"Filter by type: docker-container, systemd-service, windows-service, application"`
+	Status      string `json:"status,omitempty" jsonschema:"Filter by status: running, stopped, failed, unknown"`
+}
+
 // registerTools adds all MCP tools to the server.
 func (m *Module) registerTools() {
 	sdkmcp.AddTool(m.server, &sdkmcp.Tool{
@@ -61,6 +72,16 @@ func (m *Module) registerTools() {
 		Name:        "query_devices",
 		Description: "Query devices by hardware characteristics. Filter by minimum/maximum RAM, CPU model, OS, platform type, or GPU vendor.",
 	}, m.handleQueryDevices)
+
+	sdkmcp.AddTool(m.server, &sdkmcp.Tool{
+		Name:        "get_stale_devices",
+		Description: "Get devices that are marked online but haven't been seen within the specified time window. Useful for identifying potentially offline or unreachable devices.",
+	}, m.handleGetStaleDevices)
+
+	sdkmcp.AddTool(m.server, &sdkmcp.Tool{
+		Name:        "get_service_inventory",
+		Description: "Get tracked services (Docker containers, systemd services, Windows services, applications) optionally filtered by device, type, or status.",
+	}, m.handleGetServiceInventory)
 }
 
 func (m *Module) handleGetDevice(_ context.Context, _ *sdkmcp.CallToolRequest, input getDeviceInput) (*sdkmcp.CallToolResult, any, error) {
@@ -187,6 +208,66 @@ func (m *Module) handleQueryDevices(_ context.Context, _ *sdkmcp.CallToolRequest
 		Total:   total,
 		Limit:   limit,
 		Offset:  input.Offset,
+	}
+
+	return textResult(writeToolJSON(resp)), nil, nil
+}
+
+func (m *Module) handleGetStaleDevices(_ context.Context, _ *sdkmcp.CallToolRequest, input getStaleDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+	m.publishToolCall("get_stale_devices", input)
+
+	if m.querier == nil {
+		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
+	}
+
+	hours := input.StaleAfterHours
+	if hours <= 0 {
+		hours = 24
+	}
+
+	threshold := time.Now().UTC().Add(-time.Duration(hours) * time.Hour)
+	devices, err := m.querier.FindStaleDevices(context.Background(), threshold)
+	if err != nil {
+		return errorResult(fmt.Sprintf("failed to find stale devices: %v", err)), nil, nil
+	}
+
+	resp := struct {
+		Devices         []models.Device `json:"devices"`
+		Count           int             `json:"count"`
+		StaleAfterHours int             `json:"stale_after_hours"`
+	}{
+		Devices:         devices,
+		Count:           len(devices),
+		StaleAfterHours: hours,
+	}
+
+	return textResult(writeToolJSON(resp)), nil, nil
+}
+
+func (m *Module) handleGetServiceInventory(_ context.Context, _ *sdkmcp.CallToolRequest, input getServiceInventoryInput) (*sdkmcp.CallToolResult, any, error) {
+	m.publishToolCall("get_service_inventory", input)
+
+	if m.serviceQuerier == nil {
+		return textResult("Service data not available. The svcmap module may not be loaded."), nil, nil
+	}
+
+	services, err := m.serviceQuerier.ListServicesFiltered(context.Background(), input.DeviceID, input.ServiceType, input.Status)
+	if err != nil {
+		return errorResult(fmt.Sprintf("failed to list services: %v", err)), nil, nil
+	}
+
+	// Group services by device ID for readability.
+	grouped := make(map[string][]models.Service)
+	for i := range services {
+		grouped[services[i].DeviceID] = append(grouped[services[i].DeviceID], services[i])
+	}
+
+	resp := struct {
+		ServicesByDevice map[string][]models.Service `json:"services_by_device"`
+		TotalServices    int                         `json:"total_services"`
+	}{
+		ServicesByDevice: grouped,
+		TotalServices:    len(services),
 	}
 
 	return textResult(writeToolJSON(resp)), nil, nil

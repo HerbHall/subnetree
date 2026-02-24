@@ -7,11 +7,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/HerbHall/subnetree/internal/recon"
 	"github.com/HerbHall/subnetree/internal/store"
+	"github.com/HerbHall/subnetree/internal/svcmap"
 	"github.com/HerbHall/subnetree/internal/version"
 	"github.com/HerbHall/subnetree/pkg/models"
 )
@@ -32,6 +34,12 @@ func runMCPStdio() {
 	reconStore := recon.NewReconStore(db.DB())
 	adapter := &mcpStdioAdapter{store: reconStore}
 
+	svcStore, err := svcmap.NewStore(db.DB())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize svcmap store: %v\n", err)
+		os.Exit(1)
+	}
+
 	server := sdkmcp.NewServer(
 		&sdkmcp.Implementation{
 			Name:    "subnetree",
@@ -40,7 +48,7 @@ func runMCPStdio() {
 		nil,
 	)
 
-	registerStdioTools(server, adapter)
+	registerStdioTools(server, adapter, svcStore)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
@@ -81,9 +89,13 @@ func (a *mcpStdioAdapter) QueryDevicesByHardware(ctx context.Context, query mode
 	return a.store.QueryDevicesByHardware(ctx, query)
 }
 
+func (a *mcpStdioAdapter) FindStaleDevices(ctx context.Context, threshold time.Time) ([]models.Device, error) {
+	return a.store.FindStaleDevices(ctx, threshold)
+}
+
 // registerStdioTools registers MCP tools on a standalone server for stdio mode.
 // These mirror the tools in internal/mcp/tools.go but use the adapter directly.
-func registerStdioTools(server *sdkmcp.Server, adapter *mcpStdioAdapter) {
+func registerStdioTools(server *sdkmcp.Server, adapter *mcpStdioAdapter, svcStore *svcmap.Store) {
 	type getDeviceArgs struct {
 		DeviceID string `json:"device_id" jsonschema:"The unique device identifier"`
 	}
@@ -181,6 +193,54 @@ func registerStdioTools(server *sdkmcp.Server, adapter *mcpStdioAdapter) {
 			return stdioErrorResult(fmt.Sprintf("failed to query: %v", err)), nil, nil
 		}
 		resp := map[string]any{"devices": devices, "total": total, "limit": limit, "offset": args.Offset}
+		return stdioTextResult(stdioJSON(resp)), nil, nil
+	})
+
+	type staleArgs struct {
+		StaleAfterHours int `json:"stale_after_hours,omitempty" jsonschema:"Hours since last seen to consider stale (default 24)"`
+	}
+	sdkmcp.AddTool(server, &sdkmcp.Tool{
+		Name:        "get_stale_devices",
+		Description: "Get devices that are marked online but haven't been seen within the specified time window.",
+	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args staleArgs) (*sdkmcp.CallToolResult, any, error) {
+		hours := args.StaleAfterHours
+		if hours <= 0 {
+			hours = 24
+		}
+		threshold := time.Now().UTC().Add(-time.Duration(hours) * time.Hour)
+		devices, err := adapter.FindStaleDevices(ctx, threshold)
+		if err != nil {
+			return stdioErrorResult(fmt.Sprintf("failed to find stale devices: %v", err)), nil, nil
+		}
+		resp := map[string]any{"devices": devices, "count": len(devices), "stale_after_hours": hours}
+		return stdioTextResult(stdioJSON(resp)), nil, nil
+	})
+
+	type serviceArgs struct {
+		DeviceID    string `json:"device_id,omitempty" jsonschema:"Filter by device ID"`
+		ServiceType string `json:"service_type,omitempty" jsonschema:"Filter by type: docker-container, systemd-service, windows-service, application"`
+		Status      string `json:"status,omitempty" jsonschema:"Filter by status: running, stopped, failed, unknown"`
+	}
+	sdkmcp.AddTool(server, &sdkmcp.Tool{
+		Name:        "get_service_inventory",
+		Description: "Get tracked services optionally filtered by device, type, or status.",
+	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args serviceArgs) (*sdkmcp.CallToolResult, any, error) {
+		if svcStore == nil {
+			return stdioTextResult("Service data not available."), nil, nil
+		}
+		services, err := svcStore.ListServicesFiltered(ctx, svcmap.ServiceFilter{
+			DeviceID:    args.DeviceID,
+			ServiceType: args.ServiceType,
+			Status:      args.Status,
+		})
+		if err != nil {
+			return stdioErrorResult(fmt.Sprintf("failed to list services: %v", err)), nil, nil
+		}
+		grouped := make(map[string][]models.Service)
+		for i := range services {
+			grouped[services[i].DeviceID] = append(grouped[services[i].DeviceID], services[i])
+		}
+		resp := map[string]any{"services_by_device": grouped, "total_services": len(services)}
 		return stdioTextResult(stdioJSON(resp)), nil, nil
 	})
 }
