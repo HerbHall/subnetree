@@ -53,6 +53,7 @@ nav:
       - Quick Start: guides/getting-started.md
       - Development Setup: guides/development-setup.md
       - Common Tasks: guides/common-tasks.md
+      - Claude Desktop: guides/claude-desktop-setup.md
   - Deployment:
       - Tailscale Deployment: guides/tailscale-deployment.md
       - Tailscale Funnel: guides/tailscale-funnel.md
@@ -69,6 +70,10 @@ nav:
       - ADR-0004 Integer Protocol Versioning: adr/0004-integer-protocol-versioning.md
       - ADR-0005 Hugo Website: adr/0005-hugo-website-github-pages.md
       - ADR-0006 Architecture Patterns: adr/0006-architecture-pattern-adoption.md
+      - ADR-0007 Scout WebSocket Transport: adr/0007-scout-websocket-transport.md
+      - ADR-0008 Workspace Consolidation: adr/0008-consolidate-workspace.md
+      - ADR-0009 MCP Server Architecture: adr/0009-mcp-server-architecture.md
+      - ADR-0010 Hardware Inventory Schema: adr/0010-hardware-inventory-schema.md
   - Requirements:
       - Overview: requirements/README.md
       - Product Vision: requirements/01-product-vision.md
