@@ -5171,6 +5171,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/tailscale/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns whether the integration is enabled, last sync time and result.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tailscale"
+                ],
+                "summary": "Get Tailscale integration status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_tailscale.statusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tailscale/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Immediately syncs devices from the configured Tailscale tailnet.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tailscale"
+                ],
+                "summary": "Trigger Tailscale sync",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_tailscale.SyncResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -6245,7 +6302,8 @@ const docTemplate = `{
                 "mqtt",
                 "manual",
                 "wifi",
-                "proxmox"
+                "proxmox",
+                "tailscale"
             ],
             "x-enum-varnames": [
                 "DiscoveryAgent",
@@ -6257,7 +6315,8 @@ const docTemplate = `{
                 "DiscoveryMQTT",
                 "DiscoveryManual",
                 "DiscoveryWiFi",
-                "DiscoveryProxmox"
+                "DiscoveryProxmox",
+                "DiscoveryTailscale"
             ]
         },
         "github_com_HerbHall_subnetree_pkg_models.FleetSummary": {
@@ -8276,6 +8335,40 @@ const docTemplate = `{
             "properties": {
                 "desired_state": {
                     "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState"
+                }
+            }
+        },
+        "internal_tailscale.SyncResult": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "devices_found": {
+                    "type": "integer"
+                },
+                "unchanged": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_tailscale.statusResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "last_sync_result": {
+                    "$ref": "#/definitions/internal_tailscale.SyncResult"
+                },
+                "last_sync_time": {
+                    "type": "string"
                 }
             }
         }

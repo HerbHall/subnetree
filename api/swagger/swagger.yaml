@@ -618,6 +618,7 @@ definitions:
     - manual
     - wifi
     - proxmox
+    - tailscale
     type: string
     x-enum-varnames:
     - DiscoveryAgent
@@ -630,6 +631,7 @@ definitions:
     - DiscoveryManual
     - DiscoveryWiFi
     - DiscoveryProxmox
+    - DiscoveryTailscale
   github_com_HerbHall_subnetree_pkg_models.FleetSummary:
     properties:
       avg_cpu:
@@ -1984,6 +1986,28 @@ definitions:
     properties:
       desired_state:
         $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.DesiredState'
+    type: object
+  internal_tailscale.SyncResult:
+    properties:
+      created:
+        type: integer
+      devices_found:
+        type: integer
+      unchanged:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  internal_tailscale.statusResponse:
+    properties:
+      enabled:
+        type: boolean
+      error:
+        type: string
+      last_sync_result:
+        $ref: '#/definitions/internal_tailscale.SyncResult'
+      last_sync_time:
+        type: string
     type: object
 info:
   contact: {}
@@ -5316,6 +5340,42 @@ paths:
       summary: Fleet summary
       tags:
       - svcmap
+  /tailscale/status:
+    get:
+      description: Returns whether the integration is enabled, last sync time and
+        result.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_tailscale.statusResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Tailscale integration status
+      tags:
+      - tailscale
+  /tailscale/sync:
+    post:
+      description: Immediately syncs devices from the configured Tailscale tailnet.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_tailscale.SyncResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Trigger Tailscale sync
+      tags:
+      - tailscale
   /users:
     get:
       description: Returns all user accounts. Requires admin role.

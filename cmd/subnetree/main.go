@@ -44,6 +44,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/settings"
 	"github.com/HerbHall/subnetree/internal/store"
 	"github.com/HerbHall/subnetree/internal/svcmap"
+	tsmod "github.com/HerbHall/subnetree/internal/tailscale"
 	"github.com/HerbHall/subnetree/internal/tier"
 	"github.com/HerbHall/subnetree/internal/vault"
 	"github.com/HerbHall/subnetree/internal/version"
@@ -175,6 +176,7 @@ func main() {
 		mqtt.New(),
 		autodoc.New(),
 		mcpmod.New(),
+		tsmod.New(),
 	}
 	for _, m := range modules {
 		if err := reg.Register(m); err != nil {
@@ -317,6 +319,18 @@ func main() {
 			if mcpMod, ok := m.(*mcpmod.Module); ok {
 				mcpMod.SetQuerier(&mcpDeviceAdapter{store: reconMod.Store()})
 				logger.Info("MCP device querier wired", zap.String("component", "mcp"))
+				break
+			}
+		}
+	}
+
+	// Wire Tailscale adapters: tailscale -> recon store, vault.
+	if reconMod != nil && vaultMod != nil {
+		for _, m := range modules {
+			if ts, ok := m.(*tsmod.Module); ok {
+				ts.SetDeviceStore(&tailscaleDeviceAdapter{store: reconMod.Store()})
+				ts.SetCredentialDecrypter(&vaultDecryptAdapter{vault: vaultMod})
+				logger.Info("tailscale adapters wired", zap.String("component", "tailscale"))
 				break
 			}
 		}
@@ -645,6 +659,23 @@ func (a *mcpDeviceAdapter) GetHardwareSummary(ctx context.Context) (*models.Hard
 
 func (a *mcpDeviceAdapter) QueryDevicesByHardware(ctx context.Context, query models.HardwareQuery) ([]models.Device, int, error) {
 	return a.store.QueryDevicesByHardware(ctx, query)
+}
+
+// tailscaleDeviceAdapter adapts recon.ReconStore to tailscale.DeviceStore.
+type tailscaleDeviceAdapter struct {
+	store *recon.ReconStore
+}
+
+func (a *tailscaleDeviceAdapter) UpsertDevice(ctx context.Context, d *models.Device) (bool, error) {
+	return a.store.UpsertDevice(ctx, d)
+}
+
+func (a *tailscaleDeviceAdapter) ListDevices(ctx context.Context, limit, offset int) ([]models.Device, int, error) {
+	return a.store.ListDevices(ctx, recon.ListDevicesOptions{Limit: limit, Offset: offset})
+}
+
+func (a *tailscaleDeviceAdapter) GetDeviceByMAC(ctx context.Context, mac string) (*models.Device, error) {
+	return a.store.GetDeviceByMAC(ctx, mac)
 }
 
 // demoAuthRegistrar implements server.RouteRegistrar for demo mode.

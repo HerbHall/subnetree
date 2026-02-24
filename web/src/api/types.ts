@@ -77,7 +77,7 @@ export type DeviceType =
   | 'unknown'
 
 /** How the device was discovered. */
-export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp' | 'wifi' | 'proxmox'
+export type DiscoveryMethod = 'agent' | 'icmp' | 'arp' | 'snmp' | 'mdns' | 'upnp' | 'wifi' | 'proxmox' | 'tailscale'
 
 /** How the device connects to the network. */
 export type ConnectionType = 'wired' | 'wifi' | 'unknown'

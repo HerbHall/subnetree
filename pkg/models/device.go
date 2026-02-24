@@ -48,7 +48,8 @@ const (
 	DiscoveryMQTT   DiscoveryMethod = "mqtt"
 	DiscoveryManual  DiscoveryMethod = "manual"
 	DiscoveryWiFi    DiscoveryMethod = "wifi"
-	DiscoveryProxmox DiscoveryMethod = "proxmox"
+	DiscoveryProxmox   DiscoveryMethod = "proxmox"
+	DiscoveryTailscale DiscoveryMethod = "tailscale"
 )
 
 // Device represents a network device tracked by SubNetree.
