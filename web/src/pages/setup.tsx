@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
-import { setupApi, loginApi, checkSetupRequired } from '@/api/auth'
+import { setupApi, loginApi, checkSetupRequired, isMFAChallenge } from '@/api/auth'
 import { getNetworkInterfaces, setScanInterface, type NetworkInterface } from '@/api/settings'
 import { setActiveTheme } from '@/api/themes'
 import { getHealth } from '@/api/system'
@@ -208,8 +208,11 @@ export function SetupPage() {
       setLoading(true)
       try {
         await setupApi(formData.username, formData.email, formData.password)
-        const tokens = await loginApi(formData.username, formData.password)
-        setTokens(tokens.access_token, tokens.refresh_token)
+        const result = await loginApi(formData.username, formData.password)
+        if (isMFAChallenge(result)) {
+          throw new Error('MFA should not be enabled during initial setup')
+        }
+        setTokens(result.access_token, result.refresh_token)
         setStep(2)
       } catch (err) {
         setApiError(err instanceof Error ? err.message : 'Account creation failed')
