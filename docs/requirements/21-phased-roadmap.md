@@ -300,7 +300,7 @@
 
 ### Phase 2: Core Monitoring + Multi-Tenancy
 
-**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test, classification confidence, ICMP traceroute. Sprint 2: SNMP FDB walks, seed data, interactive diagnostics. Sprint 3: network hierarchy, E2E tests. Post-QC: one-click Scout deployment. Sprint 4: MCP server, Linux GPU + Proxmox VE collectors, Inno Setup installer. Sprint 5: Windows Scout service mode + installer, subnet grouping, contextual help. Sprint 6: WiFi scanning (Linux + Windows), demo mode with Pulse seed data. Remaining: Tailscale plugin, multi-tenancy, seasonal baselines, alert pattern learning, MFA/TOTP.
+**Status:** Core monitoring shipped in v0.3.0. v0.4.0: mDNS discovery, metrics history, alert suppression, Linux Scout. v0.4.1: MkDocs, LLM BYOK, NL query, AI recommendations, UPnP, topology enhancements, maintenance windows, inventory widget, analytics dashboard. v0.5.0: MQTT publisher, Alertmanager webhooks, CSV import/export, tier-aware defaults, recommendation engine catalog. v0.6.0: OUI classification, SNMP BRIDGE-MIB, TTL capture, LLDP discovery, port fingerprinting, composite classifier, unmanaged switch detection, service movement detection. v0.6.1: streaming scan pipeline with per-phase metrics, scan analytics page, scan health widget, agent download page, version display, scheduled scans, metrics consolidation. Sprint 1: CI smoke test, classification confidence, ICMP traceroute. Sprint 2: SNMP FDB walks, seed data, interactive diagnostics. Sprint 3: network hierarchy, E2E tests. Post-QC: one-click Scout deployment. Sprint 4: MCP server, Linux GPU + Proxmox VE collectors, Inno Setup installer. Sprint 5: Windows Scout service mode + installer, subnet grouping, contextual help. Sprint 6: WiFi scanning (Linux + Windows), demo mode with Pulse seed data. Sprint 7-8: WiFi hotspot clients, Proxmox VE VMs/LXC. Sprint 9: Tailscale overlay network plugin, MFA/TOTP authentication. Remaining: multi-tenancy, seasonal baselines, alert pattern learning.
 
 **Goal:** Comprehensive monitoring with alerting. MSP-ready multi-tenancy.
 
@@ -333,14 +333,14 @@
 - [x] Classification confidence persisted on Device model: ClassificationConfidence, ClassificationSource, ClassificationSignals fields (Sprint 1, PR #401)
 - [x] WiFi heuristic detection: connection_type field, OUI + TTL + DHCP scoring (PR #458)
 - [x] Active WiFi scanning: Linux (mdlayher/wifi nl80211), Windows (Wlanapi.dll), stub for others (Sprint 6, PR #461)
-- [ ] WiFi hotspot client enumeration for AP-mode servers (#460)
-- [ ] Tailscale plugin: tailnet device discovery via Tailscale API
-- [ ] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap)
-- [ ] Tailscale plugin: Tailscale IP enrichment on existing device records
-- [ ] Tailscale plugin: subnet route detection and scan integration
-- [ ] Tailscale plugin: MagicDNS hostname resolution
-- [ ] Tailscale plugin: dashboard "Tailscale" badge on tailnet devices
-- [ ] Scout over Tailscale: document and support agent communication via Tailscale IPs
+- [x] WiFi hotspot client enumeration for AP-mode servers (PR #464)
+- [x] Tailscale plugin: tailnet device discovery via Tailscale API (Sprint 9, PR #465)
+- [x] Tailscale plugin: device merging (match by MAC, hostname, or IP overlap) (Sprint 9, PR #465)
+- [x] Tailscale plugin: Tailscale IP enrichment on existing device records (Sprint 9, PR #465)
+- [x] Tailscale plugin: subnet route detection and scan integration (Sprint 9, PR #465)
+- [x] Tailscale plugin: MagicDNS hostname resolution (Sprint 9, PR #465)
+- [x] Tailscale plugin: dashboard "Tailscale" badge on tailnet devices (Sprint 9, PR #465)
+- [x] Scout over Tailscale: document and support agent communication via Tailscale IPs (Sprint 9, PR #465)
 - [x] Topology: real-time link utilization overlay (PR #293)
 - [x] Topology: saved layouts with localStorage persistence (PR #293)
 - [ ] Topology: custom backgrounds
@@ -376,7 +376,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Embedded catalog: `catalog.yaml` compiled into binary via `//go:embed` with SubNetree modules + top 15 ecosystem tools (~50 KB) (PR #313, v0.5.0)
 - [x] Hardware capability assessment: compare Scout's hardware profile (CPU, RAM, disk) against catalog entry requirements (PR #313, v0.5.0)
 - [x] `GET /api/v1/recommendations` endpoint: returns personalized suggestions based on hardware tier and current module usage (PR #313, v0.5.0)
-- [ ] Dashboard: basic recommendation card on overview page ("Your hardware supports enabling Analytics" or "Consider Uptime Kuma for dedicated uptime monitoring") *(API only via `GET /api/v1/recommendations` -- UI widget deferred to Phase 3)*
+- [x] Dashboard: basic recommendation card on overview page (RecommendationsWidget component, PR #274)
 
 #### Hardware Asset Profiles (#437, #438)
 
@@ -426,11 +426,11 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 #### Device Inventory Management (#163)
 
 - [x] Structured inventory fields on Device model: location, category, primary_role, justification, device_policy, owner (API/DB schema done)
-- [ ] Dashboard: inventory field editing UI for structured fields (location, category, primary_role, etc.)
+- [x] Dashboard: inventory field editing UI for structured fields -- inline edit on device detail page (location, category, primary_role, owner)
 - [x] Stale device detection (configurable threshold, default 30 days inactive) (PR #295)
-- [ ] Dashboard: inventory view with category filter, sort by last seen
+- [x] Dashboard: inventory view with category filter, sort by last seen -- devices page has category/owner filters and columns
 - [x] Dashboard: inventory summary widget (counts by category, stale count) (PR #295)
-- [ ] Bulk categorization endpoint (PATCH multiple devices)
+- [x] Bulk categorization endpoint: `PATCH /api/v1/recon/devices/bulk` with bulkUpdateDevices
 - [ ] Policy recommendations: thin-client for portables, full-workstation for desktops
 
 #### Service-to-Device Mapping (#165)
@@ -466,7 +466,7 @@ Framework for hardware-aware growth recommendations. SubNetree uses Scout's hard
 - [x] Dashboard: compact device table rows, default sort by IP (QC, PR #422)
 - [x] Dashboard: increased default page size to 256 for full Class C (QC, PR #424)
 - [x] Dashboard: agent pages UX fixes -- setup link in empty state, shell labels (QC, PR #425)
-- [ ] MFA/TOTP authentication support
+- [x] MFA/TOTP authentication support (Sprint 9, PR #466)
 - [x] SBOM generation (Syft) and SLSA provenance for releases (Syft in GoReleaser since v0.1.0-alpha; Cosign signing TODO)
 - [ ] Cosign signing for Docker images
 - [x] govulncheck in CI pipeline (Trivy TODO)
