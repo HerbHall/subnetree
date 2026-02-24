@@ -237,7 +237,8 @@ definitions:
       TierMiniPC: Intel N100 (8-32 GB)
       TierNAS: Synology/QNAP (Scout only)
       TierSBC: Pi, SBC (1 GB)
-      TierSMB: Small business server    x-enum-varnames:
+      TierSMB: Small business server
+    x-enum-varnames:
     - TierSBC
     - TierMiniPC
     - TierNAS
@@ -252,7 +253,8 @@ definitions:
     x-enum-comments:
       IntegrationPlanned: On roadmap
       IntegrationPossible: Feasible, not scheduled
-      IntegrationShipped: Already works    x-enum-varnames:
+      IntegrationShipped: Already works
+    x-enum-varnames:
     - IntegrationShipped
     - IntegrationPlanned
     - IntegrationPossible
