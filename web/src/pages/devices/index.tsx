@@ -48,7 +48,7 @@ import { useScanStore } from '@/stores/scan'
 import { HelpIcon, HelpPopover } from '@/components/contextual-help'
 
 type ViewMode = 'grid' | 'list' | 'table'
-type SortField = 'hostname' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status'
+type SortField = 'hostname' | 'ip' | 'mac' | 'manufacturer' | 'device_type' | 'status' | 'last_seen'
 type SortDirection = 'asc' | 'desc'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
@@ -89,6 +89,28 @@ const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 function isDeviceStale(lastSeen: string): boolean {
   if (!lastSeen) return false
   return new Date().getTime() - new Date(lastSeen).getTime() > STALE_THRESHOLD_MS
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diffMs = now - then
+  if (diffMs < 0) return 'just now'
+
+  const seconds = Math.floor(diffMs / 1000)
+  if (seconds < 60) return 'just now'
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
 }
 
 /**
@@ -363,6 +385,10 @@ export function DevicesPage() {
         case 'status':
           aVal = a.status || ''
           bVal = b.status || ''
+          break
+        case 'last_seen':
+          aVal = a.last_seen || ''
+          bVal = b.last_seen || ''
           break
       }
 
@@ -796,6 +822,11 @@ export function DevicesPage() {
                   </SortableHeader>
                   <th className="px-4 py-1.5 text-left font-medium">Category</th>
                   <th className="px-4 py-1.5 text-left font-medium">Owner</th>
+                  <th className="px-4 py-1.5 text-left font-medium hidden lg:table-cell">Location</th>
+                  <th className="px-4 py-1.5 text-left font-medium hidden lg:table-cell">Role</th>
+                  <SortableHeader field="last_seen" current={sortField} onClick={handleSort}>
+                    Last Seen {getSortIcon('last_seen')}
+                  </SortableHeader>
                   <SortableHeader field="status" current={sortField} onClick={handleSort}>
                     Status <HelpIcon content="Based on the most recent network scan. Stale devices haven't responded in 7+ days." /> {getSortIcon('status')}
                   </SortableHeader>
@@ -1428,6 +1459,29 @@ function DeviceTableRow({
           <span className="text-muted-foreground/50 text-sm">--</span>
         )}
       </td>
+      <td className="px-4 py-1.5 hidden lg:table-cell">
+        {device.location ? (
+          <span className="text-sm">{device.location}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-4 py-1.5 hidden lg:table-cell">
+        {device.primary_role ? (
+          <span className="text-sm">{device.primary_role}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-4 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+        {device.last_seen ? (
+          <span title={new Date(device.last_seen).toLocaleString()}>
+            {formatRelativeTime(device.last_seen)}
+          </span>
+        ) : (
+          <span>—</span>
+        )}
+      </td>
       <td className="px-4 py-1.5">
         <div className="flex items-center gap-1.5">
           {verificationState === 'checking' ? (
@@ -1489,7 +1543,7 @@ function SubnetTableGroup({
         className="bg-muted/30 hover:bg-muted/50 cursor-pointer border-l-2 border-primary/50"
         onClick={onToggle}
       >
-        <td colSpan={9} className="px-4 py-2">
+        <td colSpan={12} className="px-4 py-2">
           <div className="flex items-center gap-3">
             {expanded ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
