@@ -26,7 +26,8 @@ func testEnv(t *testing.T) (*UserStore, *TokenService, *Service) {
 	}
 
 	tokens := NewTokenService([]byte("test-secret-key-32bytes-long!!"), 15*time.Minute, 7*24*time.Hour)
-	svc := NewService(userStore, tokens, testLogger())
+	totpSvc := NewTOTPService([]byte("test-secret-key-32bytes-long!!"))
+	svc := NewService(userStore, tokens, totpSvc, testLogger())
 	return userStore, tokens, svc
 }
 
@@ -96,17 +97,20 @@ func TestLogin_Success(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 
-	pair, err := svc.Login(ctx, "admin", "securepassword")
+	result, err := svc.Login(ctx, "admin", "securepassword")
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	if pair.AccessToken == "" {
+	if result.Pair == nil {
+		t.Fatal("expected non-nil Pair")
+	}
+	if result.Pair.AccessToken == "" {
 		t.Error("expected non-empty access token")
 	}
-	if pair.RefreshToken == "" {
+	if result.Pair.RefreshToken == "" {
 		t.Error("expected non-empty refresh token")
 	}
-	if pair.ExpiresIn <= 0 {
+	if result.Pair.ExpiresIn <= 0 {
 		t.Error("expected positive ExpiresIn")
 	}
 }
@@ -152,19 +156,19 @@ func TestRefresh_Rotation(t *testing.T) {
 	ctx := context.Background()
 
 	_, _ = svc.Setup(ctx, "admin", "admin@example.com", "securepassword")
-	pair1, _ := svc.Login(ctx, "admin", "securepassword")
+	result1, _ := svc.Login(ctx, "admin", "securepassword")
 
 	// Refresh should return a new pair.
-	pair2, err := svc.Refresh(ctx, pair1.RefreshToken)
+	pair2, err := svc.Refresh(ctx, result1.Pair.RefreshToken)
 	if err != nil {
 		t.Fatalf("Refresh: %v", err)
 	}
-	if pair2.RefreshToken == pair1.RefreshToken {
+	if pair2.RefreshToken == result1.Pair.RefreshToken {
 		t.Error("refresh should issue a new refresh token (rotation)")
 	}
 
 	// Old refresh token should be revoked.
-	_, err = svc.Refresh(ctx, pair1.RefreshToken)
+	_, err = svc.Refresh(ctx, result1.Pair.RefreshToken)
 	if err != ErrInvalidToken {
 		t.Errorf("reuse of old refresh token: err = %v, want ErrInvalidToken", err)
 	}
@@ -194,14 +198,14 @@ func TestLogout_RevokesToken(t *testing.T) {
 	ctx := context.Background()
 
 	_, _ = svc.Setup(ctx, "admin", "admin@example.com", "securepassword")
-	pair, _ := svc.Login(ctx, "admin", "securepassword")
+	result, _ := svc.Login(ctx, "admin", "securepassword")
 
-	if err := svc.Logout(ctx, pair.RefreshToken); err != nil {
+	if err := svc.Logout(ctx, result.Pair.RefreshToken); err != nil {
 		t.Fatalf("Logout: %v", err)
 	}
 
 	// Refresh with the revoked token should fail.
-	_, err := svc.Refresh(ctx, pair.RefreshToken)
+	_, err := svc.Refresh(ctx, result.Pair.RefreshToken)
 	if err != ErrInvalidToken {
 		t.Errorf("Refresh after logout: err = %v, want ErrInvalidToken", err)
 	}
@@ -333,11 +337,11 @@ func TestLogin_LockoutExpires(t *testing.T) {
 	_ = us.ClearFailedLogins(ctx, user.ID)
 
 	// Login should succeed now.
-	pair, err := svc.Login(ctx, "admin", "securepassword")
+	result, err := svc.Login(ctx, "admin", "securepassword")
 	if err != nil {
 		t.Fatalf("Login after lockout expired: %v", err)
 	}
-	if pair.AccessToken == "" {
+	if result.Pair == nil || result.Pair.AccessToken == "" {
 		t.Error("expected non-empty access token after lockout expired")
 	}
 }

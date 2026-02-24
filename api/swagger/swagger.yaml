@@ -860,6 +860,46 @@ definitions:
         example: dGhpcyBpcyBhIHJlZnJl...
         type: string
     type: object
+  internal_auth.MFADisableRequest:
+    properties:
+      totp_code:
+        example: "123456"
+        type: string
+    type: object
+  internal_auth.MFARecoveryRequest:
+    properties:
+      mfa_token:
+        example: eyJhbG...
+        type: string
+      recovery_code:
+        example: a1b2c3d4
+        type: string
+    type: object
+  internal_auth.MFASetupResponse:
+    properties:
+      otpauth_url:
+        example: otpauth://totp/SubNetree:admin?secret=...
+        type: string
+      recovery_codes:
+        items:
+          type: string
+        type: array
+    type: object
+  internal_auth.MFAVerifyRequest:
+    properties:
+      mfa_token:
+        example: eyJhbG...
+        type: string
+      totp_code:
+        example: "123456"
+        type: string
+    type: object
+  internal_auth.MFAVerifySetupRequest:
+    properties:
+      totp_code:
+        example: "123456"
+        type: string
+    type: object
   internal_auth.RefreshRequest:
     properties:
       refresh_token:
@@ -950,6 +990,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/internal_auth.Role'
         example: admin
+      totp_enabled:
+        type: boolean
       username:
         example: admin
         type: string
@@ -2076,6 +2118,168 @@ paths:
           schema:
             $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
       summary: Logout
+      tags:
+      - auth
+  /auth/mfa/disable:
+    post:
+      consumes:
+      - application/json
+      description: Disable TOTP-based MFA. Requires a valid TOTP code for confirmation.
+      parameters:
+      - description: TOTP code for confirmation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.MFADisableRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Disable MFA
+      tags:
+      - auth
+  /auth/mfa/setup:
+    post:
+      description: Begin TOTP enrollment. Returns the otpauth URL and recovery codes.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.MFASetupResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Setup MFA
+      tags:
+      - auth
+  /auth/mfa/verify:
+    post:
+      consumes:
+      - application/json
+      description: Complete login by providing the TOTP code from an authenticator
+        app.
+      parameters:
+      - description: MFA token and TOTP code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.MFAVerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Verify MFA code
+      tags:
+      - auth
+  /auth/mfa/verify-recovery:
+    post:
+      consumes:
+      - application/json
+      description: Complete login using a one-time recovery code instead of a TOTP
+        code.
+      parameters:
+      - description: MFA token and recovery code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.MFARecoveryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.TokenPair'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      summary: Verify MFA with recovery code
+      tags:
+      - auth
+  /auth/mfa/verify-setup:
+    post:
+      consumes:
+      - application/json
+      description: Complete TOTP enrollment by providing a valid code from the authenticator
+        app.
+      parameters:
+      - description: TOTP code from authenticator
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.MFAVerifySetupRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Verify MFA setup
       tags:
       - auth
   /auth/refresh:

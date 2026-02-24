@@ -15,7 +15,16 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [checkingSetup, setCheckingSetup] = useState(true)
+
+  // MFA state
+  const [totpCode, setTotpCode] = useState('')
+  const [recoveryCode, setRecoveryCode] = useState('')
+  const [showRecovery, setShowRecovery] = useState(false)
+
   const login = useAuthStore((s) => s.login)
+  const mfaRequired = useAuthStore((s) => s.mfaRequired)
+  const completeMFA = useAuthStore((s) => s.completeMFA)
+  const completeMFAWithRecovery = useAuthStore((s) => s.completeMFAWithRecovery)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -37,9 +46,31 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate(from, { replace: true })
+      // If MFA is not required, login completed and we navigate.
+      // If MFA is required, the store sets mfaRequired=true and we show the MFA form.
+      if (!useAuthStore.getState().mfaRequired) {
+        navigate(from, { replace: true })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleMFASubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      if (showRecovery) {
+        await completeMFAWithRecovery(recoveryCode)
+      } else {
+        await completeMFA(totpCode)
+      }
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed')
     } finally {
       setLoading(false)
     }
@@ -55,6 +86,79 @@ export function LoginPage() {
     )
   }
 
+  // MFA verification step
+  if (mfaRequired) {
+    return (
+      <Card>
+        <CardHeader className="items-center">
+          <img src="/favicon.svg" alt="SubNetree" className="mb-2 h-12 w-12" />
+          <CardTitle>Two-Factor Authentication</CardTitle>
+          <CardDescription>
+            {showRecovery
+              ? 'Enter a recovery code to sign in.'
+              : 'Enter the 6-digit code from your authenticator app.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleMFASubmit} className="space-y-4">
+            {error && (
+              <div role="alert" className="rounded-md bg-red-900/20 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+            {showRecovery ? (
+              <div className="space-y-2">
+                <Label htmlFor="recovery-code">Recovery Code</Label>
+                <Input
+                  id="recovery-code"
+                  value={recoveryCode}
+                  onChange={(e) => setRecoveryCode(e.target.value)}
+                  placeholder="a1b2c3d4"
+                  required
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="totp-code">Authentication Code</Label>
+                <Input
+                  id="totp-code"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  autoComplete="one-time-code"
+                  className="text-center text-lg tracking-widest"
+                />
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Verifying...' : 'Verify'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowRecovery(!showRecovery)
+                setError('')
+                setTotpCode('')
+                setRecoveryCode('')
+              }}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {showRecovery ? 'Use authenticator app instead' : 'Use a recovery code instead'}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Normal login form
   return (
     <Card>
       <CardHeader className="items-center">

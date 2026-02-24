@@ -8,7 +8,21 @@ const BASE_URL = '/api/v1'
  * special handling to avoid circular refresh loops.
  */
 
-export async function loginApi(username: string, password: string): Promise<TokenPair> {
+/** Response when MFA verification is required after password auth. */
+export interface MFAChallengeResponse {
+  mfa_required: true
+  mfa_token: string
+}
+
+/** Login can return either a full token pair or an MFA challenge. */
+export type LoginResponse = TokenPair | MFAChallengeResponse
+
+/** Type guard to check if a login response requires MFA verification. */
+export function isMFAChallenge(data: LoginResponse): data is MFAChallengeResponse {
+  return 'mfa_required' in data && data.mfa_required === true
+}
+
+export async function loginApi(username: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -56,6 +70,34 @@ export async function logoutApi(refreshToken: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: refreshToken }),
   })
+}
+
+/** Complete MFA login with a TOTP code. */
+export async function verifyMFAApi(mfaToken: string, totpCode: string): Promise<TokenPair> {
+  const res = await fetch(`${BASE_URL}/auth/mfa/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mfa_token: mfaToken, totp_code: totpCode }),
+  })
+  if (!res.ok) {
+    const problem = await res.json().catch(() => ({}))
+    throw new Error(problem.detail || 'MFA verification failed')
+  }
+  return res.json()
+}
+
+/** Complete MFA login with a recovery code. */
+export async function verifyMFARecoveryApi(mfaToken: string, recoveryCode: string): Promise<TokenPair> {
+  const res = await fetch(`${BASE_URL}/auth/mfa/verify-recovery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mfa_token: mfaToken, recovery_code: recoveryCode }),
+  })
+  if (!res.ok) {
+    const problem = await res.json().catch(() => ({}))
+    throw new Error(problem.detail || 'Recovery code verification failed')
+  }
+  return res.json()
 }
 
 /** Response from GET /api/v1/auth/setup/status. */

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { jwtDecode } from 'jwt-decode'
-import { loginApi, refreshApi, logoutApi } from '@/api/auth'
+import { loginApi, refreshApi, logoutApi, verifyMFAApi, verifyMFARecoveryApi, isMFAChallenge } from '@/api/auth'
 
 interface JwtPayload {
   uid: string
@@ -22,11 +22,15 @@ interface AuthState {
   user: AuthUser | null
   isAuthenticated: boolean
   isHydrated: boolean
+  pendingMFAToken: string | null
+  mfaRequired: boolean
 
   login: (username: string, password: string) => Promise<void>
   refresh: () => Promise<boolean>
   logout: () => void
   setTokens: (accessToken: string, refreshToken: string) => void
+  completeMFA: (totpCode: string) => Promise<void>
+  completeMFAWithRecovery: (recoveryCode: string) => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,6 +41,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isHydrated: false,
+      pendingMFAToken: null,
+      mfaRequired: false,
 
       setTokens: (accessToken: string, refreshToken: string) => {
         const decoded = jwtDecode<JwtPayload>(accessToken)
@@ -49,8 +55,28 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (username: string, password: string) => {
-        const pair = await loginApi(username, password)
+        const result = await loginApi(username, password)
+        if (isMFAChallenge(result)) {
+          set({ pendingMFAToken: result.mfa_token, mfaRequired: true })
+          return
+        }
+        get().setTokens(result.access_token, result.refresh_token)
+      },
+
+      completeMFA: async (totpCode: string) => {
+        const { pendingMFAToken } = get()
+        if (!pendingMFAToken) throw new Error('No pending MFA token')
+        const pair = await verifyMFAApi(pendingMFAToken, totpCode)
         get().setTokens(pair.access_token, pair.refresh_token)
+        set({ pendingMFAToken: null, mfaRequired: false })
+      },
+
+      completeMFAWithRecovery: async (recoveryCode: string) => {
+        const { pendingMFAToken } = get()
+        if (!pendingMFAToken) throw new Error('No pending MFA token')
+        const pair = await verifyMFARecoveryApi(pendingMFAToken, recoveryCode)
+        get().setTokens(pair.access_token, pair.refresh_token)
+        set({ pendingMFAToken: null, mfaRequired: false })
       },
 
       refresh: async () => {
@@ -76,6 +102,8 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: null,
           user: null,
           isAuthenticated: false,
+          pendingMFAToken: null,
+          mfaRequired: false,
         })
       },
     }),

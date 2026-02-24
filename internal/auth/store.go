@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/HerbHall/subnetree/pkg/plugin"
 )
 
@@ -196,7 +198,7 @@ func (s *UserStore) ClearFailedLogins(ctx context.Context, userID string) error 
 
 // userColumns is the shared SELECT column list for user queries.
 const userColumns = `id, username, email, password_hash, role, auth_provider, oidc_subject,
-	created_at, last_login, disabled, failed_login_attempts, locked_until`
+	created_at, last_login, disabled, failed_login_attempts, locked_until, totp_enabled, totp_verified`
 
 func (s *UserStore) scanUser(row *sql.Row) (*User, error) {
 	var u User
@@ -208,7 +210,7 @@ func (s *UserStore) scanUser(row *sql.Row) (*User, error) {
 
 	err := row.Scan(&u.ID, &u.Username, &u.Email, &passwordHash, &role,
 		&u.AuthProvider, &oidcSubject, &u.CreatedAt, &lastLogin, &u.Disabled,
-		&u.FailedLoginAttempts, &lockedUntil)
+		&u.FailedLoginAttempts, &lockedUntil, &u.TOTPEnabled, &u.TOTPVerified)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +240,7 @@ func (s *UserStore) scanUserRow(rows *sql.Rows) (*User, error) {
 
 	err := rows.Scan(&u.ID, &u.Username, &u.Email, &passwordHash, &role,
 		&u.AuthProvider, &oidcSubject, &u.CreatedAt, &lastLogin, &u.Disabled,
-		&u.FailedLoginAttempts, &lockedUntil)
+		&u.FailedLoginAttempts, &lockedUntil, &u.TOTPEnabled, &u.TOTPVerified)
 	if err != nil {
 		return nil, err
 	}
@@ -312,4 +314,171 @@ var migrations = []plugin.Migration{
 			return err
 		},
 	},
+	{
+		Version:     4,
+		Description: "add MFA columns and tables",
+		Up: func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE auth_users ADD COLUMN totp_secret TEXT`)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`ALTER TABLE auth_users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0`)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`ALTER TABLE auth_users ADD COLUMN totp_verified INTEGER NOT NULL DEFAULT 0`)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`CREATE TABLE auth_recovery_codes (
+				id         TEXT PRIMARY KEY,
+				user_id    TEXT NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
+				code_hash  TEXT NOT NULL,
+				used       INTEGER NOT NULL DEFAULT 0,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`CREATE INDEX idx_recovery_codes_user ON auth_recovery_codes(user_id)`)
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`CREATE TABLE auth_mfa_tokens (
+				token_hash TEXT PRIMARY KEY,
+				user_id    TEXT NOT NULL,
+				expires_at DATETIME NOT NULL,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`)
+			return err
+		},
+	},
+}
+
+// GetTOTPSecret returns the encrypted TOTP secret for a user.
+func (s *UserStore) GetTOTPSecret(ctx context.Context, userID string) (string, error) {
+	var secret sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		`SELECT totp_secret FROM auth_users WHERE id = ?`, userID).Scan(&secret)
+	if err != nil {
+		return "", fmt.Errorf("get TOTP secret: %w", err)
+	}
+	if !secret.Valid {
+		return "", nil
+	}
+	return secret.String, nil
+}
+
+// SetTOTPSecret stores an encrypted TOTP secret for a user.
+func (s *UserStore) SetTOTPSecret(ctx context.Context, userID, encryptedSecret string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE auth_users SET totp_secret = ? WHERE id = ?`,
+		encryptedSecret, userID)
+	if err != nil {
+		return fmt.Errorf("set TOTP secret: %w", err)
+	}
+	return nil
+}
+
+// EnableTOTP marks a user's TOTP as enabled and verified.
+func (s *UserStore) EnableTOTP(ctx context.Context, userID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE auth_users SET totp_enabled = 1, totp_verified = 1 WHERE id = ?`,
+		userID)
+	if err != nil {
+		return fmt.Errorf("enable TOTP: %w", err)
+	}
+	return nil
+}
+
+// DisableTOTP clears TOTP for a user: disables, unverifies, and removes the secret.
+func (s *UserStore) DisableTOTP(ctx context.Context, userID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE auth_users SET totp_enabled = 0, totp_verified = 0, totp_secret = NULL WHERE id = ?`,
+		userID)
+	if err != nil {
+		return fmt.Errorf("disable TOTP: %w", err)
+	}
+	// Also delete recovery codes.
+	_, err = s.db.ExecContext(ctx, `DELETE FROM auth_recovery_codes WHERE user_id = ?`, userID)
+	if err != nil {
+		return fmt.Errorf("delete recovery codes: %w", err)
+	}
+	return nil
+}
+
+// SaveRecoveryCodes stores hashed recovery codes for a user, replacing any existing ones.
+func (s *UserStore) SaveRecoveryCodes(ctx context.Context, userID string, codeHashes []string) error {
+	// Delete existing codes first.
+	_, err := s.db.ExecContext(ctx, `DELETE FROM auth_recovery_codes WHERE user_id = ?`, userID)
+	if err != nil {
+		return fmt.Errorf("clear old recovery codes: %w", err)
+	}
+
+	for _, hash := range codeHashes {
+		id := uuid.New().String()
+		_, err := s.db.ExecContext(ctx,
+			`INSERT INTO auth_recovery_codes (id, user_id, code_hash) VALUES (?, ?, ?)`,
+			id, userID, hash)
+		if err != nil {
+			return fmt.Errorf("save recovery code: %w", err)
+		}
+	}
+	return nil
+}
+
+// ValidateRecoveryCode checks if a hashed recovery code exists and is unused for the user.
+func (s *UserStore) ValidateRecoveryCode(ctx context.Context, userID, codeHash string) (bool, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM auth_recovery_codes WHERE user_id = ? AND code_hash = ? AND used = 0`,
+		userID, codeHash).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("validate recovery code: %w", err)
+	}
+	return count > 0, nil
+}
+
+// MarkRecoveryCodeUsed marks a recovery code as used.
+func (s *UserStore) MarkRecoveryCodeUsed(ctx context.Context, codeHash string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE auth_recovery_codes SET used = 1 WHERE code_hash = ?`, codeHash)
+	if err != nil {
+		return fmt.Errorf("mark recovery code used: %w", err)
+	}
+	return nil
+}
+
+// SaveMFAToken stores a hashed MFA token with its expiration.
+func (s *UserStore) SaveMFAToken(ctx context.Context, tokenHash, userID string, expiresAt time.Time) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO auth_mfa_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)`,
+		tokenHash, userID, expiresAt)
+	if err != nil {
+		return fmt.Errorf("save MFA token: %w", err)
+	}
+	return nil
+}
+
+// GetMFAToken looks up an MFA token by hash and returns the user ID if valid and not expired.
+func (s *UserStore) GetMFAToken(ctx context.Context, tokenHash string) (string, error) {
+	var userID string
+	var expiresAt time.Time
+	err := s.db.QueryRowContext(ctx,
+		`SELECT user_id, expires_at FROM auth_mfa_tokens WHERE token_hash = ?`,
+		tokenHash).Scan(&userID, &expiresAt)
+	if err != nil {
+		return "", fmt.Errorf("get MFA token: %w", err)
+	}
+	if expiresAt.Before(time.Now()) {
+		return "", fmt.Errorf("MFA token expired")
+	}
+	return userID, nil
+}
+
+// RevokeMFAToken deletes an MFA token.
+func (s *UserStore) RevokeMFAToken(ctx context.Context, tokenHash string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM auth_mfa_tokens WHERE token_hash = ?`, tokenHash)
+	return err
 }

@@ -20,6 +20,7 @@ vi.mock('@/api/auth', () => ({
   setupApi: vi.fn(),
   loginApi: vi.fn(),
   checkSetupRequired: vi.fn().mockResolvedValue(true),
+  isMFAChallenge: vi.fn(() => false),
 }))
 
 // Mock settings API

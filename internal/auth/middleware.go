@@ -20,11 +20,13 @@ func UserFromContext(ctx context.Context) *Claims {
 
 // Public paths that don't require authentication.
 var publicPaths = map[string]bool{
-	"/api/v1/auth/login":        true,
-	"/api/v1/auth/refresh":      true,
-	"/api/v1/auth/logout":       true,
-	"/api/v1/auth/setup":        true,
-	"/api/v1/auth/setup/status": true,
+	"/api/v1/auth/login":              true,
+	"/api/v1/auth/refresh":            true,
+	"/api/v1/auth/logout":             true,
+	"/api/v1/auth/setup":              true,
+	"/api/v1/auth/setup/status":       true,
+	"/api/v1/auth/mfa/verify":         true,
+	"/api/v1/auth/mfa/verify-recovery": true,
 }
 
 // AuthMiddleware validates JWT access tokens on API routes.

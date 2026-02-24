@@ -266,7 +266,8 @@ func main() {
 	}
 
 	tokens := auth.NewTokenService([]byte(jwtSecret), accessTTL, refreshTTL)
-	authService := auth.NewService(authStore, tokens, logger.Named("auth"))
+	totpSvc := auth.NewTOTPService([]byte(jwtSecret))
+	authService := auth.NewService(authStore, tokens, totpSvc, logger.Named("auth"))
 	authHandler := auth.NewHandler(authService, logger.Named("auth"))
 	logger.Info("auth service initialized",
 		zap.String("component", "auth"),

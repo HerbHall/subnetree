@@ -20,6 +20,9 @@ var (
 	ErrSetupComplete      = errors.New("setup already completed")
 	ErrInvalidToken       = errors.New("invalid or expired token")
 	ErrUserNotFound       = errors.New("user not found")
+	ErrMFARequired        = errors.New("mfa verification required")
+	ErrInvalidMFACode     = errors.New("invalid or expired MFA code")
+	ErrMFANotEnabled      = errors.New("mfa is not enabled for this user")
 )
 
 const (
@@ -28,6 +31,14 @@ const (
 	// DefaultLockoutDuration is how long an account stays locked.
 	DefaultLockoutDuration = 15 * time.Minute
 )
+
+// LoginResult represents the outcome of a login attempt.
+// If MFA is required, Pair is nil and MFARequired/MFAToken are set.
+type LoginResult struct {
+	Pair        *TokenPair `json:"pair,omitempty"`
+	MFARequired bool       `json:"mfa_required,omitempty"`
+	MFAToken    string     `json:"mfa_token,omitempty"`
+}
 
 // TokenPair contains an access token and refresh token.
 type TokenPair struct {
@@ -40,14 +51,16 @@ type TokenPair struct {
 type Service struct {
 	store  *UserStore
 	tokens *TokenService
+	totp   *TOTPService
 	logger *zap.Logger
 }
 
 // NewService creates an auth Service.
-func NewService(store *UserStore, tokens *TokenService, logger *zap.Logger) *Service {
+func NewService(store *UserStore, tokens *TokenService, totp *TOTPService, logger *zap.Logger) *Service {
 	return &Service{
 		store:  store,
 		tokens: tokens,
+		totp:   totp,
 		logger: logger,
 	}
 }
@@ -57,8 +70,9 @@ func (s *Service) Tokens() *TokenService {
 	return s.tokens
 }
 
-// Login authenticates a user and returns a token pair.
-func (s *Service) Login(ctx context.Context, username, password string) (*TokenPair, error) {
+// Login authenticates a user and returns a LoginResult.
+// If the user has MFA enabled, a partial result with an MFA token is returned instead of a full token pair.
+func (s *Service) Login(ctx context.Context, username, password string) (*LoginResult, error) {
 	user, err := s.store.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -90,14 +104,28 @@ func (s *Service) Login(ctx context.Context, username, password string) (*TokenP
 		_ = s.store.ClearFailedLogins(ctx, user.ID)
 	}
 
-	pair, err := s.issueTokenPair(ctx, user)
-	if err != nil {
-		return nil, err
+	// If MFA is enabled, issue an MFA challenge token instead of a full token pair.
+	if user.TOTPEnabled && user.TOTPVerified {
+		mfaToken, mfaErr := s.totp.IssueMFAToken(user.ID, 5*time.Minute)
+		if mfaErr != nil {
+			return nil, fmt.Errorf("issue mfa token: %w", mfaErr)
+		}
+		tokenHash := HashToken(mfaToken)
+		if saveErr := s.store.SaveMFAToken(ctx, tokenHash, user.ID, time.Now().Add(5*time.Minute)); saveErr != nil {
+			return nil, fmt.Errorf("save mfa token: %w", saveErr)
+		}
+		s.logger.Info("MFA challenge issued", zap.String("username", username), zap.String("user_id", user.ID))
+		return &LoginResult{MFARequired: true, MFAToken: mfaToken}, nil
+	}
+
+	pair, pairErr := s.issueTokenPair(ctx, user)
+	if pairErr != nil {
+		return nil, pairErr
 	}
 
 	_ = s.store.UpdateLastLogin(ctx, user.ID)
 	s.logger.Info("user logged in", zap.String("username", username), zap.String("user_id", user.ID))
-	return pair, nil
+	return &LoginResult{Pair: pair}, nil
 }
 
 func (s *Service) handleFailedLogin(ctx context.Context, user *User) {
@@ -285,4 +313,185 @@ func (s *Service) issueTokenPair(ctx context.Context, user *User) (*TokenPair, e
 		RefreshToken: rawRefresh,
 		ExpiresIn:    int(s.tokens.AccessTokenTTL().Seconds()),
 	}, nil
+}
+
+// SetupTOTP begins the TOTP enrollment process for a user.
+// Returns the otpauth URL and a set of recovery codes.
+func (s *Service) SetupTOTP(ctx context.Context, userID string) (otpauthURL string, recoveryCodes []string, err error) {
+	user, err := s.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get user: %w", err)
+	}
+
+	secret, url, err := s.totp.GenerateSecret(user.Username, "SubNetree")
+	if err != nil {
+		return "", nil, fmt.Errorf("generate TOTP secret: %w", err)
+	}
+
+	encrypted, err := s.totp.Encrypt(secret)
+	if err != nil {
+		return "", nil, fmt.Errorf("encrypt TOTP secret: %w", err)
+	}
+
+	if err := s.store.SetTOTPSecret(ctx, userID, encrypted); err != nil {
+		return "", nil, err
+	}
+
+	plain, hashed, err := s.totp.GenerateRecoveryCodes(10)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if err := s.store.SaveRecoveryCodes(ctx, userID, hashed); err != nil {
+		return "", nil, err
+	}
+
+	s.logger.Info("TOTP setup initiated", zap.String("user_id", userID))
+	return url, plain, nil
+}
+
+// VerifyTOTPSetup completes MFA enrollment by verifying the user can produce a valid code.
+func (s *Service) VerifyTOTPSetup(ctx context.Context, userID, totpCode string) error {
+	encrypted, err := s.store.GetTOTPSecret(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get TOTP secret: %w", err)
+	}
+	if encrypted == "" {
+		return ErrMFANotEnabled
+	}
+
+	secret, err := s.totp.Decrypt(encrypted)
+	if err != nil {
+		return fmt.Errorf("decrypt TOTP secret: %w", err)
+	}
+
+	if !s.totp.Validate(totpCode, secret) {
+		return ErrInvalidMFACode
+	}
+
+	if err := s.store.EnableTOTP(ctx, userID); err != nil {
+		return err
+	}
+
+	s.logger.Info("TOTP setup verified and enabled", zap.String("user_id", userID))
+	return nil
+}
+
+// CompleteMFALogin validates a TOTP code against an MFA token and returns a full token pair.
+func (s *Service) CompleteMFALogin(ctx context.Context, mfaToken, totpCode string) (*TokenPair, error) {
+	userID, err := s.totp.ValidateMFAToken(mfaToken)
+	if err != nil {
+		return nil, ErrInvalidMFACode
+	}
+
+	// Verify the MFA token exists in the store (prevents replay).
+	tokenHash := HashToken(mfaToken)
+	storedUserID, err := s.store.GetMFAToken(ctx, tokenHash)
+	if err != nil {
+		return nil, ErrInvalidMFACode
+	}
+	if storedUserID != userID {
+		return nil, ErrInvalidMFACode
+	}
+
+	user, err := s.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user: %w", err)
+	}
+
+	encrypted, err := s.store.GetTOTPSecret(ctx, userID)
+	if err != nil || encrypted == "" {
+		return nil, ErrMFANotEnabled
+	}
+
+	secret, err := s.totp.Decrypt(encrypted)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt TOTP secret: %w", err)
+	}
+
+	if !s.totp.Validate(totpCode, secret) {
+		return nil, ErrInvalidMFACode
+	}
+
+	// Revoke the MFA token (single use).
+	_ = s.store.RevokeMFAToken(ctx, tokenHash)
+
+	pair, err := s.issueTokenPair(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.store.UpdateLastLogin(ctx, user.ID)
+	s.logger.Info("MFA login completed", zap.String("user_id", userID))
+	return pair, nil
+}
+
+// CompleteMFAWithRecovery validates a recovery code against an MFA token and returns a full token pair.
+func (s *Service) CompleteMFAWithRecovery(ctx context.Context, mfaToken, recoveryCode string) (*TokenPair, error) {
+	userID, err := s.totp.ValidateMFAToken(mfaToken)
+	if err != nil {
+		return nil, ErrInvalidMFACode
+	}
+
+	tokenHash := HashToken(mfaToken)
+	storedUserID, err := s.store.GetMFAToken(ctx, tokenHash)
+	if err != nil {
+		return nil, ErrInvalidMFACode
+	}
+	if storedUserID != userID {
+		return nil, ErrInvalidMFACode
+	}
+
+	codeHash := HashToken(recoveryCode)
+	valid, err := s.store.ValidateRecoveryCode(ctx, userID, codeHash)
+	if err != nil || !valid {
+		return nil, ErrInvalidMFACode
+	}
+
+	// Mark recovery code as used.
+	_ = s.store.MarkRecoveryCodeUsed(ctx, codeHash)
+
+	// Revoke the MFA token.
+	_ = s.store.RevokeMFAToken(ctx, tokenHash)
+
+	user, err := s.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("lookup user: %w", err)
+	}
+
+	pair, err := s.issueTokenPair(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.store.UpdateLastLogin(ctx, user.ID)
+	s.logger.Info("MFA login completed with recovery code", zap.String("user_id", userID))
+	return pair, nil
+}
+
+// DisableTOTP disables MFA for a user after verifying a valid TOTP code.
+func (s *Service) DisableTOTP(ctx context.Context, userID, totpCode string) error {
+	encrypted, err := s.store.GetTOTPSecret(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get TOTP secret: %w", err)
+	}
+	if encrypted == "" {
+		return ErrMFANotEnabled
+	}
+
+	secret, err := s.totp.Decrypt(encrypted)
+	if err != nil {
+		return fmt.Errorf("decrypt TOTP secret: %w", err)
+	}
+
+	if !s.totp.Validate(totpCode, secret) {
+		return ErrInvalidMFACode
+	}
+
+	if err := s.store.DisableTOTP(ctx, userID); err != nil {
+		return err
+	}
+
+	s.logger.Info("TOTP disabled", zap.String("user_id", userID))
+	return nil
 }

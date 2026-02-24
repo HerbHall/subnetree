@@ -37,6 +37,8 @@ type User struct {
 	Disabled            bool       `json:"disabled" example:"false"`
 	FailedLoginAttempts int        `json:"-"`
 	LockedUntil         *time.Time `json:"locked_until,omitempty"`
+	TOTPEnabled         bool       `json:"totp_enabled"`
+	TOTPVerified        bool       `json:"-"` // internal only, not exposed in API
 }
 
 // HashPassword creates a bcrypt hash of the given password.
