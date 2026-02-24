@@ -246,14 +246,15 @@ func TestInfo(t *testing.T) {
 func TestRoutes(t *testing.T) {
 	m := New()
 	routes := m.Routes()
-	if len(routes) != 3 {
-		t.Fatalf("Routes() = %d, want 3", len(routes))
+	if len(routes) != 4 {
+		t.Fatalf("Routes() = %d, want 4", len(routes))
 	}
 
 	expected := map[string]bool{
-		"POST /": false,
-		"GET /":  false,
-		"DELETE /": false,
+		"POST /":      false,
+		"GET /":       false,
+		"DELETE /":    false,
+		"GET /audit":  false,
 	}
 	for _, r := range routes {
 		key := r.Method + " " + r.Path
@@ -654,6 +655,206 @@ func TestPublishToolCall(t *testing.T) {
 	}
 	if payload["tool"] != "get_device" {
 		t.Errorf("tool = %v, want %q", payload["tool"], "get_device")
+	}
+}
+
+// newAuditStoreForTest creates an AuditStore backed by an in-memory SQLite
+// database with the MCP migrations already applied.
+func newAuditStoreForTest(t *testing.T) *AuditStore {
+	t.Helper()
+	pluginStore := testutil.NewStore(t)
+	if err := pluginStore.Migrate(context.Background(), "mcp", migrations()); err != nil {
+		t.Fatalf("migrate audit store: %v", err)
+	}
+	return NewAuditStore(pluginStore.DB())
+}
+
+func TestAuditStore_InsertAndList(t *testing.T) {
+	s := newAuditStoreForTest(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	entries := []AuditEntry{
+		{Timestamp: now.Add(-2 * time.Second), ToolName: "get_device", InputJSON: `{"device_id":"d1"}`, UserID: "http", DurationMs: 5, Success: true},
+		{Timestamp: now.Add(-1 * time.Second), ToolName: "list_devices", InputJSON: `{"limit":10}`, UserID: "http", DurationMs: 8, Success: true},
+		{Timestamp: now, ToolName: "get_device", InputJSON: `{"device_id":"d2"}`, UserID: "stdio", DurationMs: 3, Success: false, ErrorMessage: "not found"},
+	}
+
+	for i := range entries {
+		if err := s.Insert(ctx, entries[i]); err != nil {
+			t.Fatalf("Insert entry %d: %v", i, err)
+		}
+	}
+
+	got, total, err := s.List(ctx, "", 50, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("total = %d, want 3", total)
+	}
+	if len(got) != 3 {
+		t.Errorf("len(entries) = %d, want 3", len(got))
+	}
+
+	// Entries are returned newest-first (ORDER BY timestamp DESC).
+	if got[0].ToolName != "get_device" || got[0].UserID != "stdio" {
+		t.Errorf("first entry = {%s %s}, want {get_device stdio}", got[0].ToolName, got[0].UserID)
+	}
+	if got[0].Success {
+		t.Error("first entry success = true, want false")
+	}
+	if got[0].ErrorMessage != "not found" {
+		t.Errorf("error_message = %q, want %q", got[0].ErrorMessage, "not found")
+	}
+}
+
+func TestAuditStore_FilterByTool(t *testing.T) {
+	s := newAuditStoreForTest(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	for i, toolName := range []string{"get_device", "list_devices", "get_device", "get_fleet_summary"} {
+		if err := s.Insert(ctx, AuditEntry{
+			Timestamp: now.Add(time.Duration(i) * time.Second),
+			ToolName:  toolName,
+			InputJSON: "{}",
+			UserID:    "http",
+			Success:   true,
+		}); err != nil {
+			t.Fatalf("Insert: %v", err)
+		}
+	}
+
+	got, total, err := s.List(ctx, "get_device", 50, 0)
+	if err != nil {
+		t.Fatalf("List with filter: %v", err)
+	}
+	if total != 2 {
+		t.Errorf("total = %d, want 2", total)
+	}
+	if len(got) != 2 {
+		t.Errorf("len(entries) = %d, want 2", len(got))
+	}
+	for _, e := range got {
+		if e.ToolName != "get_device" {
+			t.Errorf("unexpected tool_name %q in filtered results", e.ToolName)
+		}
+	}
+
+	// Unfiltered should return all 4.
+	_, allTotal, err := s.List(ctx, "", 50, 0)
+	if err != nil {
+		t.Fatalf("List unfiltered: %v", err)
+	}
+	if allTotal != 4 {
+		t.Errorf("unfiltered total = %d, want 4", allTotal)
+	}
+}
+
+func TestAuditStore_Pagination(t *testing.T) {
+	s := newAuditStoreForTest(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	for i := 0; i < 10; i++ {
+		if err := s.Insert(ctx, AuditEntry{
+			Timestamp: now.Add(time.Duration(i) * time.Second),
+			ToolName:  "list_devices",
+			InputJSON: "{}",
+			UserID:    "http",
+			Success:   true,
+		}); err != nil {
+			t.Fatalf("Insert %d: %v", i, err)
+		}
+	}
+
+	// First page: limit=3, offset=0.
+	page1, total, err := s.List(ctx, "", 3, 0)
+	if err != nil {
+		t.Fatalf("List page 1: %v", err)
+	}
+	if total != 10 {
+		t.Errorf("total = %d, want 10", total)
+	}
+	if len(page1) != 3 {
+		t.Errorf("page1 len = %d, want 3", len(page1))
+	}
+
+	// Second page: limit=3, offset=3.
+	page2, _, err := s.List(ctx, "", 3, 3)
+	if err != nil {
+		t.Fatalf("List page 2: %v", err)
+	}
+	if len(page2) != 3 {
+		t.Errorf("page2 len = %d, want 3", len(page2))
+	}
+
+	// Pages should not overlap (different IDs since ordering is newest-first).
+	if page1[0].ID == page2[0].ID {
+		t.Error("page1 and page2 share first entry ID -- pagination is broken")
+	}
+
+	// Last page: limit=3, offset=9 => only 1 result.
+	last, _, err := s.List(ctx, "", 3, 9)
+	if err != nil {
+		t.Fatalf("List last page: %v", err)
+	}
+	if len(last) != 1 {
+		t.Errorf("last page len = %d, want 1", len(last))
+	}
+}
+
+func TestAuditListHandler_NoStore(t *testing.T) {
+	m := New()
+	logger, _ := zap.NewDevelopment()
+	_ = m.Init(context.Background(), plugin.Dependencies{Logger: logger.Named("mcp")})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/mcp/audit", http.NoBody)
+	rr := httptest.NewRecorder()
+	m.handleAuditList(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestAuditListHandler_WithStore(t *testing.T) {
+	m := New()
+	logger, _ := zap.NewDevelopment()
+	pluginStore := testutil.NewStore(t)
+	_ = m.Init(context.Background(), plugin.Dependencies{
+		Logger: logger.Named("mcp"),
+		Store:  pluginStore,
+	})
+
+	// Insert a couple of entries directly.
+	now := time.Now().UTC()
+	_ = m.auditStore.Insert(context.Background(), AuditEntry{
+		Timestamp: now,
+		ToolName:  "get_device",
+		InputJSON: `{"device_id":"x"}`,
+		UserID:    "http",
+		Success:   true,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/mcp/audit?limit=10&offset=0", http.NoBody)
+	rr := httptest.NewRecorder()
+	m.handleAuditList(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["total"] == nil {
+		t.Error("response missing 'total' field")
+	}
+	if resp["entries"] == nil {
+		t.Error("response missing 'entries' field")
 	}
 }
 
