@@ -3047,6 +3047,35 @@ paths:
       summary: Test LLM connection
       tags:
       - llm
+  /mcp/audit:
+    get:
+      description: Returns paginated MCP tool call audit entries
+      parameters:
+      - description: Filter by tool name
+        in: query
+        name: tool_name
+        type: string
+      - default: 50
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List MCP audit log entries
+      tags:
+      - mcp
   /plugins:
     get:
       description: Returns all registered plugins with their metadata.

@@ -3,7 +3,9 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +48,7 @@ type Module struct {
 	serviceQuerier ServiceQuerier
 	server         *sdkmcp.Server
 	apiKey         string
+	auditStore     *AuditStore
 }
 
 // New creates a new MCP plugin instance.
@@ -69,6 +72,13 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 	if deps.Config != nil {
 		m.apiKey = deps.Config.GetString("api_key")
+	}
+
+	if deps.Store != nil {
+		if err := deps.Store.Migrate(context.Background(), "mcp", migrations()); err != nil {
+			return fmt.Errorf("mcp migrations: %w", err)
+		}
+		m.auditStore = NewAuditStore(deps.Store.DB())
 	}
 
 	m.logger.Info("mcp module initialized")
@@ -114,6 +124,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "POST", Path: "/", Handler: m.handleMCP},
 		{Method: "GET", Path: "/", Handler: m.handleMCP},
 		{Method: "DELETE", Path: "/", Handler: m.handleMCP},
+		{Method: "GET", Path: "/audit", Handler: m.handleAuditList},
 	}
 }
 
@@ -139,6 +150,59 @@ func (m *Module) handleMCP(w http.ResponseWriter, r *http.Request) {
 	handler.ServeHTTP(w, r)
 }
 
+// handleAuditList returns paginated MCP tool call audit entries.
+//
+// @Summary List MCP audit log entries
+// @Description Returns paginated MCP tool call audit entries
+// @Tags mcp
+// @Produce json
+// @Param tool_name query string false "Filter by tool name"
+// @Param limit query int false "Page size" default(50)
+// @Param offset query int false "Offset" default(0)
+// @Success 200 {object} map[string]any
+// @Router /mcp/audit [get]
+func (m *Module) handleAuditList(w http.ResponseWriter, r *http.Request) {
+	if m.auditStore == nil {
+		http.Error(w, `{"error":"audit store not available"}`, http.StatusServiceUnavailable)
+		return
+	}
+
+	toolName := r.URL.Query().Get("tool_name")
+
+	limit := 50
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	offset := 0
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	entries, total, err := m.auditStore.List(r.Context(), toolName, limit, offset)
+	if err != nil {
+		m.logger.Error("failed to query audit log", zap.Error(err))
+		http.Error(w, `{"error":"failed to query audit log"}`, http.StatusInternalServerError)
+		return
+	}
+
+	resp := map[string]any{
+		"entries": entries,
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		m.logger.Error("failed to encode audit response", zap.Error(err))
+	}
+}
+
 // publishToolCall emits an event when an MCP tool is invoked.
 func (m *Module) publishToolCall(toolName string, params any) {
 	if m.bus == nil {
@@ -154,6 +218,27 @@ func (m *Module) publishToolCall(toolName string, params any) {
 			"params": params,
 		},
 	})
+}
+
+// auditToolCall persists a tool invocation record to the audit log.
+// It is a no-op when the audit store is not configured.
+// The userID is a best-effort label: "http" for HTTP transport calls, "stdio" for stdio.
+func (m *Module) auditToolCall(ctx context.Context, toolName, inputJSON, userID string, start time.Time, success bool, errMsg string) {
+	if m.auditStore == nil {
+		return
+	}
+	entry := AuditEntry{
+		Timestamp:    start,
+		ToolName:     toolName,
+		InputJSON:    inputJSON,
+		UserID:       userID,
+		DurationMs:   time.Since(start).Milliseconds(),
+		Success:      success,
+		ErrorMessage: errMsg,
+	}
+	if err := m.auditStore.Insert(ctx, entry); err != nil {
+		m.logger.Warn("failed to write audit log", zap.Error(err))
+	}
 }
 
 // writeToolJSON marshals v to JSON for tool responses.

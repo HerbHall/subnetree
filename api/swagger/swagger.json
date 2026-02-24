@@ -1547,6 +1547,49 @@
                 }
             }
         },
+        "/mcp/audit": {
+            "get": {
+                "description": "Returns paginated MCP tool call audit entries",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcp"
+                ],
+                "summary": "List MCP audit log entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by tool name",
+                        "name": "tool_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/plugins": {
             "get": {
                 "description": "Returns all registered plugins with their metadata.",

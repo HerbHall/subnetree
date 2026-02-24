@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -46,6 +47,19 @@ type getServiceInventoryInput struct {
 	Status      string `json:"status,omitempty" jsonschema:"Filter by status: running, stopped, failed, unknown"`
 }
 
+// marshalInput converts an input struct to a JSON string for audit logging.
+// Returns "{}" on marshal failure so the audit record is still written.
+func marshalInput(v any) string {
+	if v == nil {
+		return "{}"
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
 // registerTools adds all MCP tools to the server.
 func (m *Module) registerTools() {
 	sdkmcp.AddTool(m.server, &sdkmcp.Tool{
@@ -84,28 +98,38 @@ func (m *Module) registerTools() {
 	}, m.handleGetServiceInventory)
 }
 
-func (m *Module) handleGetDevice(_ context.Context, _ *sdkmcp.CallToolRequest, input getDeviceInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleGetDevice(ctx context.Context, _ *sdkmcp.CallToolRequest, input getDeviceInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("get_device", input)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "get_device", inputJSON, "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
 	device, err := m.querier.GetDevice(context.Background(), input.DeviceID)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to get device: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to get device: %v", err)
+		m.auditToolCall(ctx, "get_device", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 	if device == nil {
+		m.auditToolCall(ctx, "get_device", inputJSON, "http", start, true, "")
 		return textResult(fmt.Sprintf("No device found with ID %q", input.DeviceID)), nil, nil
 	}
 
+	m.auditToolCall(ctx, "get_device", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(device)), nil, nil
 }
 
-func (m *Module) handleListDevices(_ context.Context, _ *sdkmcp.CallToolRequest, input listDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleListDevices(ctx context.Context, _ *sdkmcp.CallToolRequest, input listDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("list_devices", input)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "list_devices", inputJSON, "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
@@ -116,7 +140,9 @@ func (m *Module) handleListDevices(_ context.Context, _ *sdkmcp.CallToolRequest,
 
 	devices, total, err := m.querier.ListDevices(context.Background(), limit, input.Offset)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to list devices: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to list devices: %v", err)
+		m.auditToolCall(ctx, "list_devices", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 
 	resp := struct {
@@ -131,49 +157,66 @@ func (m *Module) handleListDevices(_ context.Context, _ *sdkmcp.CallToolRequest,
 		Offset:  input.Offset,
 	}
 
+	m.auditToolCall(ctx, "list_devices", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(resp)), nil, nil
 }
 
-func (m *Module) handleGetHardwareProfile(_ context.Context, _ *sdkmcp.CallToolRequest, input getHardwareProfileInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleGetHardwareProfile(ctx context.Context, _ *sdkmcp.CallToolRequest, input getHardwareProfileInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("get_hardware_profile", input)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "get_hardware_profile", inputJSON, "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
 	hw, err := m.querier.GetDeviceHardware(context.Background(), input.DeviceID)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to get hardware profile: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to get hardware profile: %v", err)
+		m.auditToolCall(ctx, "get_hardware_profile", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 	if hw == nil {
+		m.auditToolCall(ctx, "get_hardware_profile", inputJSON, "http", start, true, "")
 		return textResult(fmt.Sprintf("No hardware profile found for device %q", input.DeviceID)), nil, nil
 	}
 
+	m.auditToolCall(ctx, "get_hardware_profile", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(hw)), nil, nil
 }
 
-func (m *Module) handleGetFleetSummary(_ context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleGetFleetSummary(ctx context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
 	m.publishToolCall("get_fleet_summary", nil)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "get_fleet_summary", "{}", "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
 	summary, err := m.querier.GetHardwareSummary(context.Background())
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to get fleet summary: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to get fleet summary: %v", err)
+		m.auditToolCall(ctx, "get_fleet_summary", "{}", "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 	if summary == nil {
+		m.auditToolCall(ctx, "get_fleet_summary", "{}", "http", start, true, "")
 		return textResult("No hardware summary available"), nil, nil
 	}
 
+	m.auditToolCall(ctx, "get_fleet_summary", "{}", "http", start, true, "")
 	return textResult(writeToolJSON(summary)), nil, nil
 }
 
-func (m *Module) handleQueryDevices(_ context.Context, _ *sdkmcp.CallToolRequest, input queryDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleQueryDevices(ctx context.Context, _ *sdkmcp.CallToolRequest, input queryDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("query_devices", input)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "query_devices", inputJSON, "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
@@ -195,7 +238,9 @@ func (m *Module) handleQueryDevices(_ context.Context, _ *sdkmcp.CallToolRequest
 
 	devices, total, err := m.querier.QueryDevicesByHardware(context.Background(), query)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to query devices: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to query devices: %v", err)
+		m.auditToolCall(ctx, "query_devices", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 
 	resp := struct {
@@ -210,13 +255,17 @@ func (m *Module) handleQueryDevices(_ context.Context, _ *sdkmcp.CallToolRequest
 		Offset:  input.Offset,
 	}
 
+	m.auditToolCall(ctx, "query_devices", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(resp)), nil, nil
 }
 
-func (m *Module) handleGetStaleDevices(_ context.Context, _ *sdkmcp.CallToolRequest, input getStaleDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleGetStaleDevices(ctx context.Context, _ *sdkmcp.CallToolRequest, input getStaleDevicesInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("get_stale_devices", input)
 
 	if m.querier == nil {
+		m.auditToolCall(ctx, "get_stale_devices", inputJSON, "http", start, false, "device querier not available")
 		return textResult("Device querier not available. The recon module may not be loaded."), nil, nil
 	}
 
@@ -228,7 +277,9 @@ func (m *Module) handleGetStaleDevices(_ context.Context, _ *sdkmcp.CallToolRequ
 	threshold := time.Now().UTC().Add(-time.Duration(hours) * time.Hour)
 	devices, err := m.querier.FindStaleDevices(context.Background(), threshold)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to find stale devices: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to find stale devices: %v", err)
+		m.auditToolCall(ctx, "get_stale_devices", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 
 	resp := struct {
@@ -241,19 +292,25 @@ func (m *Module) handleGetStaleDevices(_ context.Context, _ *sdkmcp.CallToolRequ
 		StaleAfterHours: hours,
 	}
 
+	m.auditToolCall(ctx, "get_stale_devices", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(resp)), nil, nil
 }
 
-func (m *Module) handleGetServiceInventory(_ context.Context, _ *sdkmcp.CallToolRequest, input getServiceInventoryInput) (*sdkmcp.CallToolResult, any, error) {
+func (m *Module) handleGetServiceInventory(ctx context.Context, _ *sdkmcp.CallToolRequest, input getServiceInventoryInput) (*sdkmcp.CallToolResult, any, error) {
+	start := time.Now()
+	inputJSON := marshalInput(input)
 	m.publishToolCall("get_service_inventory", input)
 
 	if m.serviceQuerier == nil {
+		m.auditToolCall(ctx, "get_service_inventory", inputJSON, "http", start, false, "service querier not available")
 		return textResult("Service data not available. The svcmap module may not be loaded."), nil, nil
 	}
 
 	services, err := m.serviceQuerier.ListServicesFiltered(context.Background(), input.DeviceID, input.ServiceType, input.Status)
 	if err != nil {
-		return errorResult(fmt.Sprintf("failed to list services: %v", err)), nil, nil
+		msg := fmt.Sprintf("failed to list services: %v", err)
+		m.auditToolCall(ctx, "get_service_inventory", inputJSON, "http", start, false, msg)
+		return errorResult(msg), nil, nil
 	}
 
 	// Group services by device ID for readability.
@@ -270,6 +327,7 @@ func (m *Module) handleGetServiceInventory(_ context.Context, _ *sdkmcp.CallTool
 		TotalServices:    len(services),
 	}
 
+	m.auditToolCall(ctx, "get_service_inventory", inputJSON, "http", start, true, "")
 	return textResult(writeToolJSON(resp)), nil, nil
 }
 
