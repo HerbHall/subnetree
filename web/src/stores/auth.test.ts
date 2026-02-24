@@ -29,6 +29,11 @@ vi.mock('@/api/auth', () => ({
   loginApi: vi.fn(),
   refreshApi: vi.fn(),
   logoutApi: vi.fn(),
+  verifyMFAApi: vi.fn(),
+  verifyMFARecoveryApi: vi.fn(),
+  isMFAChallenge: vi.fn((data: unknown) => {
+    return typeof data === 'object' && data !== null && 'mfa_required' in data
+  }),
 }))
 
 describe('useAuthStore', () => {
@@ -40,6 +45,8 @@ describe('useAuthStore', () => {
       user: null,
       isAuthenticated: false,
       isHydrated: false,
+      pendingMFAToken: null,
+      mfaRequired: false,
     })
     localStorage.clear()
     vi.clearAllMocks()
