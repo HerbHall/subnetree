@@ -74,18 +74,18 @@ func newMockServiceQuerier() *mockServiceQuerier {
 }
 
 func (q *mockServiceQuerier) ListServicesFiltered(_ context.Context, deviceID, serviceType, status string) ([]models.Service, error) {
-	var result []models.Service
-	for _, s := range q.services {
-		if deviceID != "" && s.DeviceID != deviceID {
+	result := make([]models.Service, 0, len(q.services))
+	for i := range q.services {
+		if deviceID != "" && q.services[i].DeviceID != deviceID {
 			continue
 		}
-		if serviceType != "" && string(s.ServiceType) != serviceType {
+		if serviceType != "" && string(q.services[i].ServiceType) != serviceType {
 			continue
 		}
-		if status != "" && string(s.Status) != status {
+		if status != "" && string(q.services[i].Status) != status {
 			continue
 		}
-		result = append(result, s)
+		result = append(result, q.services[i])
 	}
 	return result, nil
 }
@@ -192,9 +192,9 @@ func (q *mockQuerier) QueryDevicesByHardware(_ context.Context, query models.Har
 
 func (q *mockQuerier) FindStaleDevices(_ context.Context, threshold time.Time) ([]models.Device, error) {
 	var stale []models.Device
-	for _, d := range q.allDevices {
-		if d.Status == models.DeviceStatusOnline && d.LastSeen.Before(threshold) {
-			stale = append(stale, d)
+	for i := range q.allDevices {
+		if q.allDevices[i].Status == models.DeviceStatusOnline && q.allDevices[i].LastSeen.Before(threshold) {
+			stale = append(stale, q.allDevices[i])
 		}
 	}
 	return stale, nil
