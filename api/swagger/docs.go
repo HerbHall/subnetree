@@ -1077,6 +1077,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/dispatch/updates/latest": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the latest Scout binary version and download URLs for all platforms.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dispatch"
+                ],
+                "summary": "Get update manifest",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_dispatch.UpdateManifest"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns service health status with version information.",
@@ -7221,6 +7246,34 @@ const docTemplate = `{
                 },
                 "tier": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_dispatch.PlatformBinary": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_dispatch.UpdateManifest": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                },
+                "checksums_url": {
+                    "type": "string"
+                },
+                "platforms": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/internal_dispatch.PlatformBinary"
+                    }
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },

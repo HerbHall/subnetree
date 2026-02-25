@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
@@ -13,6 +14,7 @@ import (
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"golang.org/x/mod/semver"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )
@@ -136,14 +138,29 @@ func (s *scoutServer) CheckIn(ctx context.Context, req *scoutpb.CheckInRequest) 
 		})
 	}
 
+	// Check agent semver version for update availability.
+	agentVersionStatus := s.checkAgentVersion(req.AgentVersion)
+	var updateURL string
+	if agentVersionStatus == scoutpb.VersionStatus_VERSION_UPDATE_AVAILABLE {
+		goos, goarch := splitPlatformArch(req.Platform)
+		updateURL = buildBinaryURL(goos, goarch)
+	}
+
+	// Merge: proto rejection/deprecation takes priority over semver update signal.
+	finalStatus := versionStatus
+	if finalStatus == scoutpb.VersionStatus_VERSION_OK {
+		finalStatus = agentVersionStatus
+	}
+
 	return &scoutpb.CheckInResponse{
 		Acknowledged:         true,
 		CheckIntervalSeconds: 30,
-		VersionStatus:        versionStatus,
+		VersionStatus:        finalStatus,
 		ServerVersion:        version.Version,
 		AssignedAgentId:      assignedID,
 		SignedCertificate:    certDER,
 		CaCertificate:        caCertDER,
+		UpdateUrl:            updateURL,
 	}, nil
 }
 
@@ -155,6 +172,34 @@ func (s *scoutServer) checkProtoVersion(v uint32) scoutpb.VersionStatus {
 		return scoutpb.VersionStatus_VERSION_DEPRECATED
 	}
 	return scoutpb.VersionStatus_VERSION_REJECTED
+}
+
+// checkAgentVersion compares the agent's semver version against the server version.
+func (s *scoutServer) checkAgentVersion(agentVersion string) scoutpb.VersionStatus {
+	agentSV := normalizeSemver(agentVersion)
+	serverSV := normalizeSemver(version.Version)
+	if !semver.IsValid(agentSV) || !semver.IsValid(serverSV) {
+		return scoutpb.VersionStatus_VERSION_OK
+	}
+	if semver.Compare(agentSV, serverSV) < 0 {
+		return scoutpb.VersionStatus_VERSION_UPDATE_AVAILABLE
+	}
+	return scoutpb.VersionStatus_VERSION_OK
+}
+
+func normalizeSemver(v string) string {
+	if v != "" && v[0] != 'v' {
+		return "v" + v
+	}
+	return v
+}
+
+func splitPlatformArch(platform string) (goos, goarch string) {
+	parts := strings.SplitN(platform, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return platform, "amd64"
 }
 
 func (s *scoutServer) ReportProfile(ctx context.Context, req *scoutpb.ProfileReport) (*scoutpb.Ack, error) {

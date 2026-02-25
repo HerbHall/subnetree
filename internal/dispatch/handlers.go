@@ -25,6 +25,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/agents/{id}/services", Handler: m.handleGetServices},
 		{Method: "GET", Path: "/install/{platform}/{arch}", Handler: m.handleInstallScript},
 		{Method: "GET", Path: "/download/{platform}/{arch}", Handler: m.handleDownloadRedirect},
+		{Method: "GET", Path: "/updates/latest", Handler: m.handleGetUpdateManifest},
 	}
 }
 
