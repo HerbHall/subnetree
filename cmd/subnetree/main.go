@@ -25,6 +25,7 @@ import (
 	"github.com/HerbHall/subnetree/internal/auth"
 	"github.com/HerbHall/subnetree/internal/autodoc"
 	mcpmod "github.com/HerbHall/subnetree/internal/mcp"
+	nbmod "github.com/HerbHall/subnetree/internal/netbox"
 	"github.com/HerbHall/subnetree/internal/catalog"
 	"github.com/HerbHall/subnetree/internal/config"
 	"github.com/HerbHall/subnetree/internal/dashboard"
@@ -176,6 +177,7 @@ func main() {
 		mqtt.New(),
 		autodoc.New(),
 		mcpmod.New(),
+		nbmod.New(),
 		tsmod.New(),
 	}
 	for _, m := range modules {
@@ -347,6 +349,17 @@ func main() {
 					adMod.SetAlertReader(&autodocAlertAdapter{store: pulseMod.Store()})
 				}
 				logger.Info("autodoc device and alert readers wired", zap.String("component", "autodoc"))
+				break
+			}
+		}
+	}
+
+	// Wire NetBox device reader: netbox -> recon store.
+	if reconMod != nil {
+		for _, m := range modules {
+			if nb, ok := m.(*nbmod.Module); ok {
+				nb.SetDeviceReader(&netboxDeviceAdapter{store: reconMod.Store()})
+				logger.Info("netbox device reader wired", zap.String("component", "netbox"))
 				break
 			}
 		}
@@ -793,4 +806,18 @@ func (a *autodocAlertAdapter) ListDeviceAlerts(ctx context.Context, deviceID str
 		}
 	}
 	return result, nil
+}
+
+// netboxDeviceAdapter adapts recon.ReconStore to netbox.DeviceReader.
+// Lives in the composition root to avoid coupling netbox -> recon.
+type netboxDeviceAdapter struct {
+	store *recon.ReconStore
+}
+
+func (a *netboxDeviceAdapter) ListAllDevices(ctx context.Context) ([]models.Device, error) {
+	return a.store.ListAllDevices(ctx)
+}
+
+func (a *netboxDeviceAdapter) GetDevice(ctx context.Context, id string) (*models.Device, error) {
+	return a.store.GetDevice(ctx, id)
 }
