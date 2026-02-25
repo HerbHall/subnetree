@@ -56,6 +56,12 @@ import {
   applyLayout as applyLayoutPositions,
   type SavedLayout,
 } from '@/components/topology/layout-storage'
+import { TopologyBackground } from '@/components/topology/topology-background'
+import {
+  loadBackgroundSettings,
+  saveBackgroundSettings,
+  type TopologyBackgroundSettings,
+} from '@/components/topology/background-storage'
 import {
   type ViewMode,
   groupByType,
@@ -215,6 +221,7 @@ export function TopologyPage() {
   const [showUtilization, setShowUtilization] = useState(false)
   const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([])
   const [viewMode, setViewMode] = useState<ViewMode>('all')
+  const [bgSettings, setBgSettings] = useState<TopologyBackgroundSettings>(loadBackgroundSettings)
 
   // Load saved layouts from API on mount.
   useEffect(() => {
@@ -402,6 +409,10 @@ export function TopologyPage() {
   const handleViewModeChange = useCallback((mode: ViewMode) => { setViewMode(mode) }, [])
   const handleMinimapToggle = useCallback(() => { setShowMinimap((prev) => !prev) }, [])
   const handleUtilizationToggle = useCallback(() => { setShowUtilization((prev) => !prev) }, [])
+  const handleBgSettingsChange = useCallback((settings: TopologyBackgroundSettings) => {
+    setBgSettings(settings)
+    saveBackgroundSettings(settings)
+  }, [])
 
   const handleSaveLayout = useCallback(async (name: string) => {
     await saveLayoutToStorage(name, nodes.map((n) => ({ id: n.id, position: n.position })))
@@ -549,6 +560,7 @@ export function TopologyPage() {
 
   return (
     <div ref={flowRef} className="h-[calc(100vh-4rem)] w-full relative">
+      <TopologyBackground settings={bgSettings} />
       <ReactFlow
         nodes={nodes} edges={edges}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -577,6 +589,7 @@ export function TopologyPage() {
               showUtilization={showUtilization} onUtilizationToggle={handleUtilizationToggle}
               savedLayouts={savedLayouts} onSaveLayout={handleSaveLayout}
               onLoadLayout={handleLoadLayout} onDeleteLayout={handleDeleteLayout}
+              backgroundSettings={bgSettings} onBackgroundSettingsChange={handleBgSettingsChange}
             />
           </div>
         </Panel>
