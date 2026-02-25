@@ -213,7 +213,7 @@ func (m *Module) handleDeviceDoc(w http.ResponseWriter, r *http.Request) {
 
 	filename := deviceDocFilename(device)
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(md))
 }
