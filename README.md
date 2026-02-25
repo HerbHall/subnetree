@@ -268,6 +268,9 @@ graph TD
         Vault["Vault"]
         Gateway["Gateway"]
         Webhook["Webhook"]
+        MQTT["MQTT"]
+        Tailscale["Tailscale"]
+        MCP["MCP"]
         EventBus(["Event Bus"])
 
         Recon --> EventBus
@@ -275,6 +278,7 @@ graph TD
         Docs --> EventBus
         Insight --> EventBus
         Webhook --> EventBus
+        MQTT --> EventBus
     end
 
     Dashboard -- "REST / WebSocket" --> Server
@@ -282,6 +286,7 @@ graph TD
     Recon -- "ARP / ICMP" --> Devices
     Pulse -- "ICMP" --> Devices
     Insight --> LLM
+    MQTT -- "MQTT" --> HA["Home Assistant"]
 ```
 
 ### Modules
@@ -295,8 +300,13 @@ graph TD
 | **Vault** | Encrypted credential storage |
 | **Gateway** | Browser-based remote access (SSH, HTTP proxy) |
 | **Webhook** | Event-driven webhook notifications |
+| **MQTT** | MQTT publisher with Home Assistant auto-discovery |
 | **LLM** | AI provider integration (Ollama, OpenAI, Anthropic) |
 | **Insight** | Statistical analytics, anomaly detection, NL queries |
+| **Tailscale** | Tailscale network device sync and status monitoring |
+| **MCP** | Model Context Protocol server for AI tool integration |
+| **NetBox** | NetBox DCIM export for device inventory sync |
+| **Autodoc** | Automated infrastructure documentation engine |
 
 ### Building from Source
 
@@ -342,6 +352,11 @@ internal/
   webhook/        Webhook notification module
   llm/            LLM plugin (Ollama provider)
   insight/        Analytics and anomaly detection
+  mqtt/           MQTT publisher with HA auto-discovery
+  tailscale/      Tailscale network integration
+  mcp/            Model Context Protocol server
+  netbox/         NetBox DCIM export
+  autodoc/        Infrastructure documentation engine
 web/              React dashboard (Vite + shadcn/ui)
 pkg/
   plugin/         Public plugin SDK (Apache 2.0)
@@ -358,8 +373,8 @@ api/
 - **v0.4.x** (shipped): mDNS discovery, metrics history, alert suppression, vault UI, analytics dashboard
 - **v0.5.0** (shipped): MQTT publisher, Alertmanager webhooks, CSV import/export, recommendation engine
 - **v0.6.x** (shipped): Device classification engine, LLDP discovery, composite scoring, scan analytics, network hierarchy
-- **Sprints 1-6** (shipped): Traceroute, diagnostics, SNMP FDB walks, E2E tests, hardware profiles, MCP server, WiFi scanning, demo mode, Windows Scout service + installer, contextual help
-- **Next**: Proxmox VE monitoring, MFA/TOTP, Tailscale, multi-tenant, PostgreSQL
+- **Sprints 1-11** (shipped): Traceroute, diagnostics, SNMP FDB walks, E2E tests, hardware profiles, MCP server, WiFi scanning, demo mode, Windows installer, Proxmox VE monitoring, MFA/TOTP, Tailscale, autodoc engine
+- **Next**: NetBox integration, Home Assistant MQTT discovery, community launch, multi-tenant, PostgreSQL
 
 ## License
 
