@@ -9,6 +9,7 @@ permissions:
   contents: write
   packages: write
   id-token: write
+  security-events: write
 
 jobs:
   release:
@@ -102,6 +103,46 @@ jobs:
               --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
               "$IMAGE"
           done
+
+  container-scan:
+    name: Scan Release Image
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull ghcr.io/herbhall/subnetree:${{ github.ref_name }}
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/herbhall/subnetree:${{ github.ref_name }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      - name: Run Trivy scan (SARIF upload)
+        if: '!cancelled()'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/herbhall/subnetree:${{ github.ref_name }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF results
+        if: '!cancelled()'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   smoke-test:
     name: Smoke Test Docker Image

@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -343,6 +344,77 @@ jobs:
           name: playwright-report
           path: web/test-results/
           retention-days: 7
+
+  container-scan:
+    name: Container Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for container-relevant changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+            echo "Not a PR -- running scan"
+            exit 0
+          fi
+          CHANGED=$(gh pr diff ${{ github.event.pull_request.number }} --name-only | \
+            grep -E '^(Dockerfile|Dockerfile\.goreleaser|go\.mod|go\.sum)$' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "run=false" >> $GITHUB_OUTPUT
+            echo "No container-relevant file changes detected, skipping scan"
+          else
+            echo "run=true" >> $GITHUB_OUTPUT
+            echo "Container-relevant changes detected:"
+            echo "$CHANGED"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download frontend build
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: dashboard-dist
+          path: web/dist
+
+      - name: Build Docker image
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          docker build \
+            --build-arg VERSION=ci-scan \
+            --build-arg COMMIT=${{ github.sha }} \
+            --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            -t subnetree:ci-scan \
+            .
+
+      - name: Run Trivy vulnerability scan
+        if: steps.changes.outputs.run == 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'subnetree:ci-scan'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      - name: Run Trivy scan (SARIF upload)
+        if: ${{ steps.changes.outputs.run == 'true' && !cancelled() }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'subnetree:ci-scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF results
+        if: ${{ steps.changes.outputs.run == 'true' && !cancelled() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   goreleaser-check:
     name: GoReleaser Config Check
