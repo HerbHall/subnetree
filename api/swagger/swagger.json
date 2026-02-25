@@ -1695,6 +1695,139 @@
                 }
             }
         },
+        "/netbox/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns whether the NetBox integration is configured and connection details.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "netbox"
+                ],
+                "summary": "Get NetBox integration status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_netbox.StatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/netbox/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Triggers a full sync of all SubNetree devices to a NetBox CMDB instance.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "netbox"
+                ],
+                "summary": "Sync all devices to NetBox",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Dry run mode (no changes made)",
+                        "name": "dry_run",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_netbox.SyncResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/netbox/sync/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Syncs one SubNetree device to NetBox by device ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "netbox"
+                ],
+                "summary": "Sync a single device to NetBox",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Dry run mode",
+                        "name": "dry_run",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_netbox.SyncResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/plugins": {
             "get": {
                 "description": "Returns all registered plugins with their metadata.",
@@ -7466,6 +7599,49 @@
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_netbox.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "configured": {
+                    "type": "boolean"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "tag_name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_netbox.SyncResult": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
                 }
             }
         },

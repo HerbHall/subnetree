@@ -1126,6 +1126,34 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_netbox.StatusResponse:
+    properties:
+      configured:
+        type: boolean
+      dry_run:
+        type: boolean
+      tag_name:
+        type: string
+      url:
+        type: string
+    type: object
+  internal_netbox.SyncResult:
+    properties:
+      created:
+        type: integer
+      dry_run:
+        type: boolean
+      errors:
+        items:
+          type: string
+        type: array
+      failed:
+        type: integer
+      skipped:
+        type: integer
+      updated:
+        type: integer
+    type: object
   internal_pulse.Alert:
     properties:
       acknowledged_at:
@@ -3172,6 +3200,93 @@ paths:
       summary: List MCP audit log entries
       tags:
       - mcp
+  /netbox/status:
+    get:
+      description: Returns whether the NetBox integration is configured and connection
+        details.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_netbox.StatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Get NetBox integration status
+      tags:
+      - netbox
+  /netbox/sync:
+    post:
+      description: Triggers a full sync of all SubNetree devices to a NetBox CMDB
+        instance.
+      parameters:
+      - description: Dry run mode (no changes made)
+        in: query
+        name: dry_run
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_netbox.SyncResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync all devices to NetBox
+      tags:
+      - netbox
+  /netbox/sync/{id}:
+    post:
+      description: Syncs one SubNetree device to NetBox by device ID.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Dry run mode
+        in: query
+        name: dry_run
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_netbox.SyncResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync a single device to NetBox
+      tags:
+      - netbox
   /plugins:
     get:
       description: Returns all registered plugins with their metadata.
