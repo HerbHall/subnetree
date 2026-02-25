@@ -18,8 +18,12 @@ import {
   Trash2,
   ArrowDown,
   ArrowRight,
+  Wallpaper,
 } from 'lucide-react'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { exportTopologyAsSvg } from '@/lib/topology-export'
+import { BackgroundSettingsPanel } from './topology-background-settings'
+import type { TopologyBackgroundSettings } from './background-storage'
 import type { SavedLayout } from './layout-storage'
 import type { ElkDirection } from './elk-layout'
 
@@ -39,6 +43,8 @@ interface TopologyToolbarProps {
   onSaveLayout: (name: string) => void
   onLoadLayout: (id: string) => void
   onDeleteLayout: (id: string) => void
+  backgroundSettings?: TopologyBackgroundSettings
+  onBackgroundSettingsChange?: (settings: TopologyBackgroundSettings) => void
 }
 
 const layoutOptions: { value: LayoutAlgorithm; label: string; Icon: typeof CircleDot }[] = [
@@ -71,6 +77,8 @@ export const TopologyToolbar = memo(function TopologyToolbar({
   onSaveLayout,
   onLoadLayout,
   onDeleteLayout,
+  backgroundSettings,
+  onBackgroundSettingsChange,
 }: TopologyToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow()
   const [exporting, setExporting] = useState(false)
@@ -242,6 +250,38 @@ export const TopologyToolbar = memo(function TopologyToolbar({
       >
         <Map className="h-4 w-4" />
       </button>
+
+      {/* Background settings */}
+      {backgroundSettings && onBackgroundSettingsChange && (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            title="Background settings"
+            className="rounded-md p-1.5 transition-colors hover:bg-[var(--nv-bg-hover)]"
+            style={{
+              color: backgroundSettings.type !== 'none' ? 'var(--nv-text-accent)' : 'var(--nv-text-secondary)',
+            }}
+          >
+            <Wallpaper className="h-4 w-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="end"
+          sideOffset={8}
+          className="w-auto border-0 p-3"
+          style={{
+            backgroundColor: 'var(--nv-bg-card)',
+            border: '1px solid var(--nv-border-default)',
+          }}
+        >
+          <BackgroundSettingsPanel
+            settings={backgroundSettings}
+            onChange={onBackgroundSettingsChange}
+          />
+        </PopoverContent>
+      </Popover>
+      )}
 
       <Separator />
 
