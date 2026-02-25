@@ -72,6 +72,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract tag name
+        run: echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container images with Cosign
+        run: |
+          IMAGES=(
+            "ghcr.io/herbhall/subnetree:${TAG}"
+            "ghcr.io/herbhall/subnetree:latest"
+          )
+          for IMAGE in "${IMAGES[@]}"; do
+            echo "Signing ${IMAGE}"
+            cosign sign --yes "$IMAGE"
+          done
+
+      - name: Verify container image signatures
+        run: |
+          IMAGES=(
+            "ghcr.io/herbhall/subnetree:${TAG}"
+            "ghcr.io/herbhall/subnetree:latest"
+          )
+          for IMAGE in "${IMAGES[@]}"; do
+            echo "Verifying ${IMAGE}"
+            cosign verify \
+              --certificate-identity-regexp="https://github.com/HerbHall/subnetree/" \
+              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+              "$IMAGE"
+          done
+
   smoke-test:
     name: Smoke Test Docker Image
     needs: release
