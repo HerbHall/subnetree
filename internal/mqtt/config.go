@@ -13,16 +13,22 @@ type Config struct {
 	Retain      bool          `mapstructure:"retain"`
 	UseTLS      bool          `mapstructure:"use_tls"`
 	Timeout     time.Duration `mapstructure:"timeout"`
+
+	// Home Assistant MQTT auto-discovery settings.
+	HADiscovery       bool   `mapstructure:"ha_discovery"`        // Enable HA auto-discovery (default: false)
+	HADiscoveryPrefix string `mapstructure:"ha_discovery_prefix"` // HA discovery topic prefix (default: "homeassistant")
 }
 
 // DefaultConfig returns sensible defaults for the MQTT publisher.
 func DefaultConfig() Config {
 	return Config{
-		BrokerURL:   "", // disabled by default
-		ClientID:    "subnetree",
-		TopicPrefix: "subnetree",
-		QoS:         1,
-		Retain:      false,
-		Timeout:     10 * time.Second,
+		BrokerURL:         "", // disabled by default
+		ClientID:          "subnetree",
+		TopicPrefix:       "subnetree",
+		QoS:               1,
+		Retain:            false,
+		Timeout:           10 * time.Second,
+		HADiscovery:       false,
+		HADiscoveryPrefix: "homeassistant",
 	}
 }

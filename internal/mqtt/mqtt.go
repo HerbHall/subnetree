@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/HerbHall/subnetree/internal/pulse"
 	"github.com/HerbHall/subnetree/internal/recon"
+	"github.com/HerbHall/subnetree/pkg/models"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"go.uber.org/zap"
@@ -22,10 +24,12 @@ var (
 // alert events via the event bus and publishes them to an MQTT broker,
 // enabling Home Assistant auto-discovery and other integrations.
 type Module struct {
-	logger *zap.Logger
-	cfg    Config
-	client pahomqtt.Client
-	mu     sync.RWMutex
+	logger    *zap.Logger
+	cfg       Config
+	client    pahomqtt.Client
+	mu        sync.RWMutex
+	haEnabled bool
+	haPrefix  string
 }
 
 // New creates a new MQTT publisher plugin instance.
@@ -75,7 +79,16 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 		if d := deps.Config.GetDuration("timeout"); d > 0 {
 			m.cfg.Timeout = d
 		}
+		if deps.Config.IsSet("ha_discovery") {
+			m.cfg.HADiscovery = deps.Config.GetBool("ha_discovery")
+		}
+		if p := deps.Config.GetString("ha_discovery_prefix"); p != "" {
+			m.cfg.HADiscoveryPrefix = p
+		}
 	}
+
+	m.haEnabled = m.cfg.HADiscovery
+	m.haPrefix = m.cfg.HADiscoveryPrefix
 
 	if m.cfg.BrokerURL == "" {
 		m.logger.Warn("MQTT broker URL not configured; events will be dropped",
@@ -88,6 +101,7 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 		zap.String("client_id", m.cfg.ClientID),
 		zap.String("topic_prefix", m.cfg.TopicPrefix),
 		zap.Uint8("qos", m.cfg.QoS),
+		zap.Bool("ha_discovery", m.haEnabled),
 	)
 	return nil
 }
@@ -225,4 +239,181 @@ func (m *Module) publishEvent(_ context.Context, event plugin.Event) {
 		zap.String("mqtt_topic", mqttTopic),
 		zap.String("event_topic", event.Topic),
 	)
+
+	// Publish HA discovery configs if enabled.
+	if m.haEnabled {
+		m.publishHAForEvent(event)
+	}
+}
+
+// publishHAForEvent handles HA MQTT auto-discovery for device and alert events.
+func (m *Module) publishHAForEvent(event plugin.Event) {
+	switch event.Topic {
+	case recon.TopicDeviceDiscovered, recon.TopicDeviceUpdated:
+		device := extractDevice(event.Payload)
+		if device == nil {
+			return
+		}
+		configs := BuildDeviceDiscoveryConfigs(device, m.cfg.TopicPrefix, m.haPrefix)
+		m.publishHADiscovery(configs)
+		m.publishDeviceState(device)
+
+	case recon.TopicDeviceLost:
+		deviceID := extractDeviceID(event.Payload)
+		if deviceID == "" {
+			return
+		}
+		// Publish offline state before removing discovery configs.
+		m.publishState(m.cfg.TopicPrefix+"/device/"+deviceID+"/online", "OFF")
+		configs := BuildDeviceRemovalConfigs(deviceID, m.haPrefix)
+		m.publishHADiscovery(configs)
+
+	case "pulse.alert.triggered":
+		alert := extractAlert(event.Payload)
+		if alert == nil {
+			return
+		}
+		cfg := BuildAlertDiscoveryConfig(alert.DeviceID, alert.DeviceName, alert.ID, alert.Severity, m.cfg.TopicPrefix, m.haPrefix)
+		if len(cfg.Payload) > 0 {
+			m.publishHADiscovery([]DiscoveryConfig{cfg})
+		}
+		m.publishState(m.cfg.TopicPrefix+"/alert/"+alert.ID+"/state", "triggered")
+
+	case "pulse.alert.resolved":
+		alert := extractAlert(event.Payload)
+		if alert == nil {
+			return
+		}
+		m.publishState(m.cfg.TopicPrefix+"/alert/"+alert.ID+"/state", "resolved")
+	}
+}
+
+// publishHADiscovery publishes a batch of HA discovery config payloads.
+func (m *Module) publishHADiscovery(configs []DiscoveryConfig) {
+	for i := range configs {
+		var payload []byte
+		if configs[i].Payload != nil {
+			payload = configs[i].Payload
+		}
+		// Discovery configs are always retained so HA picks them up on restart.
+		token := m.client.Publish(configs[i].Topic, m.cfg.QoS, true, payload)
+		if !token.WaitTimeout(m.cfg.Timeout) {
+			m.logger.Warn("ha discovery publish timed out",
+				zap.String("topic", configs[i].Topic),
+			)
+			continue
+		}
+		if token.Error() != nil {
+			m.logger.Warn("ha discovery publish failed",
+				zap.String("topic", configs[i].Topic),
+				zap.Error(token.Error()),
+			)
+			continue
+		}
+		m.logger.Debug("ha discovery published",
+			zap.String("topic", configs[i].Topic),
+			zap.Bool("removal", len(configs[i].Payload) == 0),
+		)
+	}
+}
+
+// publishState publishes a retained state value to an MQTT topic.
+func (m *Module) publishState(topic, value string) {
+	token := m.client.Publish(topic, m.cfg.QoS, true, []byte(value))
+	if !token.WaitTimeout(m.cfg.Timeout) {
+		m.logger.Warn("state publish timed out", zap.String("topic", topic))
+		return
+	}
+	if token.Error() != nil {
+		m.logger.Warn("state publish failed",
+			zap.String("topic", topic),
+			zap.Error(token.Error()),
+		)
+		return
+	}
+	m.logger.Debug("state published", zap.String("topic", topic), zap.String("value", value))
+}
+
+// publishDeviceState publishes current state values for a device's HA entities.
+func (m *Module) publishDeviceState(device *models.Device) {
+	prefix := m.cfg.TopicPrefix + "/device/" + device.ID
+
+	// Online status.
+	onlineState := "OFF"
+	if device.Status == models.DeviceStatusOnline || device.Status == models.DeviceStatusDegraded {
+		onlineState = "ON"
+	}
+	m.publishState(prefix+"/online", onlineState)
+
+	// Device type.
+	m.publishState(prefix+"/type", string(device.DeviceType))
+
+	// IP address.
+	if len(device.IPAddresses) > 0 {
+		m.publishState(prefix+"/ip", device.IPAddresses[0])
+	}
+}
+
+// extractDevice attempts to extract a *models.Device from an event payload.
+func extractDevice(payload interface{}) *models.Device {
+	switch v := payload.(type) {
+	case *recon.DeviceEvent:
+		return v.Device
+	case recon.DeviceEvent:
+		return v.Device
+	default:
+		// Try JSON round-trip for payloads that were serialized.
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return nil
+		}
+		var de recon.DeviceEvent
+		if err := json.Unmarshal(data, &de); err != nil {
+			return nil
+		}
+		return de.Device
+	}
+}
+
+// extractDeviceID attempts to extract a device ID from a device-lost event payload.
+func extractDeviceID(payload interface{}) string {
+	switch v := payload.(type) {
+	case recon.DeviceLostEvent:
+		return v.DeviceID
+	case *recon.DeviceLostEvent:
+		return v.DeviceID
+	default:
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return ""
+		}
+		var dle recon.DeviceLostEvent
+		if err := json.Unmarshal(data, &dle); err != nil {
+			return ""
+		}
+		return dle.DeviceID
+	}
+}
+
+// extractAlert attempts to extract a *pulse.Alert from an event payload.
+func extractAlert(payload interface{}) *pulse.Alert {
+	switch v := payload.(type) {
+	case *pulse.Alert:
+		return v
+	case pulse.Alert:
+		return &v
+	default:
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return nil
+		}
+		var a pulse.Alert
+		if err := json.Unmarshal(data, &a); err != nil {
+			return nil
+		}
+		if a.ID == "" {
+			return nil
+		}
+		return &a
+	}
 }
