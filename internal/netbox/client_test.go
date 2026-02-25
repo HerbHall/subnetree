@@ -15,7 +15,7 @@ import (
 
 // newMockNetBox creates a test HTTP server that mimics NetBox API responses.
 // Returns the server and a map of recorded request paths for verification.
-func newMockNetBox(t *testing.T) (*httptest.Server, *[]string) {
+func newMockNetBox(t *testing.T) (srv *httptest.Server, paths *[]string) {
 	t.Helper()
 	var requests []string
 
@@ -126,7 +126,7 @@ func newMockNetBox(t *testing.T) (*httptest.Server, *[]string) {
 		writeTestJSON(w, NBIPAddress{ID: 300, Address: req.Address})
 	})
 
-	srv := httptest.NewServer(mux)
+	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, &requests
 }
