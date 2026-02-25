@@ -79,12 +79,19 @@ func (m *Module) Init(_ context.Context, deps plugin.Dependencies) error {
 
 	m.bus = deps.Bus
 	m.plugins = deps.Plugins
-	m.states = newStateManager(m.cfg.EWMAAlpha, m.cfg.CUSUMDrift, m.cfg.CUSUMThreshold)
+	m.states = newStateManager(
+		m.cfg.EWMAAlpha, m.cfg.CUSUMDrift, m.cfg.CUSUMThreshold,
+		m.cfg.HWAlpha, m.cfg.HWBeta, m.cfg.HWGamma, m.cfg.HWSeasonLen,
+	)
 
 	m.logger.Info("insight module initialized",
 		zap.Float64("ewma_alpha", m.cfg.EWMAAlpha),
 		zap.Float64("zscore_threshold", m.cfg.ZScoreThreshold),
 		zap.Duration("learning_period", m.cfg.LearningPeriod),
+		zap.Float64("hw_alpha", m.cfg.HWAlpha),
+		zap.Float64("hw_beta", m.cfg.HWBeta),
+		zap.Float64("hw_gamma", m.cfg.HWGamma),
+		zap.Int("hw_season_len", m.cfg.HWSeasonLen),
 	)
 	return nil
 }
@@ -162,6 +169,8 @@ func (m *Module) handleMetricsCollected(_ context.Context, event plugin.Event) {
 }
 
 // processMetric runs a single metric point through the analytics pipeline.
+// When Holt-Winters has accumulated enough seasonal data (>= 2 * season_len),
+// it is used for anomaly detection via expected range. Otherwise, EWMA + Z-score is used.
 func (m *Module) processMetric(p *analytics.MetricPoint) {
 	// Store raw metric for regression
 	if m.store != nil {
@@ -185,18 +194,39 @@ func (m *Module) processMetric(p *analytics.MetricPoint) {
 	prevStdDev := state.EWMA.StdDev()
 	state.EWMA.Update(p.Value)
 
+	// Update Holt-Winters model
+	state.HoltWinters.Update(p.Value)
+
 	// Skip anomaly detection during learning period
 	if state.EWMA.Samples < m.cfg.MinSamplesStable {
 		return
 	}
 
-	// Z-score check
-	zResult := anomaly.ZScoreCheck(p.Value, prevMean, prevStdDev, m.cfg.ZScoreThreshold)
-	if zResult.IsAnomaly {
-		m.recordAnomaly(p, "zscore", zResult.Severity, zResult.ZScore, prevMean)
+	// Holt-Winters seasonal anomaly detection: use when model has seen >= 2 full seasons
+	hwUsed := false
+	if state.HoltWinters.IsInitialized() && state.HoltWinters.Samples >= 2*m.cfg.HWSeasonLen {
+		lower, upper := state.HoltWinters.ExpectedRange(m.cfg.HWConfidence)
+		if lower != upper && (p.Value < lower || p.Value > upper) {
+			hwFitted := state.HoltWinters.Fitted()
+			deviation := p.Value - hwFitted
+			severity := anomaly.SeverityWarning
+			if p.Value < lower-(upper-lower) || p.Value > upper+(upper-lower) {
+				severity = anomaly.SeverityCritical
+			}
+			m.recordAnomaly(p, "holt_winters", severity, deviation, hwFitted)
+			hwUsed = true
+		}
 	}
 
-	// CUSUM check (normalized input)
+	// Fall back to Z-score when Holt-Winters did not flag (or is not ready)
+	if !hwUsed {
+		zResult := anomaly.ZScoreCheck(p.Value, prevMean, prevStdDev, m.cfg.ZScoreThreshold)
+		if zResult.IsAnomaly {
+			m.recordAnomaly(p, "zscore", zResult.Severity, zResult.ZScore, prevMean)
+		}
+	}
+
+	// CUSUM check (normalized input) -- always runs for change-point detection
 	if prevStdDev > 0 {
 		normalized := (p.Value - prevMean) / prevStdDev
 		cResult := state.CUSUM.Update(normalized)
