@@ -43,8 +43,8 @@ interface TopologyToolbarProps {
   onSaveLayout: (name: string) => void
   onLoadLayout: (id: string) => void
   onDeleteLayout: (id: string) => void
-  backgroundSettings: TopologyBackgroundSettings
-  onBackgroundSettingsChange: (settings: TopologyBackgroundSettings) => void
+  backgroundSettings?: TopologyBackgroundSettings
+  onBackgroundSettingsChange?: (settings: TopologyBackgroundSettings) => void
 }
 
 const layoutOptions: { value: LayoutAlgorithm; label: string; Icon: typeof CircleDot }[] = [
@@ -252,6 +252,7 @@ export const TopologyToolbar = memo(function TopologyToolbar({
       </button>
 
       {/* Background settings */}
+      {backgroundSettings && onBackgroundSettingsChange && (
       <Popover>
         <PopoverTrigger asChild>
           <button
@@ -280,6 +281,7 @@ export const TopologyToolbar = memo(function TopologyToolbar({
           />
         </PopoverContent>
       </Popover>
+      )}
 
       <Separator />
 
