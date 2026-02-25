@@ -35,6 +35,7 @@ type ListFilter struct {
 	Page      int
 	PerPage   int
 	EventType string
+	DeviceID  string
 	Since     *time.Time
 	Until     *time.Time
 }
@@ -235,6 +236,10 @@ func (s *Store) buildWhere(filter ListFilter) (where string, args []any) {
 	if filter.EventType != "" {
 		clauses = append(clauses, "event_type = ?")
 		args = append(args, filter.EventType)
+	}
+	if filter.DeviceID != "" {
+		clauses = append(clauses, "device_id = ?")
+		args = append(args, filter.DeviceID)
 	}
 	if filter.Since != nil {
 		clauses = append(clauses, "created_at >= ?")

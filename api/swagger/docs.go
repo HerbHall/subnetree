@@ -543,6 +543,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/autodoc/devices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates a zip archive containing a Markdown document for every device.",
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "autodoc"
+                ],
+                "summary": "Bulk export device documentation",
+                "responses": {
+                    "200": {
+                        "description": "Zip archive",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/autodoc/devices/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Produces a comprehensive Markdown document for a single device including hardware, services, alerts, and changelog.",
+                "produces": [
+                    "text/markdown"
+                ],
+                "tags": [
+                    "autodoc"
+                ],
+                "summary": "Generate device documentation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Markdown text",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/autodoc/export": {
             "get": {
                 "security": [

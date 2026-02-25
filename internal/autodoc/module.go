@@ -6,13 +6,37 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/HerbHall/subnetree/internal/recon"
 	"github.com/HerbHall/subnetree/internal/pulse"
+	"github.com/HerbHall/subnetree/internal/recon"
 	"github.com/HerbHall/subnetree/pkg/models"
 	"github.com/HerbHall/subnetree/pkg/plugin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+// DeviceReader provides read access to device data for documentation generation.
+type DeviceReader interface {
+	GetDevice(ctx context.Context, id string) (*models.Device, error)
+	ListAllDevices(ctx context.Context) ([]models.Device, error)
+	GetDeviceHardware(ctx context.Context, deviceID string) (*models.DeviceHardware, error)
+	GetDeviceStorage(ctx context.Context, deviceID string) ([]models.DeviceStorage, error)
+	GetDeviceGPU(ctx context.Context, deviceID string) ([]models.DeviceGPU, error)
+	GetDeviceServices(ctx context.Context, deviceID string) ([]models.DeviceService, error)
+	GetChildDevices(ctx context.Context, parentID string) ([]models.Device, error)
+}
+
+// AlertReader provides read access to alert data for documentation generation.
+type AlertReader interface {
+	ListDeviceAlerts(ctx context.Context, deviceID string, limit int) ([]DeviceAlert, error)
+}
+
+// DeviceAlert is a local representation of an alert to avoid importing internal/pulse.
+type DeviceAlert struct {
+	Severity    string     `json:"severity"`
+	Message     string     `json:"message"`
+	TriggeredAt time.Time  `json:"triggered_at"`
+	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
+}
 
 // Compile-time interface guards.
 var (
@@ -24,11 +48,19 @@ var (
 // Module implements the AutoDoc auto-documentation plugin.
 // It subscribes to system events and automatically generates changelog entries.
 type Module struct {
-	logger *zap.Logger
-	store  *Store
-	bus    plugin.EventBus
-	cancel context.CancelFunc
+	logger       *zap.Logger
+	store        *Store
+	bus          plugin.EventBus
+	cancel       context.CancelFunc
+	deviceReader DeviceReader
+	alertReader  AlertReader
 }
+
+// SetDeviceReader sets the device data reader for documentation generation.
+func (m *Module) SetDeviceReader(r DeviceReader) { m.deviceReader = r }
+
+// SetAlertReader sets the alert data reader for documentation generation.
+func (m *Module) SetAlertReader(r AlertReader) { m.alertReader = r }
 
 // New creates a new AutoDoc plugin instance.
 func New() *Module {
@@ -80,6 +112,8 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/changes", Handler: m.handleListChanges},
 		{Method: "GET", Path: "/export", Handler: m.handleExport},
 		{Method: "GET", Path: "/stats", Handler: m.handleStats},
+		{Method: "GET", Path: "/devices/{id}", Handler: m.handleDeviceDoc},
+		{Method: "GET", Path: "/devices", Handler: m.handleBulkExport},
 	}
 }
 

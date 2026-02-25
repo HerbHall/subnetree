@@ -343,14 +343,16 @@ func TestParseDuration(t *testing.T) {
 func TestModuleRoutes(t *testing.T) {
 	m := New()
 	routes := m.Routes()
-	if len(routes) != 3 {
-		t.Fatalf("Routes() = %d, want 3", len(routes))
+	if len(routes) != 5 {
+		t.Fatalf("Routes() = %d, want 5", len(routes))
 	}
 
 	expected := map[string]string{
-		"GET /changes": "",
-		"GET /export":  "",
-		"GET /stats":   "",
+		"GET /changes":      "",
+		"GET /export":       "",
+		"GET /stats":        "",
+		"GET /devices/{id}": "",
+		"GET /devices":      "",
 	}
 
 	for _, r := range routes {
