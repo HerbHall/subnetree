@@ -82,6 +82,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/results/{device_id}", Handler: m.handleDeviceResults},
 		{Method: "GET", Path: "/metrics/{device_id}", Handler: m.handleDeviceMetrics},
 		{Method: "GET", Path: "/alerts", Handler: m.handleListAlerts},
+		{Method: "GET", Path: "/alerts/correlated", Handler: m.handleCorrelatedAlerts},
 		{Method: "GET", Path: "/alerts/{id}", Handler: m.handleGetAlert},
 		{Method: "POST", Path: "/alerts/{id}/acknowledge", Handler: m.handleAcknowledgeAlert},
 		{Method: "POST", Path: "/alerts/{id}/resolve", Handler: m.handleResolveAlert},
@@ -423,6 +424,34 @@ func (m *Module) handleDeviceResults(w http.ResponseWriter, r *http.Request) {
 		results = []CheckResult{}
 	}
 	pulseWriteJSON(w, http.StatusOK, results)
+}
+
+// handleCorrelatedAlerts returns alerts grouped by correlation.
+//
+//	@Summary		Correlated alerts
+//	@Description	Returns active alerts grouped by topology correlation. Parent alerts include their suppressed children.
+//	@Tags			pulse
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200 {array} CorrelatedAlertGroup
+//	@Failure		500 {object} map[string]any
+//	@Router			/pulse/alerts/correlated [get]
+func (m *Module) handleCorrelatedAlerts(w http.ResponseWriter, r *http.Request) {
+	if m.store == nil {
+		pulseWriteError(w, http.StatusServiceUnavailable, "pulse store not available")
+		return
+	}
+
+	groups, err := m.store.GetCorrelatedAlerts(r.Context())
+	if err != nil {
+		m.logger.Warn("failed to get correlated alerts", zap.Error(err))
+		pulseWriteError(w, http.StatusInternalServerError, "failed to get correlated alerts")
+		return
+	}
+	if groups == nil {
+		groups = []CorrelatedAlertGroup{}
+	}
+	pulseWriteJSON(w, http.StatusOK, groups)
 }
 
 // handleListAlerts returns alerts with optional filtering.

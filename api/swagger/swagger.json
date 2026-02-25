@@ -1701,6 +1701,41 @@
                 }
             }
         },
+        "/pulse/alerts/correlated": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns active alerts grouped by topology correlation. Parent alerts include their suppressed children.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pulse"
+                ],
+                "summary": "Correlated alerts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_pulse.CorrelatedAlertGroup"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/pulse/alerts/{id}": {
             "get": {
                 "security": [
@@ -7467,6 +7502,20 @@
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_pulse.CorrelatedAlertGroup": {
+            "type": "object",
+            "properties": {
+                "parent_alert": {
+                    "$ref": "#/definitions/internal_pulse.Alert"
+                },
+                "suppressed_children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_pulse.Alert"
+                    }
                 }
             }
         },

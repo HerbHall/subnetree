@@ -10,6 +10,8 @@ type PulseConfig struct {
 	RetentionPeriod     time.Duration `mapstructure:"retention_period"`
 	MaxWorkers          int           `mapstructure:"max_workers"`
 	MaintenanceInterval time.Duration `mapstructure:"maintenance_interval"`
+	CorrelationEnabled  bool          `mapstructure:"correlation_enabled"`
+	CorrelationWindow   time.Duration `mapstructure:"correlation_window"`
 }
 
 func DefaultConfig() PulseConfig {
@@ -21,5 +23,7 @@ func DefaultConfig() PulseConfig {
 		RetentionPeriod:     30 * 24 * time.Hour,
 		MaxWorkers:          10,
 		MaintenanceInterval: 1 * time.Hour,
+		CorrelationEnabled:  true,
+		CorrelationWindow:   5 * time.Minute,
 	}
 }

@@ -1202,6 +1202,15 @@ definitions:
       success:
         type: boolean
     type: object
+  internal_pulse.CorrelatedAlertGroup:
+    properties:
+      parent_alert:
+        $ref: '#/definitions/internal_pulse.Alert'
+      suppressed_children:
+        items:
+          $ref: '#/definitions/internal_pulse.Alert'
+        type: array
+    type: object
   internal_pulse.MetricDataPoint:
     properties:
       timestamp:
@@ -3257,6 +3266,29 @@ paths:
       security:
       - BearerAuth: []
       summary: Resolve alert
+      tags:
+      - pulse
+  /pulse/alerts/correlated:
+    get:
+      description: Returns active alerts grouped by topology correlation. Parent alerts
+        include their suppressed children.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_pulse.CorrelatedAlertGroup'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Correlated alerts
       tags:
       - pulse
   /pulse/checks:
