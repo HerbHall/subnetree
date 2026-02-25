@@ -194,7 +194,7 @@ func normalizeSemver(v string) string {
 	return v
 }
 
-func splitPlatformArch(platform string) (string, string) {
+func splitPlatformArch(platform string) (goos, goarch string) {
 	parts := strings.SplitN(platform, "/", 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]

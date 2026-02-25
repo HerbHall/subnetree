@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -88,7 +89,7 @@ func TestApply_VerifiesChecksum(t *testing.T) {
 
 	// Verify the binary was replaced.
 	newContent, _ := os.ReadFile(currentBinary)
-	if string(newContent) != string(binaryContent) {
+	if !bytes.Equal(newContent, binaryContent) {
 		t.Errorf("binary content = %q, want %q", newContent, binaryContent)
 	}
 

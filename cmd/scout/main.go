@@ -178,28 +178,33 @@ func updateCmd(args []string) {
 		fmt.Fprintln(os.Stderr, "failed to create logger")
 		os.Exit(1)
 	}
-	defer func() { _ = logger.Sync() }()
 
+	if err := runUpdate(logger, *serverAddr); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		_ = logger.Sync()
+		os.Exit(1)
+	}
+	_ = logger.Sync()
+}
+
+func runUpdate(logger *zap.Logger, serverAddr string) error {
 	ctx := context.Background()
 
 	// Fetch update manifest from server.
-	manifestURL := *serverAddr + "/api/v1/dispatch/updates/latest"
+	manifestURL := serverAddr + "/api/v1/dispatch/updates/latest"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, http.NoBody)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "create request: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("create request: %w", err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "fetch manifest: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("fetch manifest: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		fmt.Fprintf(os.Stderr, "manifest request failed (%d): %s\n", resp.StatusCode, body)
-		os.Exit(1)
+		return fmt.Errorf("manifest request failed (%d): %s", resp.StatusCode, body)
 	}
 
 	var manifest struct {
@@ -210,34 +215,31 @@ func updateCmd(args []string) {
 		ChecksumsURL string `json:"checksums_url"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
-		fmt.Fprintf(os.Stderr, "decode manifest: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("decode manifest: %w", err)
 	}
 
 	if manifest.Version == version.Version || manifest.Version == "dev" {
 		fmt.Printf("Already up to date (%s)\n", version.Version)
-		return
+		return nil
 	}
 
 	platform := runtime.GOOS + "/" + runtime.GOARCH
 	info, ok := manifest.Platforms[platform]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "no update available for platform %s\n", platform)
-		os.Exit(1)
+		return fmt.Errorf("no update available for platform %s", platform)
 	}
 
 	u, err := updater.New(logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "init updater: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("init updater: %w", err)
 	}
 
 	fmt.Printf("Updating from %s to %s...\n", version.Version, manifest.Version)
 	if err := u.Apply(ctx, info.URL, manifest.ChecksumsURL); err != nil {
-		fmt.Fprintf(os.Stderr, "update failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("update failed: %w", err)
 	}
 	fmt.Println("Update applied successfully. Restart Scout to use the new version.")
+	return nil
 }
 
 func versionCmd() {
