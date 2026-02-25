@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	scoutpb "github.com/HerbHall/subnetree/api/proto/v1"
@@ -18,6 +19,8 @@ import (
 	"github.com/HerbHall/subnetree/internal/scout/metrics"
 	"github.com/HerbHall/subnetree/internal/scout/profiler"
 	"github.com/HerbHall/subnetree/internal/scout/restarter"
+	"github.com/HerbHall/subnetree/internal/scout/updater"
+	"github.com/HerbHall/subnetree/internal/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -35,6 +38,7 @@ type Agent struct {
 	collector metrics.Collector
 	profiler  *profiler.Profiler
 	restarter restarter.Restarter
+	updater   *updater.Updater
 }
 
 // NewAgent creates a new Scout agent instance.
@@ -49,6 +53,15 @@ func NewAgent(config *Config, logger *zap.Logger) *Agent {
 		a.restarter = restarter.Detect()
 		if a.restarter != nil {
 			logger.Info("auto-restart enabled", zap.String("init_system", a.restarter.Name()))
+		}
+	}
+	if config.AutoUpdate {
+		u, uErr := updater.New(logger.Named("updater"))
+		if uErr != nil {
+			logger.Warn("auto-update disabled", zap.Error(uErr))
+		} else {
+			a.updater = u
+			logger.Info("auto-update enabled")
 		}
 	}
 	return a
@@ -239,7 +252,7 @@ func (a *Agent) enroll(ctx context.Context) error {
 	req := &scoutpb.CheckInRequest{
 		Hostname:     hostname(),
 		Platform:     agentPlatform(),
-		AgentVersion: "0.1.0",
+		AgentVersion: version.Version,
 		ProtoVersion: 1,
 		EnrollToken:  a.config.EnrollToken,
 	}
@@ -373,7 +386,7 @@ func (a *Agent) checkIn(ctx context.Context) {
 		AgentId:            a.config.AgentID,
 		Hostname:           hostname(),
 		Platform:           agentPlatform(),
-		AgentVersion:       "0.1.0",
+		AgentVersion:       version.Version,
 		ProtoVersion:       1,
 		Metrics:            sysMetrics,
 		CertificateRequest: renewalCSR,
@@ -407,6 +420,16 @@ func (a *Agent) checkIn(ctx context.Context) {
 		a.logger.Warn("agent version deprecated, upgrade recommended",
 			zap.String("message", resp.UpgradeMessage),
 		)
+	}
+
+	// Handle auto-update when server signals a new version is available.
+	if resp.VersionStatus == scoutpb.VersionStatus_VERSION_UPDATE_AVAILABLE &&
+		resp.UpdateUrl != "" && a.updater != nil {
+		a.logger.Info("update available",
+			zap.String("current", version.Version),
+			zap.String("server", resp.ServerVersion),
+		)
+		go a.applyUpdate(ctx, resp.UpdateUrl)
 	}
 
 	// Handle certificate renewal response.
@@ -582,6 +605,33 @@ func (a *Agent) saveAgentID() {
 	if err := os.WriteFile(a.statePath(), data, 0o600); err != nil {
 		a.logger.Warn("failed to save agent state", zap.Error(err))
 	}
+}
+
+// applyUpdate downloads and applies a binary update, then restarts the agent.
+func (a *Agent) applyUpdate(ctx context.Context, downloadURL string) {
+	checksumURL := deriveChecksumURL(downloadURL)
+	if err := a.updater.Apply(ctx, downloadURL, checksumURL); err != nil {
+		a.logger.Error("auto-update failed", zap.Error(err))
+		return
+	}
+	a.logger.Info("update applied, restarting")
+	if a.restarter != nil {
+		if err := a.restarter.Restart(ctx); err != nil {
+			a.logger.Error("restart after update failed", zap.Error(err))
+		}
+	}
+}
+
+// deriveChecksumURL extracts the release directory from a binary download URL
+// and appends checksums.txt.
+func deriveChecksumURL(downloadURL string) string {
+	// URL format: https://github.com/.../releases/download/vX.Y.Z/scout_linux_amd64
+	// or: https://github.com/.../releases/latest/download/scout_linux_amd64
+	idx := strings.LastIndex(downloadURL, "/")
+	if idx >= 0 {
+		return downloadURL[:idx] + "/checksums.txt"
+	}
+	return downloadURL + "/checksums.txt"
 }
 
 func hostname() string {

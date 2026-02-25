@@ -97,8 +97,9 @@ func TestRoutes(t *testing.T) {
 		"GET /agents/{id}/hardware":    "",
 		"GET /agents/{id}/software":    "",
 		"GET /agents/{id}/services":    "",
-		"GET /install/{platform}/{arch}": "",
+		"GET /install/{platform}/{arch}":  "",
 		"GET /download/{platform}/{arch}": "",
+		"GET /updates/latest":             "",
 	}
 	for _, r := range routes {
 		key := r.Method + " " + r.Path

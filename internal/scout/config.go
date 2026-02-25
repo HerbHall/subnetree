@@ -17,6 +17,7 @@ type Config struct {
 	Insecure         bool          `mapstructure:"insecure"`           // skip TLS (dev/testing only)
 	RenewalThreshold time.Duration `mapstructure:"renewal_threshold"` // renew when cert expires within this (default 30 days)
 	AutoRestart      bool          `mapstructure:"auto_restart"`      // enable init-system-aware restart on version rejection
+	AutoUpdate       bool          `mapstructure:"auto_update"`       // enable automatic binary self-update
 }
 
 // DefaultConfig returns the default agent configuration.

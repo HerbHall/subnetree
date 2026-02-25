@@ -50,6 +50,7 @@ message CheckInResponse {
   string assigned_agent_id = 7;
   bytes signed_certificate = 8;   // DER-encoded X.509 certificate (returned after CSR signing)
   bytes ca_certificate = 9;       // DER-encoded CA root certificate (agent needs for TLS verification)
+  string update_url = 10;         // Download URL for agent binary when update is available
 }
 
 message SystemMetrics {

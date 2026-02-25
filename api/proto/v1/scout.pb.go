@@ -186,6 +186,7 @@ type CheckInResponse struct {
 	AssignedAgentId      string                 `protobuf:"bytes,7,opt,name=assigned_agent_id,json=assignedAgentId,proto3" json:"assigned_agent_id,omitempty"`
 	SignedCertificate    []byte                 `protobuf:"bytes,8,opt,name=signed_certificate,json=signedCertificate,proto3" json:"signed_certificate,omitempty"` // DER-encoded X.509 certificate (returned after CSR signing)
 	CaCertificate        []byte                 `protobuf:"bytes,9,opt,name=ca_certificate,json=caCertificate,proto3" json:"ca_certificate,omitempty"`             // DER-encoded CA root certificate (agent needs for TLS verification)
+	UpdateUrl            string                 `protobuf:"bytes,10,opt,name=update_url,json=updateUrl,proto3" json:"update_url,omitempty"`                        // Download URL for agent binary when update is available
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -281,6 +282,13 @@ func (x *CheckInResponse) GetCaCertificate() []byte {
 		return x.CaCertificate
 	}
 	return nil
+}
+
+func (x *CheckInResponse) GetUpdateUrl() string {
+	if x != nil {
+		return x.UpdateUrl
+	}
+	return ""
 }
 
 type SystemMetrics struct {

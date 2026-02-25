@@ -2,14 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/HerbHall/subnetree/internal/scout"
 	"github.com/HerbHall/subnetree/internal/scout/service"
+	"github.com/HerbHall/subnetree/internal/scout/updater"
 	"github.com/HerbHall/subnetree/internal/version"
 	"go.uber.org/zap"
 )
@@ -28,6 +33,8 @@ func main() {
 		installCmd(os.Args[2:])
 	case "uninstall":
 		uninstallCmd()
+	case "update":
+		updateCmd(os.Args[2:])
 	case "version":
 		versionCmd()
 	default:
@@ -36,7 +43,7 @@ func main() {
 			runCmd(os.Args[1:])
 			return
 		}
-		fmt.Fprintf(os.Stderr, "unknown command: %s\nUsage: scout [run|install|uninstall|version] [flags]\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s\nUsage: scout [run|install|uninstall|update|version] [flags]\n", os.Args[1])
 		os.Exit(1)
 	}
 }
@@ -156,6 +163,81 @@ func uninstallCmd() {
 		os.Exit(1)
 	}
 	fmt.Println("SubNetree Scout service removed successfully")
+}
+
+func updateCmd(args []string) {
+	fs := flag.NewFlagSet("update", flag.ExitOnError)
+	serverAddr := fs.String("server", "http://localhost:8080", "SubNetree server HTTP address")
+
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
+	}
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to create logger")
+		os.Exit(1)
+	}
+	defer func() { _ = logger.Sync() }()
+
+	ctx := context.Background()
+
+	// Fetch update manifest from server.
+	manifestURL := *serverAddr + "/api/v1/dispatch/updates/latest"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, manifestURL, http.NoBody)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "create request: %v\n", err)
+		os.Exit(1)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fetch manifest: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(os.Stderr, "manifest request failed (%d): %s\n", resp.StatusCode, body)
+		os.Exit(1)
+	}
+
+	var manifest struct {
+		Version   string `json:"version"`
+		Platforms map[string]struct {
+			URL string `json:"url"`
+		} `json:"platforms"`
+		ChecksumsURL string `json:"checksums_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+		fmt.Fprintf(os.Stderr, "decode manifest: %v\n", err)
+		os.Exit(1)
+	}
+
+	if manifest.Version == version.Version || manifest.Version == "dev" {
+		fmt.Printf("Already up to date (%s)\n", version.Version)
+		return
+	}
+
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	info, ok := manifest.Platforms[platform]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "no update available for platform %s\n", platform)
+		os.Exit(1)
+	}
+
+	u, err := updater.New(logger)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init updater: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Updating from %s to %s...\n", version.Version, manifest.Version)
+	if err := u.Apply(ctx, info.URL, manifest.ChecksumsURL); err != nil {
+		fmt.Fprintf(os.Stderr, "update failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Update applied successfully. Restart Scout to use the new version.")
 }
 
 func versionCmd() {

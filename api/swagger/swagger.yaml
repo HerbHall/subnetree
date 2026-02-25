@@ -1052,6 +1052,24 @@ definitions:
       tier:
         type: integer
     type: object
+  internal_dispatch.PlatformBinary:
+    properties:
+      url:
+        type: string
+    type: object
+  internal_dispatch.UpdateManifest:
+    properties:
+      channel:
+        type: string
+      checksums_url:
+        type: string
+      platforms:
+        additionalProperties:
+          $ref: '#/definitions/internal_dispatch.PlatformBinary'
+        type: object
+      version:
+        type: string
+    type: object
   internal_dispatch.enrollTokenRequest:
     properties:
       description:
@@ -2741,6 +2759,22 @@ paths:
       security:
       - BearerAuth: []
       summary: Generate install script
+      tags:
+      - dispatch
+  /dispatch/updates/latest:
+    get:
+      description: Returns the latest Scout binary version and download URLs for all
+        platforms.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_dispatch.UpdateManifest'
+      security:
+      - BearerAuth: []
+      summary: Get update manifest
       tags:
       - dispatch
   /health:
