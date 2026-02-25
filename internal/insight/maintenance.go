@@ -62,9 +62,11 @@ func (m *Module) runMaintenance() {
 }
 
 // persistBaselines writes all in-memory baseline states to the database.
+// Persists both EWMA and Holt-Winters baselines when the HW model is initialized.
 func (m *Module) persistBaselines(ctx context.Context) {
 	snap := m.states.snapshot()
 	persisted := 0
+	now := time.Now()
 	for key, state := range snap {
 		parts := strings.SplitN(key, ":", 2)
 		if len(parts) != 2 {
@@ -73,6 +75,7 @@ func (m *Module) persistBaselines(ctx context.Context) {
 		deviceID, metric := parts[0], parts[1]
 		ewma := state.EWMA
 
+		// Persist EWMA baseline
 		b := &analytics.Baseline{
 			DeviceID:   deviceID,
 			MetricName: metric,
@@ -81,17 +84,43 @@ func (m *Module) persistBaselines(ctx context.Context) {
 			StdDev:     ewma.StdDev(),
 			Samples:    ewma.Samples,
 			Stable:     ewma.Samples >= m.cfg.MinSamplesStable,
-			UpdatedAt:  time.Now(),
+			UpdatedAt:  now,
 		}
 		if err := m.store.UpsertBaseline(ctx, b); err != nil {
 			m.logger.Warn("failed to persist baseline",
 				zap.String("device_id", deviceID),
 				zap.String("metric", metric),
+				zap.String("algorithm", "ewma"),
 				zap.Error(err),
 			)
 			continue
 		}
 		persisted++
+
+		// Persist Holt-Winters baseline when the model has enough data
+		hw := state.HoltWinters
+		if hw.IsInitialized() && hw.Samples >= 2*m.cfg.HWSeasonLen {
+			hwBaseline := &analytics.Baseline{
+				DeviceID:   deviceID,
+				MetricName: metric + ":hw",
+				Algorithm:  "holt_winters",
+				Mean:       hw.Level,
+				StdDev:     hw.ResidualStdDev(),
+				Samples:    hw.Samples,
+				Stable:     hw.Samples >= 2*m.cfg.HWSeasonLen,
+				UpdatedAt:  now,
+			}
+			if err := m.store.UpsertBaseline(ctx, hwBaseline); err != nil {
+				m.logger.Warn("failed to persist baseline",
+					zap.String("device_id", deviceID),
+					zap.String("metric", metric),
+					zap.String("algorithm", "holt_winters"),
+					zap.Error(err),
+				)
+				continue
+			}
+			persisted++
+		}
 	}
 	if persisted > 0 {
 		m.logger.Debug("persisted baselines", zap.Int("count", persisted))

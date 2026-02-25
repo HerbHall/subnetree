@@ -9,8 +9,9 @@ import (
 
 // baselineState holds the in-memory statistical state for a single device+metric pair.
 type baselineState struct {
-	EWMA *baseline.EWMA
-	CUSUM *anomaly.CUSUM
+	EWMA        *baseline.EWMA
+	HoltWinters *baseline.HoltWinters
+	CUSUM       *anomaly.CUSUM
 }
 
 // stateKey returns a map key for a device+metric pair.
@@ -20,20 +21,31 @@ func stateKey(deviceID, metric string) string {
 
 // stateManager provides thread-safe access to per-device/metric baseline state.
 type stateManager struct {
-	mu     sync.RWMutex
-	states map[string]*baselineState
-	alpha  float64
-	drift  float64
+	mu        sync.RWMutex
+	states    map[string]*baselineState
+	alpha     float64
+	drift     float64
 	threshold float64
+
+	// Holt-Winters parameters
+	hwAlpha    float64
+	hwBeta     float64
+	hwGamma    float64
+	hwSeasonLen int
 }
 
-// newStateManager creates a new state manager with the given EWMA alpha and CUSUM parameters.
-func newStateManager(alpha, cusumDrift, cusumThreshold float64) *stateManager {
+// newStateManager creates a new state manager with the given EWMA alpha, CUSUM parameters,
+// and Holt-Winters smoothing parameters.
+func newStateManager(alpha, cusumDrift, cusumThreshold, hwAlpha, hwBeta, hwGamma float64, hwSeasonLen int) *stateManager {
 	return &stateManager{
-		states:    make(map[string]*baselineState),
-		alpha:     alpha,
-		drift:     cusumDrift,
-		threshold: cusumThreshold,
+		states:      make(map[string]*baselineState),
+		alpha:       alpha,
+		drift:       cusumDrift,
+		threshold:   cusumThreshold,
+		hwAlpha:     hwAlpha,
+		hwBeta:      hwBeta,
+		hwGamma:     hwGamma,
+		hwSeasonLen: hwSeasonLen,
 	}
 }
 
@@ -54,8 +66,9 @@ func (sm *stateManager) getOrCreate(deviceID, metric string) *baselineState {
 		return s
 	}
 	s = &baselineState{
-		EWMA:  baseline.NewEWMA(sm.alpha),
-		CUSUM: anomaly.NewCUSUM(sm.drift, sm.threshold),
+		EWMA:        baseline.NewEWMA(sm.alpha),
+		HoltWinters: baseline.NewHoltWinters(sm.hwAlpha, sm.hwBeta, sm.hwGamma, sm.hwSeasonLen),
+		CUSUM:       anomaly.NewCUSUM(sm.drift, sm.threshold),
 	}
 	sm.states[key] = s
 	return s
