@@ -2430,6 +2430,59 @@ paths:
       summary: List changelog entries
       tags:
       - autodoc
+  /autodoc/devices:
+    get:
+      description: Generates a zip archive containing a Markdown document for every
+        device.
+      produces:
+      - application/zip
+      responses:
+        "200":
+          description: Zip archive
+          schema:
+            type: file
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk export device documentation
+      tags:
+      - autodoc
+  /autodoc/devices/{id}:
+    get:
+      description: Produces a comprehensive Markdown document for a single device
+        including hardware, services, alerts, and changelog.
+      parameters:
+      - description: Device ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - text/markdown
+      responses:
+        "200":
+          description: Markdown text
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Generate device documentation
+      tags:
+      - autodoc
   /autodoc/export:
     get:
       description: Generates a markdown summary of changelog entries for the given

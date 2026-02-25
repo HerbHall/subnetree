@@ -338,6 +338,20 @@ func main() {
 		}
 	}
 
+	// Wire AutoDoc device and alert readers: autodoc -> recon store, pulse store.
+	if reconMod != nil {
+		for _, m := range modules {
+			if adMod, ok := m.(*autodoc.Module); ok {
+				adMod.SetDeviceReader(&autodocDeviceAdapter{store: reconMod.Store()})
+				if pulseMod != nil && pulseMod.Store() != nil {
+					adMod.SetAlertReader(&autodocAlertAdapter{store: pulseMod.Store()})
+				}
+				logger.Info("autodoc device and alert readers wired", zap.String("component", "autodoc"))
+				break
+			}
+		}
+	}
+
 	// Seed demo data if requested via --seed flag or NV_SEED_DATA env var.
 	if *seedData || os.Getenv("NV_SEED_DATA") == "true" {
 		if reconMod != nil {
@@ -709,4 +723,74 @@ func (d *demoAuthRegistrar) RegisterRoutes(_ *http.ServeMux) {
 
 func (d *demoAuthRegistrar) Middleware() func(http.Handler) http.Handler {
 	return auth.DemoAuthMiddleware()
+}
+
+// autodocDeviceAdapter adapts recon.ReconStore to autodoc.DeviceReader.
+// Lives in the composition root to avoid coupling autodoc -> recon.
+type autodocDeviceAdapter struct {
+	store *recon.ReconStore
+}
+
+func (a *autodocDeviceAdapter) GetDevice(ctx context.Context, id string) (*models.Device, error) {
+	return a.store.GetDevice(ctx, id)
+}
+
+func (a *autodocDeviceAdapter) ListAllDevices(ctx context.Context) ([]models.Device, error) {
+	return a.store.ListAllDevices(ctx)
+}
+
+func (a *autodocDeviceAdapter) GetDeviceHardware(ctx context.Context, deviceID string) (*models.DeviceHardware, error) {
+	return a.store.GetDeviceHardware(ctx, deviceID)
+}
+
+func (a *autodocDeviceAdapter) GetDeviceStorage(ctx context.Context, deviceID string) ([]models.DeviceStorage, error) {
+	return a.store.GetDeviceStorage(ctx, deviceID)
+}
+
+func (a *autodocDeviceAdapter) GetDeviceGPU(ctx context.Context, deviceID string) ([]models.DeviceGPU, error) {
+	return a.store.GetDeviceGPU(ctx, deviceID)
+}
+
+func (a *autodocDeviceAdapter) GetDeviceServices(ctx context.Context, deviceID string) ([]models.DeviceService, error) {
+	return a.store.GetDeviceServices(ctx, deviceID)
+}
+
+func (a *autodocDeviceAdapter) GetChildDevices(ctx context.Context, parentID string) ([]models.Device, error) {
+	all, err := a.store.ListAllDevices(ctx)
+	if err != nil {
+		return nil, err
+	}
+	children := make([]models.Device, 0)
+	for i := range all {
+		if all[i].ParentDeviceID == parentID {
+			children = append(children, all[i])
+		}
+	}
+	return children, nil
+}
+
+// autodocAlertAdapter adapts pulse.PulseStore to autodoc.AlertReader.
+// Lives in the composition root to avoid coupling autodoc -> pulse.
+type autodocAlertAdapter struct {
+	store *pulse.PulseStore
+}
+
+func (a *autodocAlertAdapter) ListDeviceAlerts(ctx context.Context, deviceID string, limit int) ([]autodoc.DeviceAlert, error) {
+	alerts, err := a.store.ListAlerts(ctx, pulse.AlertFilters{
+		DeviceID: deviceID,
+		Limit:    limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]autodoc.DeviceAlert, len(alerts))
+	for i := range alerts {
+		result[i] = autodoc.DeviceAlert{
+			Severity:    alerts[i].Severity,
+			Message:     alerts[i].Message,
+			TriggeredAt: alerts[i].TriggeredAt,
+			ResolvedAt:  alerts[i].ResolvedAt,
+		}
+	}
+	return result, nil
 }
