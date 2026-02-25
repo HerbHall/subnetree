@@ -94,6 +94,13 @@ func (m *Module) Start(_ context.Context) error {
 
 	if m.store != nil {
 		m.alerter = NewAlerter(m.store, m.bus, m.cfg.ConsecutiveFailures, m.logger)
+		if m.cfg.CorrelationEnabled {
+			corr := NewCorrelationEngine(m.store, m.cfg.CorrelationWindow, m.logger)
+			m.alerter.SetCorrelation(corr)
+			m.logger.Info("topology-aware alert correlation enabled",
+				zap.Duration("correlation_window", m.cfg.CorrelationWindow),
+			)
+		}
 		m.dispatcher = NewNotificationDispatcher(m.store, m.logger)
 
 		m.scheduler = NewScheduler(

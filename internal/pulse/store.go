@@ -789,6 +789,115 @@ func (s *PulseStore) IsSuppressed(ctx context.Context, checkID string) (suppress
 	return true, byDevice, nil
 }
 
+// -- Correlation Queries --
+
+// GetParentActiveAlerts returns active alerts for the parent device of the given device,
+// triggered within the specified time window. It joins against recon_devices to find the
+// parent_device_id. Returns the matching alerts and the parent device ID.
+func (s *PulseStore) GetParentActiveAlerts(ctx context.Context, deviceID string, window time.Duration) (alerts []Alert, parentDeviceID string, err error) {
+	// First, resolve the parent device ID.
+	err = s.db.QueryRowContext(ctx,
+		`SELECT parent_device_id FROM recon_devices WHERE id = ? AND parent_device_id != ''`,
+		deviceID,
+	).Scan(&parentDeviceID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, "", nil
+		}
+		return nil, "", fmt.Errorf("get parent device: %w", err)
+	}
+	if parentDeviceID == "" {
+		return nil, "", nil
+	}
+
+	// Query active alerts on the parent within the correlation window.
+	since := time.Now().UTC().Add(-window)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT a.id, a.check_id, a.device_id, a.severity, a.message, a.triggered_at, a.resolved_at,
+			a.acknowledged_at, a.consecutive_failures, a.suppressed, a.suppressed_by,
+			COALESCE(NULLIF(d.hostname, ''), json_extract(d.ip_addresses, '$[0]'), a.device_id) AS device_name
+		FROM pulse_alerts a
+		LEFT JOIN recon_devices d ON d.id = a.device_id
+		WHERE a.device_id = ? AND a.resolved_at IS NULL AND a.triggered_at >= ?
+		ORDER BY a.triggered_at DESC`,
+		parentDeviceID, since,
+	)
+	if err != nil {
+		return nil, parentDeviceID, fmt.Errorf("get parent active alerts: %w", err)
+	}
+	defer rows.Close()
+
+	alerts, err = scanAlertRows(rows)
+	if err != nil {
+		return nil, parentDeviceID, err
+	}
+	return alerts, parentDeviceID, nil
+}
+
+// GetCorrelatedAlerts returns alerts grouped by correlation: parent alerts with
+// their suppressed children. Only active (unresolved) alerts are included.
+func (s *PulseStore) GetCorrelatedAlerts(ctx context.Context) ([]CorrelatedAlertGroup, error) {
+	// Get all active non-suppressed alerts (potential parents).
+	parentAlerts, err := s.ListAlerts(ctx, AlertFilters{
+		ActiveOnly: true,
+		Suppressed: boolPtr(false),
+		Limit:      200,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list parent alerts: %w", err)
+	}
+
+	// Get all active suppressed alerts.
+	suppressedAlerts, err := s.ListAlerts(ctx, AlertFilters{
+		ActiveOnly: true,
+		Suppressed: boolPtr(true),
+		Limit:      500,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list suppressed alerts: %w", err)
+	}
+
+	// Build a map from device_id -> parent alert for grouping.
+	deviceAlertMap := make(map[string]int, len(parentAlerts))
+	groups := make([]CorrelatedAlertGroup, 0, len(parentAlerts))
+	for i := range parentAlerts {
+		deviceAlertMap[parentAlerts[i].DeviceID] = i
+		groups = append(groups, CorrelatedAlertGroup{
+			ParentAlert:        parentAlerts[i],
+			SuppressedChildren: []Alert{},
+		})
+	}
+
+	// Assign suppressed alerts to their parent groups.
+	var ungrouped []Alert
+	for i := range suppressedAlerts {
+		parentIdx, ok := deviceAlertMap[suppressedAlerts[i].SuppressedBy]
+		if ok {
+			groups[parentIdx].SuppressedChildren = append(
+				groups[parentIdx].SuppressedChildren,
+				suppressedAlerts[i],
+			)
+		} else {
+			ungrouped = append(ungrouped, suppressedAlerts[i])
+		}
+	}
+
+	// Add ungrouped suppressed alerts as standalone groups (parent resolved but child still active).
+	for i := range ungrouped {
+		groups = append(groups, CorrelatedAlertGroup{
+			ParentAlert:        ungrouped[i],
+			SuppressedChildren: []Alert{},
+		})
+	}
+
+	return groups, nil
+}
+
+// boolPtr returns a pointer to a bool value.
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 // -- Notification Channels --
 
 // InsertChannel inserts a new notification channel.

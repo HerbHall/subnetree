@@ -12,10 +12,11 @@ import (
 
 // Alerter tracks consecutive check failures and manages alert lifecycle.
 type Alerter struct {
-	store     *PulseStore
-	bus       plugin.EventBus
-	threshold int
-	logger    *zap.Logger
+	store       *PulseStore
+	bus         plugin.EventBus
+	threshold   int
+	logger      *zap.Logger
+	correlation *CorrelationEngine
 
 	mu       sync.Mutex
 	failures map[string]int // check_id -> consecutive failure count
@@ -30,6 +31,11 @@ func NewAlerter(store *PulseStore, bus plugin.EventBus, threshold int, logger *z
 		logger:    logger,
 		failures:  make(map[string]int),
 	}
+}
+
+// SetCorrelation enables topology-aware alert correlation on this alerter.
+func (a *Alerter) SetCorrelation(engine *CorrelationEngine) {
+	a.correlation = engine
 }
 
 // ProcessResult evaluates a check result and triggers or resolves alerts.
@@ -142,6 +148,21 @@ func (a *Alerter) handleFailure(ctx context.Context, check Check, result *CheckR
 	if suppressed {
 		alert.Suppressed = true
 		alert.SuppressedBy = byDevice
+	}
+
+	// Check topology-aware correlation if not already suppressed.
+	if !alert.Suppressed && a.correlation != nil && check.DeviceID != "" {
+		corrResult, corrErr := a.correlation.Check(ctx, check.DeviceID)
+		if corrErr != nil {
+			a.logger.Warn("correlation check failed, proceeding with alert",
+				zap.String("check_id", check.ID),
+				zap.String("device_id", check.DeviceID),
+				zap.Error(corrErr),
+			)
+		} else if corrResult.Suppressed {
+			alert.Suppressed = true
+			alert.SuppressedBy = corrResult.ParentDeviceID
+		}
 	}
 
 	if err := a.store.InsertAlert(ctx, alert); err != nil {
