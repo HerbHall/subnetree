@@ -412,7 +412,7 @@ jobs:
 
       - name: Upload Trivy SARIF results
         if: ${{ steps.changes.outputs.run == 'true' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
 
