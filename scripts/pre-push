@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs the same checks as CI before allowing a push.
+# Install: make hooks (or: cp scripts/pre-push .git/hooks/pre-push)
+set -euo pipefail
+
+echo "==> pre-push: running CI checks..."
+
+echo "--- go build"
+go build ./...
+
+echo "--- go test"
+go test ./...
+
+echo "--- golangci-lint"
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1 run ./...
+
+echo "--- frontend type-check"
+cd web && npx tsc --noEmit && cd ..
+
+echo "--- markdownlint"
+npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#web/node_modules"
+
+echo "==> pre-push: all checks passed"

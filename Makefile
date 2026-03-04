@@ -1,4 +1,4 @@
-.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint run-server run-scout proto swagger clean license-check ai-review ai-test ai-doc docker-build docker-test docker-clean docker-scout docker-scout-full docker-qc docker-qc-down docker-qc-smoke
+.PHONY: build build-server build-scout build-dashboard dev-dashboard lint-dashboard test test-race test-coverage lint lint-md run-server run-scout proto swagger clean license-check hooks ai-review ai-test ai-doc docker-build docker-test docker-clean docker-scout docker-scout-full docker-qc docker-qc-down docker-qc-smoke
 
 # Binary names
 SERVER_BIN=subnetree
@@ -52,8 +52,16 @@ test-coverage:
 	go tool cover -func=coverage.out
 
 lint:
-	@which golangci-lint > /dev/null 2>&1 || (echo "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && exit 1)
-	golangci-lint run ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1 run ./...
+
+lint-md:
+	npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#web/node_modules"
+
+hooks:
+	@mkdir -p .git/hooks
+	cp scripts/pre-push .git/hooks/pre-push
+	chmod +x .git/hooks/pre-push
+	@echo "Pre-push hook installed."
 
 run-server: build-server
 	./bin/$(SERVER_BIN)
