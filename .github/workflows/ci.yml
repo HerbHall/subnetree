@@ -66,7 +66,7 @@ jobs:
         run: pnpm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dashboard-dist
           path: web/dist
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download frontend build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dashboard-dist
           path: internal/dashboard/dist
@@ -137,7 +137,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download frontend build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dashboard-dist
           path: internal/dashboard/dist
@@ -169,7 +169,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download frontend build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dashboard-dist
           path: internal/dashboard/dist
@@ -300,7 +300,7 @@ jobs:
         run: pnpm exec playwright install chromium --with-deps
 
       - name: Download frontend build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dashboard-dist
           path: internal/dashboard/dist
@@ -338,7 +338,7 @@ jobs:
         run: pnpm test:e2e
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -375,7 +375,7 @@ jobs:
 
       - name: Download frontend build
         if: steps.changes.outputs.run == 'true'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: dashboard-dist
           path: web/dist
@@ -412,7 +412,7 @@ jobs:
 
       - name: Upload Trivy SARIF results
         if: ${{ steps.changes.outputs.run == 'true' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
 

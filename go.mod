@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/mdns v1.0.6
 	github.com/huin/goupnp v1.3.0
 	github.com/mdlayher/wifi v0.7.2
-	github.com/modelcontextprotocol/go-sdk v1.3.1
+	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus-community/pro-bing v0.8.0
 	github.com/prometheus/client_golang v1.23.2
