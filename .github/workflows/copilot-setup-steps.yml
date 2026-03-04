@@ -1,0 +1,39 @@
+name: Copilot Setup Steps
+
+on: workflow_dispatch
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: web
+
+      - name: Verify Go build
+        run: go build ./...
+
+      - name: Verify TypeScript compilation
+        run: npx tsc --noEmit
+        working-directory: web
