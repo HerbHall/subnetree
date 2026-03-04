@@ -12,11 +12,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Download Go modules
         run: go mod download
@@ -24,16 +30,22 @@ jobs:
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
 
-      - name: Enable corepack
-        run: corepack enable
-
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
         working-directory: web
+
+      - name: Build frontend dashboard
+        run: pnpm run build
+        working-directory: web
+
+      - name: Copy dashboard to embed path
+        run: |
+          mkdir -p internal/dashboard/dist
+          cp -r web/dist/. internal/dashboard/dist/
 
       - name: Verify Go build
         run: go build ./...
 
       - name: Verify TypeScript compilation
-        run: npx tsc --noEmit
+        run: pnpm run type-check
         working-directory: web
