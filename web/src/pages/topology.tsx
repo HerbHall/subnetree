@@ -34,6 +34,10 @@ import {
   TopologyEdge as TopologyEdgeComponent,
   type TopologyEdgeType,
 } from '@/components/topology/topology-edge'
+import {
+  SummaryNode,
+  type SummaryNodeData,
+} from '@/components/topology/summary-node'
 import { UtilizationEdge } from '@/components/topology/utilization-edge'
 import {
   TopologyToolbar,
@@ -78,7 +82,7 @@ import type {
 } from '@/api/types'
 
 // Register custom node & edge types outside the component to avoid re-creation
-const nodeTypes: NodeTypes = { device: DeviceNode, group: GroupNode }
+const nodeTypes: NodeTypes = { device: DeviceNode, group: GroupNode, summary: SummaryNode }
 const defaultEdgeTypes: EdgeTypes = { topology: TopologyEdgeComponent }
 const utilizationEdgeTypes: EdgeTypes = {
   topology: TopologyEdgeComponent,
@@ -239,6 +243,7 @@ export function TopologyPage() {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdge, setSelectedEdge] = useState<SelectedEdgeState | null>(null)
+  const [unknownsExpanded, setUnknownsExpanded] = useState(false)
 
   const { data: topology, isLoading, error, refetch } = useQuery({
     queryKey: ['topology'],
@@ -330,7 +335,19 @@ export function TopologyPage() {
     return layoutGroups(groups, topology.nodes, viewMode)
   }, [topology, viewMode])
 
-  type AnyNodeType = Node<DeviceNodeData | GroupNodeData>
+  type AnyNodeType = Node<DeviceNodeData | GroupNodeData | SummaryNodeData>
+
+  // Identify unclassified devices (unknown type + label is an IP address).
+  const unclassifiedIds = useMemo(() => {
+    if (!topology) return new Set<string>()
+    const ids = new Set<string>()
+    for (const n of topology.nodes) {
+      if (n.device_type === 'unknown' && /^\d+\.\d+\.\d+\.\d+$/.test(n.label)) {
+        ids.add(n.id)
+      }
+    }
+    return ids
+  }, [topology])
 
   const initialNodes = useMemo<AnyNodeType[]>(() => {
     if (viewMode !== 'all' && groupedResult) {
@@ -338,7 +355,6 @@ export function TopologyPage() {
       const allNodes: AnyNodeType[] = [
         ...groupedResult.groupNodes.map((gn) => ({
           ...gn,
-          // Group nodes are visible if any child is visible
           hidden: gn.data.count === 0,
         })),
         ...groupedResult.deviceNodes.map((dn) => ({
@@ -353,17 +369,46 @@ export function TopologyPage() {
       ]
       return allNodes
     }
-    // Flat "all devices" mode -- original behavior
-    return layoutNodes.map((node) => ({
-      ...node,
-      hidden: hiddenNodeIds.has(node.id),
-      data: {
-        ...node.data,
-        highlighted: searchMatchIds !== null && searchMatchIds.has(node.id),
-        dimmed: searchMatchIds !== null && !searchMatchIds.has(node.id),
-      },
-    }))
-  }, [viewMode, groupedResult, layoutNodes, hiddenNodeIds, searchMatchIds])
+
+    // Flat "all devices" mode -- collapse unclassified into summary node.
+    const shouldCollapse = !unknownsExpanded && unclassifiedIds.size > 3
+    const result: AnyNodeType[] = []
+
+    for (const node of layoutNodes) {
+      if (shouldCollapse && unclassifiedIds.has(node.id)) {
+        continue // skip -- replaced by summary node
+      }
+      result.push({
+        ...node,
+        hidden: hiddenNodeIds.has(node.id),
+        data: {
+          ...node.data,
+          highlighted: searchMatchIds !== null && searchMatchIds.has(node.id),
+          dimmed: searchMatchIds !== null && !searchMatchIds.has(node.id),
+        },
+    })
+    }
+
+    if (shouldCollapse) {
+      // Find average position of collapsed nodes to place the summary node
+      const collapsedNodes = layoutNodes.filter((n) => unclassifiedIds.has(n.id))
+      const avgX = collapsedNodes.reduce((s, n) => s + n.position.x, 0) / (collapsedNodes.length || 1)
+      const avgY = collapsedNodes.reduce((s, n) => s + n.position.y, 0) / (collapsedNodes.length || 1)
+
+      result.push({
+        id: '__unclassified_summary__',
+        type: 'summary',
+        position: { x: avgX, y: avgY },
+        data: {
+          label: 'Unclassified',
+          count: unclassifiedIds.size,
+          expanded: false,
+        },
+      } as AnyNodeType)
+    }
+
+    return result
+  }, [viewMode, groupedResult, layoutNodes, hiddenNodeIds, searchMatchIds, unknownsExpanded, unclassifiedIds])
 
   const initialEdges = useMemo<Edge[]>(() => {
     if (!topology) return []
@@ -380,16 +425,43 @@ export function TopologyPage() {
         }
       })
     }
-    return toFlowEdges(topology.edges).map((edge) => ({
-      ...edge,
-      hidden: hiddenNodeIds.has(edge.source) || hiddenNodeIds.has(edge.target),
-    }))
-  }, [topology, hiddenNodeIds, showUtilization])
+    const shouldCollapse = !unknownsExpanded && unclassifiedIds.size > 3
+    const seenSummaryEdges = new Set<string>()
 
-  const visibleCount = useMemo(
-    () => initialNodes.filter((n) => !n.hidden && n.type !== 'group').length,
-    [initialNodes]
-  )
+    return toFlowEdges(topology.edges).map((edge) => {
+      let { source, target } = edge
+      if (shouldCollapse) {
+        if (unclassifiedIds.has(source)) source = '__unclassified_summary__'
+        if (unclassifiedIds.has(target)) target = '__unclassified_summary__'
+      }
+      // Deduplicate edges pointing to/from summary node
+      const key = `${source}|${target}`
+      if (source === '__unclassified_summary__' || target === '__unclassified_summary__') {
+        if (seenSummaryEdges.has(key)) return { ...edge, source, target, hidden: true }
+        seenSummaryEdges.add(key)
+      }
+      return {
+        ...edge,
+        source,
+        target,
+        hidden: hiddenNodeIds.has(edge.source) || hiddenNodeIds.has(edge.target),
+      }
+    })
+  }, [topology, hiddenNodeIds, showUtilization, unknownsExpanded, unclassifiedIds])
+
+  const visibleCount = useMemo(() => {
+    let count = 0
+    for (const n of initialNodes) {
+      if (n.hidden) continue
+      if (n.type === 'group') continue
+      if (n.type === 'summary') {
+        count += (n.data as SummaryNodeData).count
+      } else {
+        count++
+      }
+    }
+    return count
+  }, [initialNodes])
 
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChangeRaw] = useEdgesState(initialEdges)
@@ -458,8 +530,11 @@ export function TopologyPage() {
 
   const handleNodeClick: NodeMouseHandler<AnyNodeType> = useCallback(
     (_event, node) => {
-      // Only select device nodes for the detail panel, not group containers
       if (node.type === 'group') return
+      if (node.type === 'summary') {
+        setUnknownsExpanded(true)
+        return
+      }
       setSelectedNodeId(node.id)
       setSelectedEdge(null)
     }, []
