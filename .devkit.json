@@ -1,0 +1,9 @@
+{
+  "project": "SubNetree",
+  "tier": "full",
+  "profile": "go",
+  "family": "Samverk",
+  "managed_by": null,
+  "created": "2026-03-21",
+  "devkit_version": "2.7.1"
+}
