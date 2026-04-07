@@ -21,6 +21,7 @@ export async function getDevice(id: string): Promise<Device> {
 export async function updateDevice(
   id: string,
   data: {
+    hostname?: string
     notes?: string
     tags?: string[]
     custom_fields?: Record<string, string>

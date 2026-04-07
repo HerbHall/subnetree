@@ -3365,7 +3365,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates a device's notes, tags, custom fields, or device type.",
+                "description": "Partially updates a device's hostname, notes, tags, custom fields, or device type.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8755,6 +8755,9 @@ const docTemplate = `{
                     }
                 },
                 "device_type": {
+                    "type": "string"
+                },
+                "hostname": {
                     "type": "string"
                 },
                 "location": {

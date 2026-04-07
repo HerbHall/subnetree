@@ -700,7 +700,7 @@ func (m *Module) handleGetDevice(w http.ResponseWriter, r *http.Request) {
 // handleUpdateDevice applies a partial update to a device.
 //
 //	@Summary		Update device
-//	@Description	Partially updates a device's notes, tags, custom fields, or device type.
+//	@Description	Partially updates a device's hostname, notes, tags, custom fields, or device type.
 //	@Tags			recon
 //	@Accept			json
 //	@Produce		json

@@ -129,6 +129,8 @@ export function DeviceDetailPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [copiedText, setCopiedText] = useState<string | null>(null)
+  const [isEditingHostname, setIsEditingHostname] = useState(false)
+  const [editedHostname, setEditedHostname] = useState('')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [isEditingTags, setIsEditingTags] = useState(false)
   const [isEditingType, setIsEditingType] = useState(false)
@@ -217,6 +219,7 @@ export function DeviceDetailPage() {
   // Update device mutation
   const updateMutation = useMutation({
     mutationFn: (data: {
+      hostname?: string
       notes?: string
       tags?: string[]
       device_type?: DeviceType
@@ -229,6 +232,7 @@ export function DeviceDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['device', id] })
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['inventorySummary'] })
+      setIsEditingHostname(false)
       setIsEditingNotes(false)
       setIsEditingTags(false)
       setIsEditingType(false)
@@ -262,6 +266,20 @@ export function DeviceDetailPage() {
     await navigator.clipboard.writeText(text)
     setCopiedText(text)
     setTimeout(() => setCopiedText(null), 2000)
+  }
+
+  function startEditHostname() {
+    setEditedHostname(device?.hostname || '')
+    setIsEditingHostname(true)
+  }
+
+  function saveHostname() {
+    updateMutation.mutate({ hostname: editedHostname })
+  }
+
+  function cancelEditHostname() {
+    setIsEditingHostname(false)
+    setEditedHostname('')
   }
 
   function startEditNotes() {
@@ -432,9 +450,47 @@ export function DeviceDetailPage() {
             <Icon className={cn('h-8 w-8', status.text)} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">
-              {device.hostname || primaryIp || 'Unnamed Device'}
-            </h1>
+            {isEditingHostname ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={editedHostname}
+                  onChange={(e) => setEditedHostname(e.target.value)}
+                  placeholder="e.g., web-server-01"
+                  className="h-9 text-xl font-semibold"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={saveHostname}
+                  disabled={updateMutation.isPending}
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={cancelEditHostname}
+                  disabled={updateMutation.isPending}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold">
+                  {device.hostname || primaryIp || 'Unnamed Device'}
+                </h1>
+                <button
+                  onClick={startEditHostname}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Rename device"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-muted-foreground">{typeLabel}</span>
               <span className="text-muted-foreground">|</span>

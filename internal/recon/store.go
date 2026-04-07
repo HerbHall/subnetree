@@ -57,6 +57,7 @@ type ListDevicesOptions struct {
 
 // UpdateDeviceParams holds partial update fields for a device.
 type UpdateDeviceParams struct {
+	Hostname     *string            `json:"hostname,omitempty"`
 	Notes        *string            `json:"notes,omitempty"`
 	Tags         *[]string          `json:"tags,omitempty"`
 	CustomFields *map[string]string `json:"custom_fields,omitempty"`
@@ -710,6 +711,12 @@ func (s *ReconStore) UpdateDevice(ctx context.Context, id string, params UpdateD
 		return fmt.Errorf("device not found: %w", err)
 	}
 
+	if params.Hostname != nil {
+		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET hostname = ? WHERE id = ?`, *params.Hostname, id)
+		if err != nil {
+			return fmt.Errorf("update hostname: %w", err)
+		}
+	}
 	if params.Notes != nil {
 		_, err = s.db.ExecContext(ctx, `UPDATE recon_devices SET notes = ? WHERE id = ?`, *params.Notes, id)
 		if err != nil {

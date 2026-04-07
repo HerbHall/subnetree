@@ -533,6 +533,35 @@ func TestUpdateDevice_PartialUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdateDevice_Hostname(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d := &models.Device{
+		Hostname:        "old-hostname",
+		IPAddresses:     []string{"10.0.0.50"},
+		MACAddress:      "AA:BB:CC:DD:EE:50",
+		Status:          models.DeviceStatusOnline,
+		DiscoveryMethod: models.DiscoveryICMP,
+		Notes:           "keep these notes",
+	}
+	_, _ = s.UpsertDevice(ctx, d)
+
+	newName := "renamed-device"
+	err := s.UpdateDevice(ctx, d.ID, UpdateDeviceParams{Hostname: &newName})
+	if err != nil {
+		t.Fatalf("UpdateDevice hostname: %v", err)
+	}
+
+	got, _ := s.GetDevice(ctx, d.ID)
+	if got.Hostname != "renamed-device" {
+		t.Errorf("Hostname = %q, want %q", got.Hostname, "renamed-device")
+	}
+	if got.Notes != "keep these notes" {
+		t.Errorf("Notes = %q, want %q (should not change)", got.Notes, "keep these notes")
+	}
+}
+
 func TestDeleteDevice_Success(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()

@@ -1884,6 +1884,8 @@ definitions:
         type: object
       device_type:
         type: string
+      hostname:
+        type: string
       location:
         type: string
       notes:
@@ -4168,8 +4170,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Partially updates a device's notes, tags, custom fields, or device
-        type.
+      description: Partially updates a device's hostname, notes, tags, custom fields,
+        or device type.
       parameters:
       - description: Device ID
         in: path
