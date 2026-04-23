@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { setupApi, loginApi, checkSetupRequired, isMFAChallenge } from '@/api/auth'
-import { getNetworkInterfaces, setScanInterface, type NetworkInterface } from '@/api/settings'
+import { getNetworkInterfaces, setScanInterface } from '@/api/settings'
 import { setActiveTheme } from '@/api/themes'
 import { getHealth } from '@/api/system'
 import { detectColorScheme } from '@/lib/theme-preference'
@@ -110,8 +110,16 @@ export function SetupPage() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-  const [interfacesLoading, setInterfacesLoading] = useState(false)
+  const {
+    data: interfaces = [],
+    isLoading: interfacesLoading,
+    error: interfacesError,
+  } = useQuery({
+    queryKey: ['network-interfaces'],
+    queryFn: getNetworkInterfaces,
+    enabled: step === 2,
+    staleTime: 5 * 60 * 1000,
+  })
   const [showPassword, setShowPassword] = useState(false)
   const setTokens = useAuthStore((s) => s.setTokens)
   const navigate = useNavigate()
@@ -136,22 +144,6 @@ export function SetupPage() {
       .finally(() => setCheckingStatus(false))
   }, [])
 
-  // Fetch network interfaces when entering step 2
-  useEffect(() => {
-    if (step === 2 && interfaces.length === 0) {
-      setInterfacesLoading(true)
-      getNetworkInterfaces()
-        .then((data) => {
-          setInterfaces(data)
-        })
-        .catch((err) => {
-          setApiError(err instanceof Error ? err.message : 'Failed to load network interfaces')
-        })
-        .finally(() => {
-          setInterfacesLoading(false)
-        })
-    }
-  }, [step, interfaces.length])
 
   const passwordStrength = useMemo(
     () => getPasswordStrength(formData.password),
@@ -538,7 +530,19 @@ export function SetupPage() {
                     </label>
                   ))}
 
-                  {interfaces.length === 0 && !interfacesLoading && (
+                  {interfacesError && (
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-center">
+                      <p className="text-sm text-destructive">
+                        Failed to load network interfaces:{' '}
+                        {interfacesError instanceof Error
+                          ? interfacesError.message
+                          : 'Unknown error'}
+                        . Auto-detect will still work.
+                      </p>
+                    </div>
+                  )}
+
+                  {interfaces.length === 0 && !interfacesLoading && !interfacesError && (
                     <div className="rounded-lg border border-dashed border-muted-foreground/25 p-4 text-center">
                       <p className="text-sm text-muted-foreground">
                         No network interfaces found. SubNetree will use auto-detection.

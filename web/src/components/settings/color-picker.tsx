@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -60,11 +60,16 @@ export function ColorPicker({
 }: ColorPickerProps) {
   const label = varName.replace('--nv-', '')
   const showColorInput = isColorValue(value) || isColorValue(defaultValue)
+  // Local editable copy of `value` so mid-edit strings (e.g. "#12") don't
+  // propagate upstream until length >= 3. Sync when the prop changes externally
+  // (e.g. reset button) using the "adjusting state on prop change" pattern:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
   const [textValue, setTextValue] = useState(value)
-
-  useEffect(() => {
+  const [lastSyncedValue, setLastSyncedValue] = useState(value)
+  if (value !== lastSyncedValue) {
+    setLastSyncedValue(value)
     setTextValue(value)
-  }, [value])
+  }
 
   function handleTextChange(newValue: string) {
     setTextValue(newValue)

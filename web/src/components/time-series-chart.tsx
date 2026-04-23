@@ -51,7 +51,12 @@ function formatXAxisTick(timestamp: string, range: MetricRange): string {
   return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
 }
 
-function CustomTooltip({ active, payload, label, metric }: TooltipContentProps<number, string> & { metric: MetricName }) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  metric,
+}: Partial<TooltipContentProps<number, string>> & { metric: MetricName }) {
   if (!active || !payload || payload.length === 0) return null
 
   const cfg = metricConfig[metric]
@@ -129,11 +134,7 @@ export function TimeSeriesChart({ data, metric, range, loading, className }: Tim
             }}
             width={50}
           />
-          <Tooltip
-            content={(props: TooltipContentProps<number, string>) => (
-              <CustomTooltip {...props} metric={metric} />
-            )}
-          />
+          <Tooltip content={<CustomTooltip metric={metric} />} />
           <Area
             type="monotone"
             dataKey="displayValue"

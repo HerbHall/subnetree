@@ -387,7 +387,7 @@ export function TimelinePage() {
                   allowDecimals={false}
                   width={40}
                 />
-                <Tooltip content={(props: TooltipContentProps<number, string>) => <ChartTooltip {...props} />} />
+                <Tooltip content={<ChartTooltip />} />
                 {eventTypes.map((type) => {
                   const typeKey = type.replace(/\./g, '_')
                   const cfg = EVENT_TYPE_CONFIG[type]
@@ -556,7 +556,7 @@ export function TimelinePage() {
 // Chart tooltip
 // ---------------------------------------------------------------------------
 
-function ChartTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+function ChartTooltip({ active, payload, label }: Partial<TooltipContentProps<number, string>>) {
   if (!active || !payload || payload.length === 0) return null
 
   const total = payload.reduce((sum, item) => sum + ((item.value as number) || 0), 0)
