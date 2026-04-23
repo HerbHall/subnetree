@@ -466,6 +466,13 @@ export function TopologyPage() {
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChangeRaw] = useEdgesState(initialEdges)
 
+  const fitViewOptions = useMemo(() => {
+    const count = initialNodes.length
+    if (count <= 10) return { padding: 0.3, minZoom: 0.8, maxZoom: 1.2 }
+    if (count <= 30) return { padding: 0.2, minZoom: 0.5, maxZoom: 1.0 }
+    return { padding: 0.15, minZoom: 0.3, maxZoom: 0.8 }
+  }, [initialNodes.length])
+
   useEffect(() => { setNodes(initialNodes) }, [initialNodes, setNodes])
   useEffect(() => { setEdges(initialEdges) }, [initialEdges, setEdges])
 
@@ -642,7 +649,7 @@ export function TopologyPage() {
         onNodeClick={handleNodeClick} onEdgeClick={handleEdgeClick} onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         minZoom={0.05} maxZoom={4} fitView
-        fitViewOptions={{ padding: 0.2, minZoom: 0.15, maxZoom: 1.5 }}
+        fitViewOptions={fitViewOptions}
         proOptions={{ hideAttribution: true }}
         className="rounded-lg" style={{ backgroundColor: 'var(--nv-bg-surface)' }}
       >

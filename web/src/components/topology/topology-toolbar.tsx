@@ -212,7 +212,7 @@ export const TopologyToolbar = memo(function TopologyToolbar({
         <ZoomOut className="h-4 w-4" />
       </button>
       <button
-        onClick={() => fitView({ duration: 300, padding: 0.2 })}
+        onClick={() => fitView({ duration: 300, padding: 0.2, minZoom: 0.3 })}
         title="Fit to view"
         className="rounded-md p-1.5 transition-colors hover:bg-[var(--nv-bg-hover)]"
         style={{ color: 'var(--nv-text-secondary)' }}
