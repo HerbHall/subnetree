@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.6.3)'
+        required: true
 
 permissions:
   contents: write
@@ -20,6 +25,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -74,7 +80,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract tag name
-        run: echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+        run: echo "TAG=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_ENV"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
@@ -117,12 +123,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull Docker image
-        run: docker pull ghcr.io/herbhall/subnetree:${{ github.ref_name }}
+        run: docker pull ghcr.io/herbhall/subnetree:${{ inputs.tag || github.ref_name }}
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/herbhall/subnetree:${{ github.ref_name }}'
+          image-ref: 'ghcr.io/herbhall/subnetree:${{ inputs.tag || github.ref_name }}'
           format: 'table'
           exit-code: '1'
           severity: 'HIGH,CRITICAL'
@@ -132,7 +138,7 @@ jobs:
         if: '!cancelled()'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/herbhall/subnetree:${{ github.ref_name }}'
+          image-ref: 'ghcr.io/herbhall/subnetree:${{ inputs.tag || github.ref_name }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'HIGH,CRITICAL'
