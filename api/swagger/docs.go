@@ -3094,6 +3094,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/recon/devices/ansible": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all devices as an Ansible-compatible YAML inventory grouped by device type, subnet, and category.",
+                "produces": [
+                    "text/yaml"
+                ],
+                "tags": [
+                    "recon"
+                ],
+                "summary": "Export Ansible inventory",
+                "responses": {
+                    "200": {
+                        "description": "YAML inventory",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem"
+                        }
+                    }
+                }
+            }
+        },
         "/recon/devices/bulk": {
             "patch": {
                 "security": [

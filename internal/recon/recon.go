@@ -323,6 +323,7 @@ func (m *Module) Routes() []plugin.Route {
 		{Method: "GET", Path: "/devices", Handler: m.handleListDevices},
 		{Method: "POST", Path: "/devices", Handler: m.handleCreateDevice},
 		{Method: "GET", Path: "/devices/export", Handler: m.handleExportCSV},
+		{Method: "GET", Path: "/devices/ansible", Handler: m.handleExportAnsible},
 		{Method: "POST", Path: "/devices/import", Handler: m.handleImportCSV},
 		{Method: "GET", Path: "/devices/{id}", Handler: m.handleGetDevice},
 		{Method: "PUT", Path: "/devices/{id}", Handler: m.handleUpdateDevice},

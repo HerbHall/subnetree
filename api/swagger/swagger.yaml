@@ -4474,6 +4474,26 @@ paths:
       summary: Get device storage
       tags:
       - recon
+  /recon/devices/ansible:
+    get:
+      description: Returns all devices as an Ansible-compatible YAML inventory grouped
+        by device type, subnet, and category.
+      produces:
+      - text/yaml
+      responses:
+        "200":
+          description: YAML inventory
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_HerbHall_subnetree_pkg_models.APIProblem'
+      security:
+      - BearerAuth: []
+      summary: Export Ansible inventory
+      tags:
+      - recon
   /recon/devices/bulk:
     patch:
       consumes:

@@ -22,7 +22,7 @@ RUN pnpm run build
 # ============================================================================
 # Stage 2: Build Go binary
 # ============================================================================
-FROM golang:1.25.8-alpine AS go-builder
+FROM golang:1.25.9-alpine AS go-builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
