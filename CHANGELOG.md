@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.4](https://github.com/HerbHall/subnetree/compare/v0.6.3...v0.6.4) (2026-04-23)
+
+
+### Features
+
+* Ansible dynamic inventory plugin and YAML export endpoint ([#580](https://github.com/HerbHall/subnetree/issues/580)) ([7f41f77](https://github.com/HerbHall/subnetree/commit/7f41f778d939ecc01a11fc20a416be8f54d92f9a))
+
+
+### Bug Fixes
+
+* add workflow_dispatch to release workflow ([#577](https://github.com/HerbHall/subnetree/issues/577)) ([10f1bcd](https://github.com/HerbHall/subnetree/commit/10f1bcde8478274fc5beddfd4cbae92f3e6588f7))
+* auto-fit topology viewport to readable node size ([#578](https://github.com/HerbHall/subnetree/issues/578)) ([0aa6f50](https://github.com/HerbHall/subnetree/commit/0aa6f5084fc16a460b7746fc1caf11dd1bc9204b))
+* **deps:** resolve 6 Dependabot alerts in web deps ([#581](https://github.com/HerbHall/subnetree/issues/581)) ([47a4729](https://github.com/HerbHall/subnetree/commit/47a4729e2e2361f9cc8530e533cf1e83e76c1027))
+
 ## [0.6.3](https://github.com/HerbHall/subnetree/compare/v0.6.2...v0.6.3) (2026-04-07)
 
 
