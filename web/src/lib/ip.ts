@@ -35,9 +35,10 @@ export function parseIpv4(ip: string): [number, number, number, number] | null {
  *   1. Two valid IPv4 addresses compare numerically, octet by octet,
  *      so 192.168.1.12 sorts before 192.168.1.111.
  *   2. Values that are NOT valid IPv4 (empty, IPv6, malformed) fall back
- *      to plain string comparison so the sort stays stable and total —
- *      and they sort AFTER all valid IPv4 addresses (invalid/missing data
- *      sinks to the bottom of an ascending sort, where it's least noisy).
+ *      to a deterministic, locale-independent string comparison so the sort
+ *      stays stable and total — and they sort AFTER all valid IPv4 addresses
+ *      (invalid/missing data sinks to the bottom of an ascending sort, where
+ *      it's least noisy).
  *
  * Note: this comparator is direction-agnostic — it always describes
  * ascending order. The caller flips the sign for descending sorts.
@@ -57,7 +58,12 @@ export function compareIpAddresses(a: string, b: string): number {
   if (pa) return -1
   if (pb) return 1
 
-  // Neither is valid IPv4 (empty, IPv6, malformed): keep a stable,
-  // deterministic order via plain string comparison.
-  return a.localeCompare(b)
+  // Neither is valid IPv4 (empty, IPv6, malformed): fall back to a
+  // deterministic, locale-independent code-unit comparison. (localeCompare
+  // would vary the order by the host's runtime locale, breaking the
+  // determinism this fallback promises.) Matches the plain string sort used
+  // by the devices table's other columns.
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
 }
