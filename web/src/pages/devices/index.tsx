@@ -43,6 +43,7 @@ import {
 } from '@/api/devices'
 import type { Device, DeviceStatus, DeviceType } from '@/api/types'
 import { cn } from '@/lib/utils'
+import { compareIpAddresses } from '@/lib/ip'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useScanStore } from '@/stores/scan'
 import { HelpIcon, HelpPopover } from '@/components/contextual-help'
@@ -358,6 +359,13 @@ export function DevicesPage() {
     const result = [...filteredDevices]
 
     result.sort((a, b) => {
+      // IP addresses need numeric octet-by-octet comparison, not string
+      // comparison, or 192.168.1.111 sorts before 192.168.1.12 (issue #585).
+      if (sortField === 'ip') {
+        const cmp = compareIpAddresses(a.ip_addresses?.[0] || '', b.ip_addresses?.[0] || '')
+        return sortDirection === 'asc' ? cmp : -cmp
+      }
+
       let aVal: string = ''
       let bVal: string = ''
 
@@ -365,10 +373,6 @@ export function DevicesPage() {
         case 'hostname':
           aVal = a.hostname || ''
           bVal = b.hostname || ''
-          break
-        case 'ip':
-          aVal = a.ip_addresses?.[0] || ''
-          bVal = b.ip_addresses?.[0] || ''
           break
         case 'mac':
           aVal = a.mac_address || ''
