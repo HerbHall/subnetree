@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.5](https://github.com/HerbHall/subnetree/compare/v0.6.4...v0.6.5) (2026-06-02)
+
+
+### Bug Fixes
+
+* **deps:** bump Go 1.25.10 -&gt; 1.25.11 for new stdlib CVEs ([#606](https://github.com/HerbHall/subnetree/issues/606)) ([30cfd68](https://github.com/HerbHall/subnetree/commit/30cfd6873e7fd58e26ec70616b8598f109687bb6))
+* **deps:** bump x/crypto, x/net, Go 1.25.10 to clear govulncheck ([#602](https://github.com/HerbHall/subnetree/issues/602)) ([94ba57f](https://github.com/HerbHall/subnetree/commit/94ba57fd1b48e393fcafec402858a0895ea39340))
+* **web:** sort device IP addresses numerically by octet ([#601](https://github.com/HerbHall/subnetree/issues/601)) ([f568739](https://github.com/HerbHall/subnetree/commit/f56873974abd01aa403a0866f1b22c654c1e7c55))
+
 ## [0.6.4](https://github.com/HerbHall/subnetree/compare/v0.6.3...v0.6.4) (2026-04-23)
 
 
