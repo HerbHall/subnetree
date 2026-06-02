@@ -1,6 +1,6 @@
 module github.com/HerbHall/subnetree
 
-go 1.25.10
+go 1.25.11
 
 require (
 	github.com/coder/websocket v1.8.14
