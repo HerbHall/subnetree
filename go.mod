@@ -1,6 +1,6 @@
 module github.com/HerbHall/subnetree
 
-go 1.25.11
+go 1.26.0
 
 require (
 	github.com/coder/websocket v1.8.15
@@ -20,7 +20,7 @@ require (
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.6
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0
 	golang.org/x/sys v0.47.0
