@@ -1,6 +1,6 @@
 module github.com/HerbHall/subnetree
 
-go 1.25.11
+go 1.26.0
 
 require (
 	github.com/coder/websocket v1.8.15
@@ -23,7 +23,7 @@ require (
 	golang.org/x/crypto v0.55.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
 	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.83.0
 	google.golang.org/protobuf v1.36.11
